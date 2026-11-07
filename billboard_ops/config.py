@@ -53,6 +53,30 @@ class Config:
         # The address the app is served on, for links in emails and calendar events.
         self.APP_URL = os.environ.get("APP_URL", "").rstrip("/")
         self.TESTING = _bool("TESTING")
+        # Phase 2: Claude reads proposals. The key is read by the Anthropic SDK from ANTHROPIC_API_KEY.
+        self.ANTHROPIC_API_KEY_SET = bool(os.environ.get("ANTHROPIC_API_KEY"))
+        self.PROPOSAL_MODEL = os.environ.get("PROPOSAL_MODEL", "claude-opus-5-5")
+        self.PROPOSAL_EFFORT = os.environ.get("PROPOSAL_EFFORT", "medium")
+        # The proposals inbox, read over IMAP (works with Google Workspace, Microsoft 365 and most hosts).
+        self.IMAP_HOST = os.environ.get("IMAP_HOST", "")
+        self.IMAP_PORT = int(os.environ.get("IMAP_PORT", "993") or 993)
+        self.IMAP_USER = os.environ.get("IMAP_USER", "")
+        self.IMAP_PASSWORD = os.environ.get("IMAP_PASSWORD", "")
+        self.IMAP_FOLDER = os.environ.get("IMAP_FOLDER", "INBOX")
+        # WhatsApp Business Cloud API (Meta).
+        self.WHATSAPP_TOKEN = os.environ.get("WHATSAPP_TOKEN", "")
+        self.WHATSAPP_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
+        self.WHATSAPP_VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN", "")
+        self.WHATSAPP_APP_SECRET = os.environ.get("WHATSAPP_APP_SECRET", "")
+        self.WHATSAPP_API_VERSION = os.environ.get("WHATSAPP_API_VERSION", "v21.0")
+
+    @property
+    def email_in(self):
+        return bool(self.IMAP_HOST and self.IMAP_USER and self.IMAP_PASSWORD)
+
+    @property
+    def whatsapp(self):
+        return bool(self.WHATSAPP_TOKEN and self.WHATSAPP_PHONE_NUMBER_ID)
 
     def service_account_info(self):
         if not self.GOOGLE_SERVICE_ACCOUNT_JSON:

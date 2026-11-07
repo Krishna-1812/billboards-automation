@@ -64,7 +64,57 @@ def seed(s, owner_email="owner@example.com"):
                        status="confirmed" if rnd.random() < 0.7 else "hold")
         except svc.Overbooked:
             continue
+    seed_proposals(s, screens, today)
     return len(screens)
+
+
+def _raw(client, lines, missing=(), questions=(), language="en", conf="high"):
+    return {"is_booking_request": True, "language": language,
+            "client": {"value": client, "confidence": conf, "evidence": client or ""},
+            "contact_name": None, "contact_email": None, "contact_phone": None, "campaign": "Demo campaign",
+            "lines": lines, "budget_amount": None, "budget_currency": None, "notes": "", "missing": list(missing),
+            "questions": list(questions), "flags": []}
+
+
+def _line(codes, start, end, unit="slots", value=2, conf="high", hint=None, evidence=""):
+    return {"screen_codes": codes, "screen_hint": hint, "screen_confidence": conf, "alternatives": [],
+            "start_date": start.isoformat() if start else None, "end_date": end.isoformat() if end else None,
+            "dates_confidence": conf, "start_hour": None, "end_hour": None, "ad_seconds": None,
+            "frequency_unit": unit, "frequency_value": value, "frequency_confidence": conf, "evidence": evidence}
+
+
+def seed_proposals(s, screens, today):
+    """Three sample requests, already 'read' (no Claude key needed), to show the Proposals inbox."""
+    from . import extract, intake
+    d = lambda n: today + timedelta(days=n)  # noqa: E731
+    samples = [
+        ("email", "marketing@gulfmotors.example", "Huda", "Booking request: SZR screens in December",
+         "Hi team,\n\nWe'd like two slots on SZR-01 and SZR-03 from "
+         f"{d(30):%d %B} for two weeks for the new SUV launch.\n\nThanks,\nHuda, Gulf Motors",
+         _raw("Gulf Motors", [_line(["SZR-01", "SZR-03"], d(30), d(43), evidence="two slots on SZR-01 and SZR-03")])),
+        ("whatsapp", "+971500000123", "Omar", "",
+         "السلام عليكم، نرغب بحجز شاشة مارينا ووك لحملة رمضان. كم السعر؟",
+         _raw("Noor Bank", [_line(["MAR-01"], None, None, unit="unknown", value=None, conf="medium",
+                                   evidence="شاشة مارينا ووك")], missing=["dates", "frequency"],
+              questions=["ما هي تواريخ بداية ونهاية الحملة؟", "كم مرة ترغبون بعرض الإعلان في الساعة؟"],
+              language="ar", conf="medium")),
+        ("manual", "", "Lina", "Phone call with Bloom",
+         "Bloom Cosmetics called: they want 'the big screen near the airport' plus the Dubai Mall one, "
+         f"{d(12):%d %b} to {d(25):%d %b}, about 40 plays an hour.",
+         _raw("Bloom Cosmetics", [_line(["DT-02"], d(12), d(25), unit="plays_per_hour", value=40),
+                                  _line([], d(12), d(25), unit="plays_per_hour", value=40, conf="low",
+                                        hint="the big screen near the airport")], missing=["screens"],
+              questions=["Do you mean the Airport Road Arrivals screen (DXB-01)?"])),
+    ]
+    for channel, sender, name, subject, body, raw in samples:
+        p, _, _ = intake.receive(s, channel=channel, sender=sender, sender_name=name, subject=subject, body=body)
+        draft = extract.normalise(s, raw, today, sender)
+        p.reading, p.draft, p.language = raw, draft, draft["language"]
+        p.client_id, p.ready, p.read_count = draft["client_id"], draft["ready"], 1
+        p.checks = intake.check(s, draft["lines"], today)
+        p.status = "needs_review"
+        if draft["missing"]:
+            intake._draft_clarify(s, p)
 
 
 def main():
@@ -73,6 +123,7 @@ def main():
     db.init_engine(cfg.DATABASE_URL)
     if cfg.DATABASE_URL.startswith("sqlite"):
         Base.metadata.create_all(db.engine())
+    from . import evaluate, intake, mail, outbox, sync  # noqa: F401 - job handlers
     with db.session_scope() as s:
         n = seed(s, (cfg.OWNER_EMAILS or ["owner@example.com"])[0])
     print(f"Loaded {n} demo screens with bookings.")

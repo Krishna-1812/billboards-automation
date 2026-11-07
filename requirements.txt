@@ -11,4 +11,12 @@ google-api-python-client>=2.127
 openpyxl>=3.1
 # Screen time zones on hosts without a system zone database.
 tzdata>=2024.1
+# Phase 2: Claude reads proposals; WhatsApp Cloud API calls; reading attachments.
+anthropic>=2.6.0
+requests>=2.31
+pdfplumber>=0.10.0
+python-docx>=1.1.0
+Pillow>=10.0.0
+# Tests only: sample PDFs for the attachment tests.
+reportlab>=4.0
 pytest>=8.0

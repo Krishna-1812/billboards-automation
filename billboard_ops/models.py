@@ -7,7 +7,8 @@ those days where the screen stands); timestamps (created, expires, logged) are U
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (JSON, Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, LargeBinary, String,
+                        Text)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -310,3 +311,154 @@ class BookingCounter(Base):
     __tablename__ = "booking_counters"
     year: Mapped[int] = mapped_column(Integer, primary_key=True)
     last: Mapped[int] = mapped_column(Integer, default=0)
+
+
+# ── Phase 2: proposals ──────────────────────────────────────────────────────────
+
+PROPOSAL_STATUSES = ("new", "reading", "needs_review", "waiting_client", "held", "declined", "not_proposal",
+                     "merged", "failed")
+OPEN_PROPOSAL = ("new", "reading", "needs_review", "waiting_client", "failed")
+
+
+class Proposal(Base):
+    """One client request, however it arrived, with everything said about it since."""
+    __tablename__ = "proposals"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ref: Mapped[str] = mapped_column(String(20), default="")
+    status: Mapped[str] = mapped_column(String(20), default="new")
+    channel: Mapped[str] = mapped_column(String(20))            # email | whatsapp | manual | portal
+    sender: Mapped[str] = mapped_column(String(254), default="")  # an email address or a phone number
+    sender_name: Mapped[str] = mapped_column(String(200), default="")
+    subject: Mapped[str] = mapped_column(String(300), default="")
+    client_id: Mapped[Optional[int]] = mapped_column(ForeignKey("clients.id"), nullable=True)
+    language: Mapped[str] = mapped_column(String(5), default="en")
+    reading: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)   # what Claude returned, as is
+    draft: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)     # the booking it would make, editable
+    checks: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)    # vacancy per draft line
+    ready: Mapped[bool] = mapped_column(Boolean, default=False)           # everything needed, all sure
+    duplicate_of_id: Mapped[Optional[int]] = mapped_column(ForeignKey("proposals.id"), nullable=True)
+    booking_id: Mapped[Optional[int]] = mapped_column(ForeignKey("bookings.id"), nullable=True)
+    auto_held: Mapped[bool] = mapped_column(Boolean, default=False)
+    error: Mapped[str] = mapped_column(Text, default="")
+    read_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_read_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    decided_by: Mapped[str] = mapped_column(String(254), default="")
+    decided_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+    client: Mapped[Optional[Client]] = relationship()
+    booking: Mapped[Optional[Booking]] = relationship()
+    messages: Mapped[list["Message"]] = relationship(back_populates="proposal", order_by="Message.id")
+
+    __table_args__ = (Index("ix_proposals_status", "status"), Index("ix_proposals_sender", "sender"))
+
+
+class Message(Base):
+    """A message in or out: an email, a WhatsApp message, a pasted note, or a draft waiting for approval."""
+    __tablename__ = "messages"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    proposal_id: Mapped[Optional[int]] = mapped_column(ForeignKey("proposals.id"), nullable=True)
+    booking_id: Mapped[Optional[int]] = mapped_column(ForeignKey("bookings.id"), nullable=True)
+    direction: Mapped[str] = mapped_column(String(3))             # in | out
+    channel: Mapped[str] = mapped_column(String(20))
+    kind: Mapped[str] = mapped_column(String(30), default="inbound")  # inbound | clarify | hold_confirmation | decline | hold_reminder | other
+    status: Mapped[str] = mapped_column(String(20), default="received")  # received | draft | approved | sent | failed | discarded
+    sender: Mapped[str] = mapped_column(String(254), default="")
+    recipient: Mapped[str] = mapped_column(String(254), default="")
+    subject: Mapped[str] = mapped_column(String(300), default="")
+    body: Mapped[str] = mapped_column(Text, default="")
+    language: Mapped[str] = mapped_column(String(5), default="en")
+    external_id: Mapped[str] = mapped_column(String(300), default="")   # email Message-ID or WhatsApp message id
+    in_reply_to: Mapped[str] = mapped_column(String(300), default="")
+    approved_by: Mapped[str] = mapped_column(String(254), default="")
+    error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    proposal: Mapped[Optional[Proposal]] = relationship(back_populates="messages")
+    attachments: Mapped[list["Attachment"]] = relationship(back_populates="message", order_by="Attachment.id")
+
+    __table_args__ = (Index("ix_messages_external", "external_id"), Index("ix_messages_status", "status"))
+
+
+class Attachment(Base):
+    __tablename__ = "attachments"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    message_id: Mapped[Optional[int]] = mapped_column(ForeignKey("messages.id", ondelete="CASCADE"), nullable=True)
+    eval_case_id: Mapped[Optional[int]] = mapped_column(ForeignKey("eval_cases.id", ondelete="CASCADE"),
+                                                        nullable=True)
+    filename: Mapped[str] = mapped_column(String(300), default="")
+    content_type: Mapped[str] = mapped_column(String(120), default="")
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    data: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
+    external_ref: Mapped[str] = mapped_column(String(300), default="")   # a WhatsApp media id not fetched yet
+    text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)    # text read out of it, kept for re-reads
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    message: Mapped[Optional[Message]] = relationship(back_populates="attachments")
+
+
+class AiCall(Base):
+    """The cost ledger: every Claude call, who it was for, and what it cost."""
+    __tablename__ = "ai_calls"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    purpose: Mapped[str] = mapped_column(String(40))            # read_proposal | eval
+    model: Mapped[str] = mapped_column(String(80), default="")
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cache_write_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cache_read_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    usd: Mapped[float] = mapped_column(Float, default=0.0)
+    actor: Mapped[str] = mapped_column(String(254), default="agent")   # who caused it
+    client_id: Mapped[Optional[int]] = mapped_column(ForeignKey("clients.id"), nullable=True)  # whose work
+    proposal_id: Mapped[Optional[int]] = mapped_column(ForeignKey("proposals.id"), nullable=True)
+    eval_run_id: Mapped[Optional[int]] = mapped_column(ForeignKey("eval_runs.id"), nullable=True)
+    ok: Mapped[bool] = mapped_column(Boolean, default=True)
+    stop_reason: Mapped[str] = mapped_column(String(40), default="")
+    error: Mapped[str] = mapped_column(Text, default="")
+
+
+class EvalCase(Base):
+    """A past proposal with the answer the team acted on: the accuracy test set."""
+    __tablename__ = "eval_cases"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    channel: Mapped[str] = mapped_column(String(20), default="email")
+    sender: Mapped[str] = mapped_column(String(254), default="")
+    subject: Mapped[str] = mapped_column(String(300), default="")
+    text: Mapped[str] = mapped_column(Text, default="")
+    received_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)   # "today" when it was sent
+    expected: Mapped[dict] = mapped_column(JSON, default=dict)
+    source_proposal_id: Mapped[Optional[int]] = mapped_column(ForeignKey("proposals.id"), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[str] = mapped_column(String(254), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    attachments: Mapped[list[Attachment]] = relationship(order_by="Attachment.id")
+
+
+class EvalRun(Base):
+    __tablename__ = "eval_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    status: Mapped[str] = mapped_column(String(20), default="queued")   # queued | running | done | failed
+    model: Mapped[str] = mapped_column(String(80), default="")
+    started_by: Mapped[str] = mapped_column(String(254), default="")
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    results: Mapped[list] = mapped_column(JSON, default=list)
+    summary: Mapped[dict] = mapped_column(JSON, default=dict)
+    usd: Mapped[float] = mapped_column(Float, default=0.0)
+
+
+class BookingDocument(Base):
+    """The signed proposal or purchase order a booking was confirmed on."""
+    __tablename__ = "booking_documents"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    booking_id: Mapped[int] = mapped_column(ForeignKey("bookings.id", ondelete="CASCADE"))
+    filename: Mapped[str] = mapped_column(String(300))
+    content_type: Mapped[str] = mapped_column(String(120), default="")
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    uploaded_by: Mapped[str] = mapped_column(String(254), default="")
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

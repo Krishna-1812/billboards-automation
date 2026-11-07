@@ -42,10 +42,11 @@ def create_app(config=None):
     )
 
     # Every job handler registers itself on import.
-    from . import mail, sync  # noqa: F401
+    from . import evaluate, intake, mail, outbox, sync  # noqa: F401
+    from .channels import email_in  # noqa: F401
 
-    from .views import auth, bookings, imports, main, screens, admin
-    for bp in (auth.bp, main.bp, bookings.bp, screens.bp, imports.bp, admin.bp):
+    from .views import admin, auth, bookings, imports, inbox, main, screens, webhooks
+    for bp in (auth.bp, main.bp, bookings.bp, screens.bp, imports.bp, admin.bp, inbox.bp, webhooks.bp):
         app.register_blueprint(bp)
 
     app.teardown_appcontext(close_db)
@@ -54,6 +55,8 @@ def create_app(config=None):
     def _load_user():
         if request.endpoint in ("main.health", "static"):
             return
+        if request.endpoint and request.endpoint.startswith("webhooks."):
+            return                          # signed by the sender instead (see views/webhooks.py)
         check_csrf()
         g.user = None
         uid = session.get("uid")

@@ -16,6 +16,8 @@
     {% set ep = request.endpoint or '' %}
     <nav>
       <a href="{{ url_for('main.dashboard') }}" class="{{ 'on' if ep == 'main.dashboard' }}">{{ t('dashboard') }}</a>
+      <a href="{{ url_for('inbox.inbox') }}" class="{{ 'on' if ep.startswith('inbox.proposal') or ep in ('inbox.inbox', 'inbox.inbox_new') }}">{{ t('proposals') }} {% if inbox_counts.get('review') %}<span class="badge-count">{{ inbox_counts['review'] }}</span>{% endif %}</a>
+      <a href="{{ url_for('inbox.outbox_list') }}" class="{{ 'on' if ep.startswith('inbox.outbox') }}">{{ t('outbox') }} {% if inbox_counts.get('outbox') %}<span class="badge-count">{{ inbox_counts['outbox'] }}</span>{% endif %}</a>
       <a href="{{ url_for('bookings.calendar_grid') }}" class="{{ 'on' if ep.startswith('bookings.calendar') }}">{{ t('calendar') }}</a>
       <a href="{{ url_for('bookings.availability') }}" class="{{ 'on' if ep == 'bookings.availability' }}">{{ t('availability') }}</a>
       <a href="{{ url_for('bookings.booking_list', status='open') }}" class="{{ 'on' if ep.startswith('bookings.booking') }}">{{ t('bookings') }}</a>
@@ -25,6 +27,8 @@
       <a href="{{ url_for('screens.spec_list') }}" class="{{ 'on' if ep.startswith('screens.spec') }}">{{ t('specs') }}</a>
       <a href="{{ url_for('screens.closures') }}" class="{{ 'on' if ep.startswith('screens.closure') }}">Blackouts &amp; hours</a>
       <div class="group">Admin</div>
+      {% if can('accuracy') %}<a href="{{ url_for('inbox.accuracy') }}" class="{{ 'on' if ep.startswith('inbox.accuracy') }}">Accuracy test</a>{% endif %}
+      {% if can('costs') %}<a href="{{ url_for('inbox.costs') }}" class="{{ 'on' if ep == 'inbox.costs' }}">Costs</a>{% endif %}
       {% if can('import') %}<a href="{{ url_for('imports.import_list') }}" class="{{ 'on' if ep.startswith('imports.') }}">{{ t('imports') }}</a>{% endif %}
       <a href="{{ url_for('main.notices') }}" class="{{ 'on' if ep == 'main.notices' }}">{{ t('notifications') }} {% if unread_notices %}<span class="badge-count">{{ unread_notices }}</span>{% endif %}</a>
       <a href="{{ url_for('admin.activity') }}" class="{{ 'on' if ep == 'admin.activity' }}">{{ t('activity') }}</a>

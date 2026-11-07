@@ -34,6 +34,8 @@ def general():
             settings.put(s, "mirror_spreadsheet_id", spreadsheet_id_from(f_str("mirror_spreadsheet_id")))
             settings.put(s, "mirror_tab", f_str("mirror_tab") or "Bookings (from app)")
             settings.put(s, "company_name", f_str("company_name") or "Billboard Ops")
+            settings.put(s, "auto_hold", request.form.get("auto_hold") == "1")
+            settings.put(s, "remind_clients", request.form.get("remind_clients") == "1")
             after = settings.all_settings(s)
             log(s, current_user().email, "changed", "settings", "general", "General settings changed",
                 {k: [before[k], after[k]] for k in after if before[k] != after[k]})
@@ -41,7 +43,8 @@ def general():
                 queue_sheet_mirror(s)
             s.commit()
             return done("Settings saved.", "admin.general")
-    return render_template("settings_general.html", st=settings.all_settings(s))
+    from ..evaluate import gate
+    return render_template("settings_general.html", st=settings.all_settings(s), gate=gate(s))
 
 
 @bp.route("/settings/people", methods=["GET", "POST"])

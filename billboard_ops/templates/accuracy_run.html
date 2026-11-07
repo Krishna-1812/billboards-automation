@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Accuracy run #{{ run.id }} · Billboard Ops{% endblock %}
+{% block head %}{% if run.status in ('queued', 'running') %}<meta http-equiv="refresh" content="8">{% endif %}{% endblock %}
+{% block content %}
+<div class="head"><div><h1>Accuracy run #{{ run.id }} <span class="pill {{ 'ok' if run.summary.get('passed') else '' }}">{{ run.status }}</span></h1>
+  <p class="muted">{{ run.model }} · started by {{ run.started_by }} {{ run.started_at|dt }} · cost ${{ '%.2f'|format(run.usd or 0) }}</p></div></div>
+{% if run.summary %}
+<div class="grid cols-4">
+  {% for f in fields %}<div class="card stat"><div class="num">{{ (run.summary.get(f)|string ~ '%') if run.summary.get(f) is not none else '—' }}</div><div class="lbl">{{ f|capitalize }}{{ ' (screens and dates)' if f == 'core' }}</div></div>{% endfor %}
+</div>
+{% elif run.status in ('queued', 'running') %}<div class="note">Running: {{ run.results|length }} case(s) read so far. This page refreshes on its own.</div>{% endif %}
+<h2>Cases</h2>
+<div class="card table-wrap"><table class="small">
+  <tr><th>Case</th>{% for f in fields %}<th>{{ f|capitalize }}</th>{% endfor %}<th>The agent read</th><th>Right answer</th></tr>
+  {% for r in run.results %}
+    {% set c = cases.get(r.case_id) %}
+    <tr><td>{{ r.name }}</td>
+      {% if r.get('error') %}<td colspan="{{ fields|length }}" style="color:var(--bad)">{{ r.error }}</td>
+      {% else %}{% for f in fields %}<td>{% set v = r.score.get(f) %}{% if v is none %}<span class="muted">—</span>{% elif v %}<span class="pill ok">right</span>{% else %}<span class="pill no">wrong</span>{% endif %}</td>{% endfor %}{% endif %}
+      <td>{% if r.get('got') %}{{ r.got.client }}: {% for l in r.got.lines %}{{ l.screen_code }} {{ l.start_date }}–{{ l.end_date }}{{ '; ' if not loop.last }}{% endfor %}{% endif %}</td>
+      <td>{% if c %}{{ c.expected.get('client') }}: {% for l in c.expected.get('lines', []) %}{{ l.screen }} {{ l.start }}–{{ l.end }}{{ '; ' if not loop.last }}{% endfor %}{% endif %}</td></tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Test case · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>{{ case.name or 'New test case' }}</h1>
+  <p class="muted">A past request, exactly as the client sent it, and the booking the team made from it.</p></div></div>
+<form method="post" enctype="multipart/form-data" class="card">
+  {{ m.csrf() }}
+  <div class="row">
+    <div><label>Name</label><input type="text" name="name" value="{{ case.name }}" required></div>
+    <div><label>Came by</label><select name="channel">{% for c in ['email', 'whatsapp', 'manual'] %}<option {{ 'selected' if case.channel == c }}>{{ c }}</option>{% endfor %}</select></div>
+    <div><label>Received on <span class="hint">relative dates are read from here</span></label><input type="date" name="received_on" value="{{ case.received_on.isoformat() if case.received_on else '' }}"></div>
+  </div>
+  <label>Subject</label><input type="text" name="subject" value="{{ case.subject }}">
+  <label>The request, as sent</label><textarea name="text" class="big" dir="auto">{{ case.text }}</textarea>
+  {% if case.attachments %}<p class="small">Files: {% for a in case.attachments %}{{ a.filename }}{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+  <label>Add files</label><input type="file" name="files" multiple>
+  <h3>The right answer</h3>
+  <label>Client</label><input type="text" name="e_client" value="{{ case.expected.get('client', '') }}">
+  <table class="small">
+    <tr><th>Screen code</th><th>From</th><th>To</th><th>Hours from</th><th>Hours to</th><th>Plays per hour</th><th>Whole screen</th></tr>
+    {% set rows = case.expected.get('lines', []) + [{}, {}, {}] %}
+    {% for l in rows %}
+      <tr><td><input type="text" name="e_screen" value="{{ l.get('screen', '') }}" list="screenCodes"></td>
+        <td><input type="date" name="e_start" value="{{ l.get('start', '') }}"></td>
+        <td><input type="date" name="e_end" value="{{ l.get('end', '') }}"></td>
+        <td><input type="number" min="0" max="24" name="e_start_hour" value="{{ l.get('start_hour') if l.get('start_hour') is not none else '' }}"></td>
+        <td><input type="number" min="0" max="24" name="e_end_hour" value="{{ l.get('end_hour') if l.get('end_hour') is not none else '' }}"></td>
+        <td><input type="number" step="any" name="e_pph" value="{{ l.get('plays_per_hour') if l.get('plays_per_hour') is not none else '' }}"></td>
+        <td><select name="e_whole"><option value="0">no</option><option value="1" {{ 'selected' if l.get('exclusive') }}>yes</option></select></td></tr>
+    {% endfor %}
+  </table>
+  <datalist id="screenCodes">{% for s in screens %}<option value="{{ s.code }}">{{ s.name }}</option>{% endfor %}</datalist>
+  <p><button class="primary" type="submit">{{ t('save') }}</button></p>
+</form>
+{% endblock %}

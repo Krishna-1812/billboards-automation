@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}New request · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>Paste or upload a request</h1>
+  <p class="muted">For anything that didn't come to the proposals email or WhatsApp: a message from Instagram or LinkedIn, notes from a call, a screenshot, a PDF.</p></div></div>
+<form method="post" enctype="multipart/form-data" class="card">
+  {{ m.csrf() }}
+  <div class="row">
+    <div><label>From (name)</label><input type="text" name="sender_name" value="{{ request.form.get('sender_name', '') }}"></div>
+    <div><label>Their email or phone <span class="hint">replies go here when it's an email</span></label><input type="text" name="sender" value="{{ request.form.get('sender', '') }}"></div>
+    <div><label>Subject</label><input type="text" name="subject" value="{{ request.form.get('subject', '') }}"></div>
+  </div>
+  <label>The request</label><textarea name="body" class="big" placeholder="Paste the message here">{{ request.form.get('body', '') }}</textarea>
+  <label>Files <span class="hint">PDF, Word, Excel, images</span></label><input type="file" name="files" multiple>
+  <p><button class="primary" type="submit">Add and read it</button></p>
+</form>
+{% endblock %}

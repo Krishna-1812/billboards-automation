@@ -39,6 +39,9 @@ def tick(now=None, today=None):
         bookings.remind_holds(s, now)
     with db.session_scope() as s:
         bookings.complete_finished(s, today or date.today())
+    if runtime.config is not None and runtime.config.email_in:
+        with db.session_scope() as s:
+            jobs.enqueue(s, "poll_email", {}, dedupe_key="poll_email")
     with db.session_scope() as s:
         settings.put(s, "worker_heartbeat", now.isoformat())
 
@@ -57,7 +60,8 @@ def main():
     if cfg.DATABASE_URL.startswith("sqlite"):
         from .models import Base
         Base.metadata.create_all(db.engine())
-    from . import mail, sync  # noqa: F401 - registers the job handlers
+    from . import evaluate, intake, mail, outbox, sync  # noqa: F401 - registers the job handlers
+    from .channels import email_in  # noqa: F401
     signal.signal(signal.SIGTERM, _on_term)
     signal.signal(signal.SIGINT, _on_term)
     log.info("worker started")

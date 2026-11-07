@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ msg.kind|replace('_', ' ')|capitalize }} · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>{{ msg.kind|replace('_', ' ')|capitalize }} <span class="pill {{ 'ok' if msg.status == 'sent' else ('error' if msg.status == 'failed' else 'hold') }}">{{ msg.status }}</span></h1>
+    <p class="muted">{% if msg.proposal %}For <a href="{{ url_for('inbox.proposal_page', ref=msg.proposal.ref) }}">{{ msg.proposal.ref }}</a>{% endif %}
+      {% if booking %} · booking <a href="{{ url_for('bookings.booking_detail', code=booking.code) }}">{{ booking.code }}</a>{% endif %}
+      {% if msg.approved_by %} · approved by {{ msg.approved_by }}{% endif %}{% if msg.sent_at %} · sent {{ msg.sent_at|dt }}{% endif %}</p></div>
+</div>
+{% if msg.error %}<div class="flash error">{{ msg.error }}</div>{% endif %}
+{% if msg.status in ('draft', 'failed') and can('send_messages') %}
+<form method="post" class="card">
+  {{ m.csrf() }}
+  <div class="row">
+    <div><label>Send by</label><select name="channel">
+      {% for c, label in [('email', 'Email'), ('whatsapp', 'WhatsApp'), ('manual', 'I will send it myself')] %}<option value="{{ c }}" {{ 'selected' if msg.channel == c }}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label>To</label><input type="text" name="recipient" value="{{ msg.recipient }}" placeholder="email address or +971… phone"></div>
+  </div>
+  {% if msg.channel == 'email' and not cfg.SMTP_HOST %}<p class="small flash warning">Email sending isn't set up yet (SMTP), so an approved email will fail. Choose "I will send it myself" for now.</p>{% endif %}
+  {% if msg.channel == 'whatsapp' and not cfg.whatsapp %}<p class="small flash warning">WhatsApp sending isn't set up yet.</p>{% endif %}
+  <label>Subject</label><input type="text" name="subject" value="{{ msg.subject }}" dir="auto">
+  <label>Message <span class="hint">edit anything before approving</span></label>
+  <textarea name="body" class="big" dir="auto">{{ msg.body }}</textarea>
+  <p class="actions" style="margin-top:12px">
+    <button class="primary" name="action" value="approve">Approve and send</button>
+    <button name="action" value="save">Save without sending</button>
+    <button class="danger" name="action" value="discard">Discard</button>
+  </p>
+</form>
+{% else %}
+<div class="card">
+  <p class="small muted">To {{ msg.recipient or '—' }} by {{ msg.channel }}</p>
+  <p><strong dir="auto">{{ msg.subject }}</strong></p>
+  <div class="msg"><div class="body" dir="auto">{{ msg.body }}</div></div>
+  {% if msg.status == 'approved' and (msg.channel == 'manual' or not msg.recipient) and can('send_messages') %}
+    <p class="small">Copy the message above, send it to the client yourself, then:</p>
+    <form method="post">{{ m.csrf() }}<button class="primary" name="action" value="sent">Mark as sent</button></form>
+  {% elif msg.status == 'approved' %}<p class="small muted">Sending…</p>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Costs · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>Costs</h1>
+  <p class="muted">Every Claude call is logged with its tokens, its price, who caused it and which client it was for. Model: <span class="mono">{{ model }}</span>.</p></div></div>
+<div class="grid cols-4">
+  <div class="card stat"><div class="num">${{ '%.2f'|format(rows|sum(attribute=2)) }}</div><div class="lbl">This month, since {{ month_start|date }}</div></div>
+  <div class="card stat"><div class="num">{{ reads[0] }}</div><div class="lbl">Requests read in the last 30 days</div></div>
+  <div class="card stat"><div class="num">${{ '%.3f'|format(reads[1] / reads[0] if reads[0] else 0) }}</div><div class="lbl">Average cost per request, last 30 days</div></div>
+</div>
+<div class="grid cols-2" style="margin-top:16px">
+  <div class="card table-wrap"><h3 style="margin-top:0">This month by kind</h3><table class="small">
+    <tr><th>What</th><th class="num">Calls</th><th class="num">Cost</th></tr>
+    {% for purpose, n, usd in rows %}<tr><td>{{ {'read_proposal': 'Reading requests', 'eval': 'Accuracy test'}.get(purpose, purpose) }}</td><td class="num">{{ n }}</td><td class="num">${{ '%.2f'|format(usd) }}</td></tr>
+    {% else %}<tr><td class="empty" colspan="3">Nothing yet.</td></tr>{% endfor %}</table></div>
+  <div class="card table-wrap"><h3 style="margin-top:0">This month by client</h3><table class="small">
+    <tr><th>Client</th><th class="num">Calls</th><th class="num">Cost</th></tr>
+    {% for name, n, usd in per_client %}<tr><td>{{ name }}</td><td class="num">{{ n }}</td><td class="num">${{ '%.2f'|format(usd) }}</td></tr>
+    {% else %}<tr><td class="empty" colspan="3">Nothing yet.</td></tr>{% endfor %}</table></div>
+</div>
+{% if months %}<h2>By month</h2><div class="card table-wrap"><table class="small"><tr>{% for mth, usd in months %}<th class="num">{{ mth }}</th>{% endfor %}</tr>
+  <tr>{% for mth, usd in months %}<td class="num">${{ '%.2f'|format(usd) }}</td>{% endfor %}</tr></table></div>{% endif %}
+<h2>Recent calls</h2>
+<div class="card table-wrap"><table class="small">
+  <tr><th>When</th><th>What</th><th>Who</th><th>Model</th><th class="num">Tokens in / out</th><th class="num">Cost</th><th></th></tr>
+  {% for c in recent %}<tr><td>{{ c.at|dt }}</td><td>{{ c.purpose }}</td><td>{{ c.actor }}</td><td class="mono">{{ c.model }}</td>
+    <td class="num">{{ c.input_tokens + c.cache_read_tokens + c.cache_write_tokens }} / {{ c.output_tokens }}</td><td class="num">${{ '%.4f'|format(c.usd) }}</td>
+    <td>{% if not c.ok %}<span class="pill error" title="{{ c.error }}">failed</span>{% endif %}</td></tr>
+  {% else %}<tr><td class="empty" colspan="7">No calls yet.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

@@ -12,8 +12,10 @@
     {% if b.status == 'hold' and can('hold') or b.status not in ('hold', 'cancelled', 'expired', 'completed') and can('edit_confirmed') %}
       <a class="btn" href="{{ url_for('bookings.booking_edit', code=b.code) }}">{{ t('edit') }}</a>{% endif %}
     {% if b.status == 'hold' and can('confirm') %}
-      <form method="post" action="{{ url_for('bookings.booking_action', code=b.code, action='confirm') }}" class="inline">
-        {{ m.csrf() }}<button class="primary" type="submit">{{ t('confirm') }}</button></form>{% endif %}
+      <form method="post" enctype="multipart/form-data" action="{{ url_for('bookings.booking_action', code=b.code, action='confirm') }}" class="actions">
+        {{ m.csrf() }}<label class="small" style="margin:0">Signed proposal or PO <span class="hint">(optional)</span>
+        <input type="file" name="document" style="width:auto"></label>
+        <button class="primary" type="submit">{{ t('confirm') }}</button></form>{% endif %}
   </div>
 </div>
 
@@ -44,6 +46,12 @@
     {% endfor %}
   </table>
 </div>
+
+{% if proposal %}<p class="small">From proposal <a href="{{ url_for('inbox.proposal_page', ref=proposal.ref) }}">{{ proposal.ref }}</a> ({{ proposal.channel }}{% if proposal.auto_held %}, held by the agent{% endif %}).</p>{% endif %}
+{% if docs %}<h2>Documents</h2><div class="card">{% for d in docs %}<p><a href="{{ url_for('inbox.booking_document', code=b.code, doc_id=d.id) }}">{{ d.filename }}</a> <span class="small muted">uploaded by {{ d.uploaded_by }}, {{ d.uploaded_at|dt }}</span></p>{% endfor %}</div>{% endif %}
+{% if messages %}<h2>Messages to the client</h2><div class="card table-wrap"><table class="small">
+  {% for msg in messages %}<tr><td>{{ msg.kind|replace('_', ' ') }}</td><td><span class="pill {{ 'ok' if msg.status == 'sent' else ('error' if msg.status == 'failed' else 'hold') }}">{{ msg.status }}</span></td>
+    <td>{{ msg.subject }}</td><td><a href="{{ url_for('inbox.outbox_message', message_id=msg.id) }}">Open</a></td></tr>{% endfor %}</table></div>{% endif %}
 
 {% if b.notes %}<h2>Notes</h2><div class="card"><p style="white-space:pre-wrap">{{ b.notes }}</p></div>{% endif %}
 

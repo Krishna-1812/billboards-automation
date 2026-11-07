@@ -173,6 +173,8 @@ def _lines_from_form(s):
     lines, errors = [], []
     for lid, sid, sd, ed, sh, eh, ad, mode, val in rows:
         if not sid:
+            if sd or ed:
+                errors.append("Choose a screen for every line, or remove the lines you don't want.")
             continue
         screen = s.get(Screen, int(sid))
         if screen is None:
@@ -312,7 +314,12 @@ def booking_detail(code):
                                            exclude_booking_id=b.id, alternatives=False)) for l in b.lines]
     history = s.scalars(select(Activity).where(Activity.entity_type == "booking", Activity.entity_id == b.code)
                         .order_by(Activity.id.desc())).all()
-    return render_template("booking_detail.html", b=b, checks=checks, history=history)
+    from ..models import BookingDocument, Message, Proposal
+    docs = s.scalars(select(BookingDocument).where(BookingDocument.booking_id == b.id)).all()
+    proposal = s.scalars(select(Proposal).where(Proposal.booking_id == b.id)).first()
+    messages = s.scalars(select(Message).where(Message.booking_id == b.id).order_by(Message.id)).all()
+    return render_template("booking_detail.html", b=b, checks=checks, history=history, docs=docs,
+                           proposal=proposal, messages=messages)
 
 
 @bp.route("/bookings/<code>/edit", methods=["GET", "POST"])
@@ -352,7 +359,9 @@ def booking_action(code, action):
     u = current_user()
     try:
         if action == "confirm":
-            svc.confirm(s, u, b)
+            f = request.files.get("document")
+            doc = (f.filename, f.mimetype or "", f.read()) if f and f.filename else None
+            svc.confirm(s, u, b, document=doc)
             msg = f"{b.code} is confirmed."
         elif action == "extend":
             days = max(1, min(30, int(request.form.get("days") or 1)))

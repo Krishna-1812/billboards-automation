@@ -11,6 +11,8 @@ RTL = {"ar"}
 STRINGS = {
     "dashboard":        ("Dashboard", "لوحة المتابعة"),
     "calendar":         ("Calendar", "التقويم"),
+    "proposals":        ("Proposals", "الطلبات"),
+    "outbox":           ("Outbox", "الرسائل الصادرة"),
     "availability":     ("Check vacancy", "التحقق من التوفر"),
     "bookings":         ("Bookings", "الحجوزات"),
     "clients":          ("Clients", "العملاء"),

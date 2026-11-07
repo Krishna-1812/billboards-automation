@@ -14,6 +14,9 @@ CAN = {
     "edit_clients":     ("owner", "manager", "sales"),
     "import":           ("owner", "manager"),
     "review_sheet":     ("owner", "manager"),
+    "send_messages":    ("owner", "manager", "sales"),            # approve a draft to a client
+    "accuracy":         ("owner", "manager"),                     # the accuracy test set and its runs
+    "costs":            ("owner", "manager"),
     "settings":         ("owner",),
     "people":           ("owner",),
 }

@@ -201,11 +201,16 @@ def update(session, user, booking, lines, title=None, notes=None, override_reaso
     return booking
 
 
-def confirm(session, user, booking, now=None):
+def confirm(session, user, booking, now=None, document=None):
+    """Confirm a hold. `document` (filename, content_type, bytes) is the signed proposal or purchase order."""
     require(user, "confirm")
     if booking.status != "hold":
         raise BookingError(f"Only a hold can be confirmed; this booking is {booking.status}.")
     now = now or utcnow()
+    if document and document[2]:
+        from .models import BookingDocument
+        session.add(BookingDocument(booking_id=booking.id, filename=document[0][:300], content_type=document[1][:120],
+                                    data=document[2], uploaded_by=actor_of(user)))
     booking.status = "confirmed"
     booking.confirmed_at, booking.confirmed_by = now, actor_of(user)
     booking.hold_expires_at = None
@@ -277,6 +282,10 @@ def remind_holds(session, now=None):
         notify(session, text, kind="reminder", link=f"/bookings/{b.code}")
         to = sorted(set(_team_emails(session) + ([b.created_by] if "@" in (b.created_by or "") else [])))
         queue_email(session, to, f"Hold {b.code} expires soon", text)
+        from .intake import hold_reminder_drafts
+        if hold_reminder_drafts(session, b) is not None:
+            notify(session, f"A reminder to {b.client.name} about hold {b.code} is waiting for approval in the "
+                            "Outbox.", kind="reminder", link="/outbox")
     return due
 
 

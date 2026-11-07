@@ -10,6 +10,8 @@ DEFAULTS = {
     "mirror_spreadsheet_id": "",          # where the app writes its Bookings tab
     "mirror_tab": "Bookings (from app)",
     "company_name": "Billboard Ops",
+    "auto_hold": False,                   # the agent places holds on its own (only while the accuracy test passes)
+    "remind_clients": True,               # draft a reminder to the client before their hold expires
 }
 
 

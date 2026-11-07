@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Proposals · Billboard Ops{% endblock %}
+{% block head %}{% if items|selectattr('status', 'in', ['new', 'reading'])|list %}<meta http-equiv="refresh" content="10">{% endif %}{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>{{ t('proposals') }}</h1>
+    <p class="muted">Every request, from email{% if cfg.email_in %} ({{ cfg.IMAP_USER }}){% endif %}, WhatsApp and anything pasted in. The agent reads each one; a person decides.</p></div>
+  <div class="actions">{% if can('hold') %}<a class="btn primary" href="{{ url_for('inbox.inbox_new') }}">Paste or upload a request</a>{% endif %}</div>
+</div>
+<div class="tabs">
+  {% for key, (label, _) in tabs.items() %}<a class="{{ 'on' if tab == key }}" href="?tab={{ key }}">{{ label }} {% if tab_counts[key] %}({{ tab_counts[key] }}){% endif %}</a>{% endfor %}
+  <a class="{{ 'on' if tab == 'all' }}" href="?tab=all">All</a>
+</div>
+<div class="card table-wrap">
+  <table>
+    <tr><th>Request</th><th>From</th><th>What the agent read</th><th>State</th><th>Updated</th></tr>
+    {% for p in items %}
+      {% set d = p.draft or {} %}
+      <tr>
+        <td><a href="{{ url_for('inbox.proposal_page', ref=p.ref) }}">{{ p.ref }}</a><div class="small muted">{{ p.channel|channel }}</div></td>
+        <td>{{ p.sender_name or p.sender or '—' }}{% if p.subject %}<div class="small muted">{{ p.subject[:60] }}</div>{% endif %}</td>
+        <td class="small">
+          {% if d %}<strong>{{ d.client_name or 'Client unknown' }}</strong>
+            {% for l in d.get('lines', [])[:4] %}<div>{{ l.screen_code }} {{ l.start_date|date(false) }}–{{ l.end_date|date(false) }}</div>{% endfor %}
+            {% if d.get('lines', [])|length > 4 %}<div class="muted">+{{ d['lines']|length - 4 }} more</div>{% endif %}
+            {% if d.get('unmatched') %}<div class="muted">{{ d['unmatched']|length }} location(s) not matched</div>{% endif %}
+          {% elif p.status in ('new', 'reading') %}<span class="muted">Reading…</span>{% endif %}
+        </td>
+        <td><span class="pill {{ {'needs_review': 'hold', 'held': 'ok', 'failed': 'error', 'declined': 'no', 'waiting_client': 'partial'}.get(p.status, '') }}">{{ p.status|replace('_', ' ') }}</span>
+          {% if p.ready and p.status == 'needs_review' %}<div><span class="pill ok">ready to hold</span></div>{% endif %}
+          {% if d.get('missing') and p.status == 'needs_review' %}<div class="small muted">missing {{ d['missing']|join(', ') }}</div>{% endif %}
+          {% if p.duplicate_of_id %}<div class="small muted">possible duplicate</div>{% endif %}</td>
+        <td class="small muted" style="white-space:nowrap">{{ p.updated_at|dt }}</td>
+      </tr>
+    {% else %}<tr><td colspan="5" class="empty">Nothing here.</td></tr>{% endfor %}
+  </table>
+</div>
+{% endblock %}

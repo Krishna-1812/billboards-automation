@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Accuracy test · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>Accuracy test</h1>
+    <p class="muted">Past requests with the answer the team acted on. The agent reads each one again, and its answer is scored field by field.
+      The agent may place holds on its own only while the latest run gets screens and dates right in at least {{ pass_pct|num }}% of {{ min_cases }} or more cases.</p></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('inbox.accuracy_case') }}">Add a case by hand</a>
+    <form method="post" action="{{ url_for('inbox.accuracy_run') }}" class="inline">{{ m.csrf() }}<button class="primary">Run the test</button></form>
+  </div>
+</div>
+<div class="flash {{ 'ok' if gate.passed else 'warning' }}">{{ gate.why }}</div>
+<p class="small muted">The quickest way to build the set: when the team holds a request in Proposals, press "Save as an accuracy test case" on it.</p>
+
+<h2>Runs</h2>
+<div class="card table-wrap"><table>
+  <tr><th>Run</th><th>When</th><th>Model</th><th>Cases</th>{% for f in fields %}<th class="num">{{ f|capitalize }}</th>{% endfor %}<th class="num">Cost</th></tr>
+  {% for r in runs %}<tr><td><a href="{{ url_for('inbox.accuracy_run_page', run_id=r.id) }}">#{{ r.id }}</a> <span class="pill {{ 'ok' if r.summary.get('passed') else '' }}">{{ r.status }}</span></td>
+    <td class="small">{{ r.started_at|dt }}</td><td class="small mono">{{ r.model }}</td><td>{{ r.summary.get('cases', '—') }}</td>
+    {% for f in fields %}<td class="num">{{ (r.summary.get(f)|string ~ '%') if r.summary.get(f) is not none else '—' }}</td>{% endfor %}
+    <td class="num">${{ '%.2f'|format(r.usd or 0) }}</td></tr>
+  {% else %}<tr><td colspan="{{ 5 + fields|length }}" class="empty">Not run yet.</td></tr>{% endfor %}
+</table></div>
+
+<h2>Cases ({{ cases|selectattr('active')|list|length }} active)</h2>
+<div class="card table-wrap"><table>
+  <tr><th>Case</th><th>Right answer</th><th>Added</th><th></th></tr>
+  {% for c in cases %}<tr {% if not c.active %}class="muted"{% endif %}><td><a href="{{ url_for('inbox.accuracy_case', case_id=c.id) }}">{{ c.name }}</a><div class="small muted">{{ c.channel }}{% if c.attachments %}, {{ c.attachments|length }} file(s){% endif %}</div></td>
+    <td class="small">{{ c.expected.get('client') }}: {% for l in c.expected.get('lines', []) %}{{ l.screen }} {{ l.start }}–{{ l.end }}{{ '; ' if not loop.last }}{% endfor %}</td>
+    <td class="small muted">{{ c.created_by }}<br>{{ c.created_at|dt }}</td>
+    <td><form method="post" action="{{ url_for('inbox.accuracy_case', case_id=c.id) }}">{{ m.csrf() }}<button class="linkish" name="action" value="toggle">{{ 'Leave out' if c.active else 'Use again' }}</button></form></td></tr>
+  {% else %}<tr><td colspan="4" class="empty">No cases yet.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

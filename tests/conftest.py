@@ -153,3 +153,64 @@ def login(app):
 
 def future(days):
     return date.today() + timedelta(days=days)
+
+
+# ── Phase 2: a fake Claude ──────────────────────────────────────────────────────
+
+import json  # noqa: E402
+from types import SimpleNamespace  # noqa: E402
+
+
+class FakeAI:
+    """Stands in for anthropic.Anthropic(): records each request and answers from a queue (or a default)."""
+
+    def __init__(self):
+        self.calls, self.answers = [], []
+        self.default = None
+        self.stop_reason = "end_turn"
+        self.error = None
+        self.beta = self
+        self.messages = self
+
+    def create(self, **kw):
+        self.calls.append(kw)
+        if self.error is not None:
+            raise self.error
+        answer = self.answers.pop(0) if self.answers else self.default
+        if callable(answer):
+            answer = answer(kw)
+        return SimpleNamespace(
+            content=[SimpleNamespace(type="text", text=json.dumps(answer))], stop_reason=self.stop_reason,
+            stop_details=SimpleNamespace(category="cyber", explanation="") if self.stop_reason == "refusal" else None,
+            model=kw["model"],
+            usage=SimpleNamespace(input_tokens=2000, output_tokens=500, cache_creation_input_tokens=0,
+                                  cache_read_input_tokens=1000))
+
+
+def ai_line(codes=("SZR-01",), start=None, end=None, unit="slots", value=2, conf="high", hint=None, sh=None, eh=None,
+            ad=None, alternatives=()):
+    start = start or future(10)
+    end = end or start + timedelta(days=6)
+    return {"screen_codes": list(codes), "screen_hint": hint, "screen_confidence": conf, "alternatives": list(alternatives),
+            "start_date": start.isoformat() if start else None, "end_date": end.isoformat() if end else None,
+            "dates_confidence": conf, "start_hour": sh, "end_hour": eh, "ad_seconds": ad, "frequency_unit": unit,
+            "frequency_value": value, "frequency_confidence": conf, "evidence": "two slots on SZR-01"}
+
+
+def ai_answer(client="Acme Foods", lines=None, missing=(), questions=(), is_request=True, language="en",
+              client_conf="high", flags=()):
+    return {"is_booking_request": is_request, "language": language,
+            "client": {"value": client, "confidence": client_conf, "evidence": client or ""},
+            "contact_name": "Sara", "contact_email": None, "contact_phone": None, "campaign": "Spring launch",
+            "lines": [ai_line()] if lines is None else lines, "budget_amount": None, "budget_currency": None,
+            "notes": "", "missing": list(missing), "questions": list(questions), "flags": list(flags)}
+
+
+@pytest.fixture
+def fake_ai(app):
+    from billboard_ops import ai
+    fake = FakeAI()
+    fake.default = ai_answer()
+    ai.set_client(fake)
+    yield fake
+    ai.set_client(None)
