@@ -28,7 +28,10 @@ def health():
     if seen:
         from datetime import datetime
         age = int((utcnow() - datetime.fromisoformat(seen)).total_seconds())
-    return jsonify(ok=True, database="ok", worker_seconds_since_heartbeat=age)
+    from flask import current_app
+    cfg = current_app.config["APP"]
+    return jsonify(ok=True, database="ok", database_kind=cfg.DATABASE_URL.split(":", 1)[0].split("+", 1)[0],
+                   sign_in="on" if cfg.LOGIN_REQUIRED else "off", worker_seconds_since_heartbeat=age)
 
 
 def _seen_key(user):

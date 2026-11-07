@@ -43,14 +43,16 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="next" value="{{ request.full_path }}">
         <button class="linkish" type="submit">{{ t('language') }}</button>
-      </form> ·
+      </form>{% if login_required %} ·
       <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="linkish" type="submit">{{ t('sign_out') }}</button>
-      </form>
+      </form>{% endif %}
     </div>
   </aside>
   <main>
+    {% if not login_required %}<div class="flash warning" role="status">Sign-in is switched off for now: anyone with
+      this link can see and change everything. Use demo data only until it's switched back on.</div>{% endif %}
     {% with msgs = get_flashed_messages(with_categories=true) %}
       {% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
     {% endwith %}

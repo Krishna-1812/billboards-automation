@@ -41,6 +41,10 @@ class Config:
         # Local development only: a plain email box instead of Google. Refused when GOOGLE_CLIENT_ID is set,
         # so a live service can never fall back to it.
         self.DEV_LOGIN = _bool("DEV_LOGIN") and not self.GOOGLE_CLIENT_ID
+        # Sign-in is switched off for now: everyone who opens the app acts as the owner. It switches back on with
+        # LOGIN_REQUIRED=1, and on its own once GOOGLE_CLIENT_ID is set (LOGIN_REQUIRED=0 keeps it off even then).
+        raw = os.environ.get("LOGIN_REQUIRED", "").strip()
+        self.LOGIN_REQUIRED = _bool("LOGIN_REQUIRED") if raw else bool(self.GOOGLE_CLIENT_ID)
         # A Google service account (its JSON key, pasted whole) for Sheets, Calendar and Drive.
         self.GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
         # Email: SMTP for reminders and error alerts. Unset = messages are logged, not sent.

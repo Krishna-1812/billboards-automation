@@ -89,6 +89,7 @@ def _config(**over):
     cfg.DATABASE_URL = os.environ.get("TEST_DATABASE_URL_RESOLVED") or "sqlite://"
     cfg.GOOGLE_CLIENT_ID = ""
     cfg.DEV_LOGIN = True
+    cfg.LOGIN_REQUIRED = True
     cfg.OWNER_EMAILS = ["owner@example.com"]
     cfg.SMTP_HOST = ""
     cfg.ALERT_EMAILS = []

@@ -82,6 +82,38 @@ def test_dev_sign_in_is_off_when_google_is_set_up(app):
         os.environ.pop("GOOGLE_CLIENT_ID")
 
 
+def test_with_sign_in_off_everyone_is_the_owner(app, s):
+    app.config["APP"].LOGIN_REQUIRED = False
+    c = app.test_client()
+    r = c.get("/bookings")
+    assert r.status_code == 200 and b"Sign-in is switched off" in r.data and b"Sign out" not in r.data
+    assert c.get("/login").status_code == 302
+    owner = s.scalars(select(User).where(User.role == "owner")).one()
+    assert c.get("/health").get_json()["sign_in"] == "off"
+    c.get("/screens")
+    assert s.scalars(select(User).where(User.role == "owner")).one().id == owner.id   # made once, then reused
+
+
+def test_sign_in_switch(app):
+    from billboard_ops.config import Config
+    import os
+    saved = {k: os.environ.pop(k, None) for k in ("LOGIN_REQUIRED", "GOOGLE_CLIENT_ID")}
+    try:
+        assert Config().LOGIN_REQUIRED is False                 # off for now
+        os.environ["GOOGLE_CLIENT_ID"] = "cid"
+        assert Config().LOGIN_REQUIRED is True                  # comes back once Google sign-in is set up
+        os.environ["LOGIN_REQUIRED"] = "0"
+        assert Config().LOGIN_REQUIRED is False                 # unless told to stay off
+        os.environ.pop("GOOGLE_CLIENT_ID")
+        os.environ["LOGIN_REQUIRED"] = "1"
+        assert Config().LOGIN_REQUIRED is True
+    finally:
+        for k, v in saved.items():
+            os.environ.pop(k, None)
+            if v is not None:
+                os.environ[k] = v
+
+
 def test_removed_people_are_signed_out(app, s, people, login):
     c = login(people["sales"])
     people["sales"].active = False

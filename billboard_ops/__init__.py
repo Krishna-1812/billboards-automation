@@ -69,6 +69,8 @@ def create_app(config=None):
                 g.user = u
             else:
                 session.clear()
+        if g.user is None and not cfg.LOGIN_REQUIRED:
+            g.user = open_access_user(get_db(), cfg)
         g.lang = (g.user.language if g.user else None) or session.get("lang") or "en"
 
     @app.errorhandler(413)
@@ -82,6 +84,7 @@ def create_app(config=None):
             "t": lambda k: t(k, lang), "lang": lang, "dir": direction(lang), "user": g.get("user"),
             "can": lambda cap: can(g.get("user"), cap), "csrf_token": csrf_token, "STATUSES": STATUSES,
             "status_label": lambda s: t(f"status_{s}", lang),
+            "login_required": cfg.LOGIN_REQUIRED,
         }
 
     from .views.filters import register as register_filters
@@ -103,6 +106,21 @@ def create_app(config=None):
                                message="Something went wrong. The team has been told."), 500
 
     return app
+
+
+def open_access_user(s, cfg):
+    """While sign-in is off, everyone acts as this owner (the first of OWNER_EMAILS, or a stand-in address)."""
+    from sqlalchemy import func, select
+    email = (cfg.OWNER_EMAILS or ["owner@billboards.local"])[0].strip().lower()
+    u = s.scalars(select(User).where(func.lower(User.email) == email)).first()
+    if u is None:
+        u = User(email=email, role="owner", name="Owner")
+        s.add(u)
+        s.commit()
+    elif u.role != "owner" or not u.active:
+        u.role, u.active = "owner", True
+        s.commit()
+    return u
 
 
 _last_alert = {}

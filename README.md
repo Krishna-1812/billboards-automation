@@ -216,6 +216,7 @@ python -m billboard_ops.worker
 
 Run the worker in a second terminal. Without `DATABASE_URL`, both use a local SQLite file. `DEV_LOGIN` shows a
 plain email box instead of Google sign-in. It is switched off automatically whenever `GOOGLE_CLIENT_ID` is set.
+For now sign-in is off altogether unless `LOGIN_REQUIRED=1` or `GOOGLE_CLIENT_ID` is set: see the variables table.
 
 ## Tests
 
@@ -260,7 +261,8 @@ both built from the root of this repo.
    | --- | --- | --- |
    | `DATABASE_URL` | yes | `${{Postgres.DATABASE_URL}}` |
    | `SECRET_KEY` | yes (web) | A long random string. It signs the login cookies. |
-   | `GOOGLE_CLIENT_ID` | yes (web) | A Google OAuth client ID ("Web application"), with the app's address as an authorised JavaScript origin |
+   | `GOOGLE_CLIENT_ID` | later (web) | A Google OAuth client ID ("Web application"), with the app's address as an authorised JavaScript origin |
+   | `LOGIN_REQUIRED` | no | Sign-in is **off for now**: everyone who opens the app acts as the owner, and every page says so. It comes back on by itself once `GOOGLE_CLIENT_ID` is set, or with `LOGIN_REQUIRED=1`. `LOGIN_REQUIRED=0` keeps it off |
    | `OWNER_EMAILS` | yes | The owner's email address. Owners add everyone else in Settings → People. |
    | `GOOGLE_SERVICE_ACCOUNT_JSON` | for Sheets and Calendar | The whole JSON key of a Google service account (see below) |
    | `APP_URL` | recommended | For example `https://ops.clientdomain.com`, for links in calendar events and emails |
