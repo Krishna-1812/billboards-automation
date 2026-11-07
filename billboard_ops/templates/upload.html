@@ -1,0 +1,26 @@
+<!doctype html>
+{% set ar = lang_override == 'ar' %}
+<html lang="{{ 'ar' if ar else 'en' }}" dir="{{ 'rtl' if ar else 'ltr' }}">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ b.code }}</title><link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}"></head>
+<body><main style="max-width:760px;margin:0 auto">
+  <h1>{{ 'ملفات الإعلان' if ar else 'Ad files' }} · {{ b.code }}</h1>
+  <p class="muted">{{ b.client.name }}{% if deadline %} · {{ 'آخر موعد' if ar else 'Due by' }} {{ deadline|date }}{% endif %}</p>
+  {% if done is not none %}
+    {% if done %}<div class="flash ok">{{ 'تم استلام الملفات وسيتم فحصها. سنتواصل معكم قريباً.' if ar else 'Thank you. We have your files and are checking them; we will be in touch shortly.' }}
+      <ul>{% for c in done %}<li>{{ c.filename }}</li>{% endfor %}</ul></div>{% endif %}
+    {% if refused %}<div class="flash error">{{ 'لم يتم قبول:' if ar else 'Not accepted:' }} {{ refused|join(', ') }}. {{ 'يرجى رفع ملفات فيديو أو صور فقط.' if ar else 'Please upload video or image files only.' }}</div>{% endif %}
+  {% endif %}
+  <div class="card">
+    <h3 style="margin-top:0">{{ 'المتطلبات' if ar else 'What each screen needs' }}</h3>
+    <ul>{% for tg in targets if tg.spec %}<li>{{ tg.lines|map(attribute='screen.code')|join(', ') }}: {{ tg.spec.width_px }}x{{ tg.spec.height_px }},
+      {{ tg.ad_seconds }} {{ 'ثانية' if ar else 'seconds' }}, {{ tg.spec.file_types|upper }}{% if not tg.spec.audio_allowed %}, {{ 'بدون صوت' if ar else 'no sound' }}{% endif %}</li>{% endfor %}</ul>
+    <p class="small">{{ 'يجب أن تكون جميع النصوص بالعربية، أو بالعربية والإنجليزية.' if ar else 'All text must be in Arabic, or in Arabic and English.' }}</p>
+  </div>
+  <form method="post" enctype="multipart/form-data" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>{{ 'اختر الملفات' if ar else 'Choose the files' }}</label>
+    <input type="file" name="files" multiple accept="video/*,image/*" required>
+    <p><button class="primary" type="submit">{{ 'رفع' if ar else 'Upload' }}</button></p>
+  </form>
+</main></body></html>

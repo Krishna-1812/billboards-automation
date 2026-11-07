@@ -143,3 +143,125 @@ def new_draft(session, *, kind, channel, recipient, subject, body, language, pro
 def screen_label(session, screen_id):
     s = session.get(Screen, screen_id)
     return f"{s.name} ({s.code})" if s else str(screen_id)
+
+
+# ── Phase 3: creative ───────────────────────────────────────────────────────────
+
+T.update({
+    "subj_files":    ("Files needed for {code}", "الملفات المطلوبة للحجز {code}"),
+    "files_intro":   ("Your booking {code} is confirmed. Please send the ad files by {date}. Each screen needs:",
+                      "تم تأكيد حجزكم {code}. يرجى إرسال ملفات الإعلان قبل {date}. متطلبات كل شاشة:"),
+    "files_spec":    ("{screens}: {w}x{h} pixels ({orient}), {secs} seconds exactly, {types}{fps}{size}, {sound}",
+                      "{screens}: {w}x{h} بكسل ({orient})، مدة {secs} ثانية بالضبط، بصيغة {types}{fps}{size}، {sound}"),
+    "landscape":     ("landscape", "أفقي"), "portrait": ("portrait", "عمودي"), "square": ("square", "مربع"),
+    "fps":           (", {fps} frames per second", "، {fps} إطار في الثانية"),
+    "maxsize":       (", up to {mb} MB", "، بحجم أقصاه {mb} ميغابايت"),
+    "no_sound":      ("no sound", "بدون صوت"), "sound_ok": ("sound allowed", "الصوت مسموح"),
+    "files_rule":    ("All text must be in Arabic, or in Arabic and English.",
+                      "يجب أن تكون جميع النصوص باللغة العربية، أو بالعربية والإنجليزية."),
+    "files_upload":  ("Upload the files here: {url}", "يرجى رفع الملفات عبر هذا الرابط: {url}"),
+    "files_drive":   ("Or put them in this Google Drive folder: {url}", "أو ضعوها في مجلد Google Drive هذا: {url}"),
+    "files_reply":   ("You can also reply to this message with the files attached.",
+                      "يمكنكم أيضاً الرد على هذه الرسالة مع إرفاق الملفات."),
+    "subj_fix":      ("Changes needed to your ad for {code}", "تعديلات مطلوبة على إعلانكم للحجز {code}"),
+    "fix_intro":     ("Thank you for the file {file}. Before it can play, a few things need fixing:",
+                      "شكراً على الملف {file}. قبل عرضه، يلزم إجراء بعض التعديلات:"),
+    "fix_outro":     ("Please send the corrected file by {date}, the same way as before.",
+                      "يرجى إرسال الملف المعدّل قبل {date} بالطريقة نفسها."),
+    "subj_files_rem": ("Reminder: files needed for {code}", "تذكير: الملفات المطلوبة للحجز {code}"),
+    "files_rem":     ("A reminder that the ad files for {code} are due by {date}, so the campaign can start on {start}.",
+                      "نذكّركم بأن ملفات الإعلان للحجز {code} مطلوبة قبل {date}، حتى تبدأ الحملة في {start}."),
+})
+
+# How to fix each failed check, in plain words. {m} = what was measured, {r} = what is required.
+FIX = {
+    "file_type":   ("The file is a {m}. This screen accepts {r}. Please send it in one of those formats.",
+                    "صيغة الملف {m}. هذه الشاشة تقبل {r}. يرجى إرسال الملف بإحدى هذه الصيغ."),
+    "codec":       ("The video is compressed as {m}. Please export it as {r} (for example, an H.264 MP4).",
+                    "الفيديو مضغوط بصيغة {m}. يرجى تصديره بصيغة {r} (مثلاً MP4 بترميز H.264)."),
+    "resolution":  ("The file is {m} pixels. This screen needs exactly {r}. Please export it at that size.",
+                    "أبعاد الملف {m} بكسل. هذه الشاشة تحتاج إلى {r} بالضبط. يرجى تصديره بهذه الأبعاد."),
+    "duration":    ("The video is {m} long. This screen plays {r} ads, so please make it exactly {r}.",
+                    "مدة الفيديو {m}. هذه الشاشة تعرض إعلانات مدتها {r}، لذا يرجى جعل مدته {r} بالضبط."),
+    "frame_rate":  ("The video runs at {m}. This screen needs {r}.",
+                    "معدل الإطارات {m}. هذه الشاشة تحتاج إلى {r}."),
+    "file_size":   ("The file is {m}. The largest this screen takes is {r}. Please export a smaller file.",
+                    "حجم الملف {m}. الحد الأقصى لهذه الشاشة {r}. يرجى تصدير ملف أصغر."),
+    "sound":       ("The video has a sound track, but this screen plays no sound. Please remove the audio.",
+                    "يحتوي الفيديو على صوت، لكن هذه الشاشة لا تعرض الصوت. يرجى إزالة الصوت."),
+    "black_frames": ("The video has {m}. Please remove it so the ad fills its whole slot.",
+                     "يحتوي الفيديو على شاشة سوداء ({m}). يرجى إزالتها ليملأ الإعلان مدته كاملة."),
+    "borders":     ("The picture has black bars inside the frame ({m}). Please make it fill the whole frame.",
+                    "تظهر أشرطة سوداء داخل الإطار ({m}). يرجى جعل الصورة تملأ الإطار بالكامل."),
+    "damaged":     ("The file seems to be damaged and doesn't play all the way through. Please export it and send it "
+                    "again.", "يبدو أن الملف تالف ولا يُعرض حتى النهاية. يرجى تصديره وإرساله مرة أخرى."),
+    "colour":      ("The image uses CMYK colours, which are for print. Please save it in RGB.",
+                    "الصورة بألوان CMYK المخصصة للطباعة. يرجى حفظها بألوان RGB."),
+    "language":    ("The ad's text is {m}. Ads on these screens must be in Arabic, or in Arabic and English. "
+                    "Please add Arabic text{at}.",
+                    "نص الإعلان: {m}. يجب أن تكون الإعلانات على هذه الشاشات بالعربية، أو بالعربية والإنجليزية. "
+                    "يرجى إضافة نص عربي{at}."),
+    "arabic_rendering": ("The Arabic text looks broken{at}: letters not joined, or running left to right. This "
+                         "usually happens when the design software doesn't support Arabic. Please fix it.",
+                         "يبدو النص العربي غير سليم{at}: حروف غير متصلة أو مكتوبة من اليسار إلى اليمين. يحدث هذا عادةً "
+                         "عندما لا يدعم برنامج التصميم اللغة العربية. يرجى تصحيحه."),
+    "spelling":    ("Please check the spelling{at}: {d}", "يرجى مراجعة الإملاء{at}: {d}"),
+    "brand":       ("We couldn't see {r}'s brand in this ad. Please check it's the right file for this booking.",
+                    "لم نتمكن من رؤية علامة {r} التجارية في هذا الإعلان. يرجى التأكد من أنه الملف الصحيح لهذا الحجز."),
+    "safe_area":   ("Some text is cut off or too close to the edge{at}. Please keep text at least {r}.",
+                    "بعض النصوص مقطوعة أو قريبة جداً من الحافة{at}. يرجى إبقاء النصوص على بعد {r} على الأقل."),
+    "content_rules": ("The ad may not meet our content guidelines: {d}. Please review it.",
+                      "قد لا يتوافق الإعلان مع إرشادات المحتوى لدينا: {d}. يرجى مراجعته."),
+}
+
+
+def fix_sentence(lg, c, client_name=""):
+    en, ar = FIX.get(c["key"], ("{d}", "{d}"))
+    where = ""
+    if c.get("at") is not None:
+        from .creative_checks import mmss
+        where = (f" (at {mmss(c['at'])})" if lg != "ar" else f" (عند {mmss(c['at'])})")
+    req = client_name if c["key"] == "brand" else c.get("required", "")
+    return (ar if lg == "ar" else en).format(m=c.get("measured", ""), r=req, d=c.get("detail", ""), at=where)
+
+
+def _orient_word(lg, w, h):
+    return t("square" if w == h else ("landscape" if w > h else "portrait"), lg)
+
+
+def creative_request(lang, name, company, booking, targets, deadline, upload_url, drive_url):
+    """targets: [(spec, ad_seconds, [screen codes])]"""
+    def body(lg):
+        rows = []
+        for spec, secs, codes in targets:
+            fps = t("fps", lg, fps=f"{spec.fps_max or spec.fps_min:g}") if (spec.fps_min or spec.fps_max) else ""
+            size = t("maxsize", lg, mb=f"{spec.max_file_mb:g}") if spec.max_file_mb else ""
+            rows.append(t("files_spec", lg, screens=", ".join(codes), w=spec.width_px, h=spec.height_px,
+                          orient=_orient_word(lg, spec.width_px, spec.height_px), secs=secs,
+                          types="/".join(x.upper() for x in spec.file_types.split(",") if x), fps=fps, size=size,
+                          sound=t("sound_ok" if spec.audio_allowed else "no_sound", lg)))
+        out = [t("files_intro", lg, code=booking.code, date=_d(deadline, lg))] + [f"- {r}" for r in rows]
+        out += ["", t("files_rule", lg), ""]
+        if upload_url:
+            out.append(t("files_upload", lg, url=upload_url))
+        if drive_url:
+            out.append(t("files_drive", lg, url=drive_url))
+        out.append(t("files_reply", lg))
+        return "\n".join(out)
+    return _subject("subj_files", lang, code=booking.code), _compose(lang, name, company, body)
+
+
+def creative_feedback(lang, name, company, booking, filename, failures, deadline):
+    def body(lg):
+        lines = [t("fix_intro", lg, file=filename)]
+        lines += [f"- {fix_sentence(lg, c, booking.client.name)}" for c in failures]
+        if deadline:
+            lines += ["", t("fix_outro", lg, date=_d(deadline, lg))]
+        return "\n".join(lines)
+    return _subject("subj_fix", lang, code=booking.code), _compose(lang, name, company, body)
+
+
+def creative_reminder(lang, name, company, booking, deadline):
+    def body(lg):
+        return t("files_rem", lg, code=booking.code, date=_d(deadline, lg), start=_d(booking.start_date, lg))
+    return _subject("subj_files_rem", lang, code=booking.code), _compose(lang, name, company, body)

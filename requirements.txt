@@ -1,5 +1,5 @@
 # Billboard Ops: its own Railway services (web + worker), built from this folder.
-flask>=3.0
+flask>=3.1
 sqlalchemy>=2.0.30
 alembic>=1.13
 psycopg2-binary>=2.9.9

@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 
 from .. import db, settings, vacancy
 from ..jobs import recent_problems
-from ..models import (Activity, Booking, BookingLine, Notification, Screen, Setting, SheetChange, utcnow)
+from ..models import (BOOKED, Activity, Booking, BookingLine, Notification, Screen, Setting, SheetChange, utcnow)
 from ..web import current_user, get_db, login_required
 
 bp = Blueprint("main", __name__)
@@ -70,12 +70,12 @@ def dashboard():
                       .where(Booking.status == "hold").order_by(Booking.hold_expires_at)).all()
     expiring = [b for b in holds if b.hold_expires_at and b.hold_expires_at <= now + timedelta(hours=48)]
     starting = s.scalars(select(Booking).join(BookingLine).options(joinedload(Booking.client))
-                         .where(Booking.status.in_(("hold", "confirmed")),
+                         .where(Booking.status.in_(("hold",) + BOOKED),
                                 BookingLine.start_date >= today,
                                 BookingLine.start_date <= today + timedelta(days=7))
                          .order_by(BookingLine.start_date)).unique().all()
     running = s.scalars(select(Booking).join(BookingLine)
-                        .where(Booking.status.in_(("confirmed", "scheduled", "live")),
+                        .where(Booking.status.in_(BOOKED),
                                BookingLine.start_date <= today, BookingLine.end_date >= today)).unique().all()
     overrides = s.scalars(select(Booking).options(joinedload(Booking.client))
                           .where(Booking.override_reason != "",

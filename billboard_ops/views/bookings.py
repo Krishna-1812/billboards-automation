@@ -318,8 +318,9 @@ def booking_detail(code):
     docs = s.scalars(select(BookingDocument).where(BookingDocument.booking_id == b.id)).all()
     proposal = s.scalars(select(Proposal).where(Proposal.booking_id == b.id)).first()
     messages = s.scalars(select(Message).where(Message.booking_id == b.id).order_by(Message.id)).all()
+    from .creatives import booking_panel
     return render_template("booking_detail.html", b=b, checks=checks, history=history, docs=docs,
-                           proposal=proposal, messages=messages)
+                           proposal=proposal, messages=messages, files=booking_panel(s, b))
 
 
 @bp.route("/bookings/<code>/edit", methods=["GET", "POST"])

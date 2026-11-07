@@ -12,6 +12,14 @@ DEFAULTS = {
     "company_name": "Billboard Ops",
     "auto_hold": False,                   # the agent places holds on its own (only while the accuracy test passes)
     "remind_clients": True,               # draft a reminder to the client before their hold expires
+    # Phase 3: creative
+    "creative_lead_days": 5,              # working days between the files' deadline and the start date
+    "weekend_days": "5,6",                # days off (Mon=0 … Sun=6) when counting working days
+    "drive_parent_folder_id": "",         # the Shared Drive folder the booking folders go in
+    "black_max_s": 0.5,                   # black at the start or end longer than this fails
+    "freeze_max_s": 5.0,                  # a still stretch longer than this is flagged
+    "content_rules": "",                  # one rule per line, checked by Claude
+    "auto_send_technical": False,         # send feedback on measured faults without waiting for a person
 }
 
 

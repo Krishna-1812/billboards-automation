@@ -25,6 +25,21 @@
     <label class="check"><input type="checkbox" name="remind_clients" value="1" {{ 'checked' if st.remind_clients }}>
       Draft a reminder to the client before their hold expires (sent once a person approves it)</label>
   </fieldset>
+  <fieldset><legend>Creative</legend>
+    <div class="row">
+      <div><label>Files due (working days before the start)</label><input type="number" min="0" max="30" name="creative_lead_days" value="{{ st.creative_lead_days }}"></div>
+      <div><label>Days off <span class="hint">0 = Monday … 6 = Sunday</span></label><input type="text" name="weekend_days" value="{{ st.weekend_days }}"></div>
+      <div><label>Black at start or end fails above (s)</label><input type="number" step="0.1" min="0" name="black_max_s" value="{{ st.black_max_s }}"></div>
+      <div><label>Flag a still stretch longer than (s)</label><input type="number" step="0.5" min="1" name="freeze_max_s" value="{{ st.freeze_max_s }}"></div>
+    </div>
+    <label>Shared Drive folder for booking folders <span class="hint">its link or ID; add the app's Google account to the Shared Drive as Content manager</span></label>
+    <input type="text" name="drive_parent_folder_id" value="{{ st.drive_parent_folder_id }}">
+    <label>Content rules <span class="hint">one per line; Claude checks every ad against them</span></label>
+    <textarea name="content_rules" placeholder="No alcohol or tobacco&#10;No gambling&#10;Modest clothing">{{ st.content_rules }}</textarea>
+    <label class="check"><input type="checkbox" name="auto_send_technical" value="1" {{ 'checked' if st.auto_send_technical }}>
+      Send feedback on measured faults (wrong length, size, format, sound…) without waiting for a person</label>
+    <p class="small muted">Content findings, and approving a file, always need a person.</p>
+  </fieldset>
   <fieldset><legend>Mirror sheet</legend>
     <p class="small muted">The app keeps one tab of this Google Sheet up to date with every booking, so the team's sheet views keep working.
       Share the sheet with the app's Google account as an editor.</p>

@@ -21,6 +21,7 @@ log = logging.getLogger("billboard_ops.worker")
 POLL_SECONDS = 5
 TICK_SECONDS = 60
 WATCH_SECONDS = 600
+DRIVE_SECONDS = 120
 
 _stop = False
 
@@ -39,11 +40,20 @@ def tick(now=None, today=None):
         bookings.remind_holds(s, now)
     with db.session_scope() as s:
         bookings.complete_finished(s, today or date.today())
+    from . import creatives
+    with db.session_scope() as s:
+        creatives.tick(s, today or date.today())
     if runtime.config is not None and runtime.config.email_in:
         with db.session_scope() as s:
             jobs.enqueue(s, "poll_email", {}, dedupe_key="poll_email")
     with db.session_scope() as s:
         settings.put(s, "worker_heartbeat", now.isoformat())
+
+
+def queue_drive_poll():
+    with db.session_scope() as s:
+        if settings.get(s, "drive_parent_folder_id"):
+            jobs.enqueue(s, "poll_drive", {}, dedupe_key="poll_drive")
 
 
 def queue_sheet_checks():
@@ -60,12 +70,12 @@ def main():
     if cfg.DATABASE_URL.startswith("sqlite"):
         from .models import Base
         Base.metadata.create_all(db.engine())
-    from . import evaluate, intake, mail, outbox, sync  # noqa: F401 - registers the job handlers
+    from . import creative_eval, creatives, evaluate, intake, mail, outbox, sync  # noqa: F401 - job handlers
     from .channels import email_in  # noqa: F401
     signal.signal(signal.SIGTERM, _on_term)
     signal.signal(signal.SIGINT, _on_term)
     log.info("worker started")
-    last_tick = last_watch = 0.0
+    last_tick = last_watch = last_drive = 0.0
     while not _stop:
         t = time.monotonic()
         try:
@@ -75,6 +85,9 @@ def main():
             if t - last_watch >= WATCH_SECONDS:
                 queue_sheet_checks()
                 last_watch = t
+            if t - last_drive >= DRIVE_SECONDS:
+                queue_drive_poll()
+                last_drive = t
             ran = jobs.run_due()
         except Exception:  # noqa: BLE001 - keep going; the next loop tries again
             log.exception("worker loop error")

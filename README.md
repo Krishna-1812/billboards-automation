@@ -3,7 +3,7 @@
 Bookings, creative checks and the owner's dashboard for a network of digital screens. This app is separate from
 the main platform: it has its own Railway project, its own Postgres database and its own logins. The build plan
 has five phases. This folder holds **Phase 1: screens, specs and the booking calendar** and **Phase 2: proposal
-intake**.
+intake** and **Phase 3: creative collection and automatic checks**.
 
 ## What Phase 1 does
 
@@ -102,6 +102,66 @@ intake**.
   database, so these costs don't appear in the main platform's `/admin` panel, which reads that platform's
   database.
 
+## What Phase 3 does
+
+- **Asking for the files.** Confirming a booking queues a file request:
+    - a Drive folder for the booking (inside a folder per client, in a Shared Drive), shared with the client's
+      email address;
+    - a private upload link, which works without a Google account;
+    - a deadline: the start date minus a set number of working days (5 by default; the weekend days are a
+      setting);
+    - a message in the client's language listing each screen's exact spec: size and orientation, exact length,
+      file types, frame rate, largest size, sound, and the language rule.
+
+  The message is a draft until a person approves it.
+- **Receiving files.** Every route becomes the next numbered version (v1, v2 …) of the booking's file, and is
+  checked within minutes:
+    - the Drive folder, checked every 2 minutes;
+    - the upload link;
+    - an email or WhatsApp reply to the request, or a message with media from a known contact of a booking that
+      is waiting for files;
+    - the team's own upload on the booking page.
+
+  A file is matched to the booked screens whose spec has its exact size. The team can change which screens it is
+  for.
+- **Measured checks** (`creative_checks.py`, using ffprobe, ffmpeg and Pillow), against each booked screen's spec
+  and the booked ad length:
+    - file type, codec, and exact size and orientation;
+    - length, frame rate, file size and sound;
+    - black frames at the start or end, a frozen picture, black borders (letterboxing), and whether the file plays
+      all the way through;
+    - colours (a CMYK image fails).
+- **Content checks** (Claude reads stills taken at each scene change, every 2 seconds, and from the end card):
+    - the **language rule**: Arabic only, or Arabic plus English. English only fails, and any other language fails,
+      named with its frame;
+    - Arabic shown correctly (letters joined, right to left);
+    - spelling;
+    - whether the brand matches the booked client;
+    - text inside the safe area, and readable;
+    - the owner's content rules (Settings → General).
+
+  If either Claude or the code sees another language, the check fails. Without a Claude key, these come out as
+  "check by eye".
+- **The report** (Creative → a file):
+    - the file plays in the screen's shape;
+    - each check shows what was measured against what is needed, and clicking a time jumps the player there;
+    - evidence frames sit beside the content findings;
+    - the version history, and what changed since the last version ("2 of 2 earlier problems fixed").
+- **Feedback.** The team gets a one-line technical summary, for example "fails 2 of 18 checks: ad length: 12.0s,
+  needs 10s; sound …". The client gets the same points in plain words, in their language, each with how to fix
+  it. That message is a draft for approval. It can go out automatically when every fault is a measured one
+  (Settings → General); content findings always need a person.
+- **Deciding.** Ops (or a Manager, or the owner) approves a file that passed. Approving a file that failed needs
+  a Manager and a reason. Rejecting a file sends the note to the client. When every booked screen has an approved
+  file, the booking moves to **Creative approved**.
+- **Reminders.** Two days before the deadline, a reminder to the client is drafted. When the start date is within
+  the lead time and the files aren't approved, the team gets an alert in the app and by email, once a day.
+- **The check test set** (Creative → Check test set). Real files with known right answers, checked again on
+  demand. It reports how often the measured and content checks were right, the problems it missed, and its false
+  alarms. The bar is every measured check right every time, and no language-rule breach missed.
+- **Storage.** Files go to the booking's Drive folder when Drive is set up, otherwise into the database (up to
+  150 MB). Railway's build installs ffmpeg (`railpack.json`).
+
 ## Layout
 
 | Path | What it is |
@@ -120,6 +180,8 @@ intake**.
 | `billboard_ops/channels/` | The IMAP mailbox and the WhatsApp Cloud API |
 | `billboard_ops/drafts.py`, `outbox.py` | Client messages in English and Arabic, and sending them once approved |
 | `billboard_ops/evaluate.py` | The accuracy test |
+| `billboard_ops/creatives.py` | Phase 3: requesting, receiving, checking, feedback, approval, reminders, Drive polling |
+| `billboard_ops/creative_checks.py`, `creative_store.py`, `creative_eval.py` | The checks themselves; where files are kept; the check test set |
 | `billboard_ops/views/`, `templates/`, `static/` | The pages |
 | `migrations/` | Alembic migrations, which Railway runs before each deploy |
 | `tests/` | The test suite. It runs on SQLite, and on Postgres when `TEST_DATABASE_URL` is set |
@@ -223,6 +285,13 @@ both built from this repo, from the folder `apps/billboard-ops`.
     - subscribe to **messages**.
 5. Calls without a valid signature are refused. If `WHATSAPP_APP_SECRET` isn't set, every webhook call is refused.
 
+### Connecting Google Drive (creative files)
+
+1. In Google Cloud, also enable the **Google Drive API** for the service account's project.
+2. In Google Drive, create a **Shared Drive** (for example "Billboard creatives"). Add the service account's email
+   as a **Content manager**. Service accounts have no storage of their own, so files must live in a Shared Drive.
+3. Make a folder in it, and paste the folder's link in **Settings → General → Creative**.
+
 ### Connecting Google Sheets and Calendar
 
 1. In Google Cloud, create a project. Enable the **Google Sheets API** and the **Google Calendar API**.
@@ -254,3 +323,13 @@ both built from this repo, from the folder `apps/billboard-ops`.
 - [ ] Holds expire on their own. The team and the client are reminded first; the client's reminder goes out once
   approved.
 - [ ] The cost of every Claude call is recorded against its proposal (Admin → Costs).
+
+## Phase 3 checklist ("done when")
+
+- [ ] Confirming a booking makes the file request, with specs, within 1 minute. It goes out once approved.
+- [ ] A new file in Drive is checked, with its report ready, within 5 minutes for a typical 10 to 30 second video.
+  Drive is checked every 2 minutes.
+- [ ] The check test set has about 40 real files. Every measured check is right on all of them, and no
+  language-rule breach is missed.
+- [ ] Re-checks, reminders and start-date alerts work end to end on a real booking.
+- [ ] The cost of each check is recorded against its booking (Admin → Costs).

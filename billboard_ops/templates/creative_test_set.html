@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Check test set · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>Creative check test set</h1>
+  <p class="muted">Real files with known answers. A run checks each again and compares. The bar: every measured check right every time, and no language-rule breach missed.</p></div>
+  <div class="actions"><a class="btn" href="{{ url_for('creatives.case_new') }}">Add a file</a>
+    <form method="post" action="{{ url_for('creatives.test_run') }}" class="inline">{{ m.csrf() }}<button class="primary">Run the test</button></form></div></div>
+<h2>Runs</h2>
+<div class="card table-wrap"><table>
+  <tr><th>Run</th><th>When</th><th>Files</th><th class="num">Measured right</th><th class="num">Content right</th><th class="num">Missed</th><th class="num">False alarms</th><th class="num">Cost</th></tr>
+  {% for r in runs %}{% set sm = r.summary or {} %}<tr><td><a href="{{ url_for('creatives.test_run_page', run_id=r.id) }}">#{{ r.id }}</a> <span class="pill {{ 'ok' if sm.get('passed') else '' }}">{{ r.status }}</span></td>
+    <td class="small">{{ r.started_at|dt }}</td><td>{{ sm.get('cases', '—') }}</td>
+    <td class="num">{{ (sm.measured|string ~ '%') if sm.get('measured') is not none else '—' }}</td><td class="num">{{ (sm.content|string ~ '%') if sm.get('content') is not none else '—' }}</td>
+    <td class="num">{{ sm.get('missed', '—') }}</td><td class="num">{{ sm.get('false_alarms', '—') }}</td><td class="num">${{ '%.2f'|format(r.usd or 0) }}</td></tr>
+  {% else %}<tr><td colspan="8" class="empty">Not run yet.</td></tr>{% endfor %}
+</table></div>
+<h2>Files ({{ cases|selectattr('active')|list|length }} in use)</h2>
+<div class="card table-wrap"><table class="small">
+  <tr><th>File</th><th>Checked against</th><th>Right answer</th><th></th></tr>
+  {% for c in cases %}<tr {% if not c.active %}class="muted"{% endif %}><td>{{ c.name }}<div class="muted">{{ c.filename }}</div></td><td>{{ c.spec.name }}, {{ c.ad_seconds }}s{% if c.client_name %}, {{ c.client_name }}{% endif %}</td>
+    <td>{% for k, v in c.expected.items() %}<span class="pill {{ 'no' if v == 'fail' else 'ok' }}">{{ labels[k] }}: {{ v }}</span> {% endfor %}</td>
+    <td><form method="post" action="{{ url_for('creatives.case_toggle', case_id=c.id) }}">{{ m.csrf() }}<button class="linkish">{{ 'Leave out' if c.active else 'Use again' }}</button></form></td></tr>
+  {% else %}<tr><td colspan="4" class="empty">No files yet. Collect 30–40 real files with the client: good ones and ones with known faults.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

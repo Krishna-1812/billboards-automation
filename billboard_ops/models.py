@@ -152,6 +152,11 @@ STATUSES = ("enquiry", "hold", "confirmed", "awaiting_creative", "checking", "ch
             "creative_approved", "plan_set", "scheduled", "live", "completed", "expired", "cancelled")
 # Statuses that take up room in a screen's loop.
 OCCUPYING = tuple(s for s in STATUSES if s not in ("enquiry", "expired", "cancelled"))
+# Confirmed and not yet over: every stage from confirmation to going live.
+BOOKED = ("confirmed", "awaiting_creative", "checking", "changes_requested", "creative_approved", "plan_set",
+          "scheduled", "live")
+# Waiting for, or checking, the client's files (Phase 3).
+CREATIVE_STAGES = ("confirmed", "awaiting_creative", "checking", "changes_requested")
 
 
 class Booking(Base):
@@ -174,6 +179,13 @@ class Booking(Base):
     created_by: Mapped[str] = mapped_column(String(254), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    # Phase 3: collecting the creative.
+    drive_folder_id: Mapped[str] = mapped_column(String(200), default="")
+    upload_token: Mapped[str] = mapped_column(String(64), default="")
+    creative_deadline: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    creative_requested_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    creative_reminded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    creative_alerted_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
     client: Mapped[Client] = relationship()
     lines: Mapped[list["BookingLine"]] = relationship(back_populates="booking", cascade="all, delete-orphan",
@@ -415,6 +427,9 @@ class AiCall(Base):
     client_id: Mapped[Optional[int]] = mapped_column(ForeignKey("clients.id"), nullable=True)  # whose work
     proposal_id: Mapped[Optional[int]] = mapped_column(ForeignKey("proposals.id"), nullable=True)
     eval_run_id: Mapped[Optional[int]] = mapped_column(ForeignKey("eval_runs.id"), nullable=True)
+    booking_id: Mapped[Optional[int]] = mapped_column(ForeignKey("bookings.id"), nullable=True)
+    creative_id: Mapped[Optional[int]] = mapped_column(ForeignKey("creatives.id", ondelete="SET NULL"),
+                                                       nullable=True)
     ok: Mapped[bool] = mapped_column(Boolean, default=True)
     stop_reason: Mapped[str] = mapped_column(String(40), default="")
     error: Mapped[str] = mapped_column(Text, default="")
@@ -462,3 +477,78 @@ class BookingDocument(Base):
     data: Mapped[bytes] = mapped_column(LargeBinary)
     uploaded_by: Mapped[str] = mapped_column(String(254), default="")
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+# ── Phase 3: creative ───────────────────────────────────────────────────────────
+
+class Creative(Base):
+    """One version of one file a client sent for a booking, and what the checks found."""
+    __tablename__ = "creatives"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    booking_id: Mapped[int] = mapped_column(ForeignKey("bookings.id", ondelete="CASCADE"))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    filename: Mapped[str] = mapped_column(String(300))
+    content_type: Mapped[str] = mapped_column(String(120), default="")
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    source: Mapped[str] = mapped_column(String(20), default="upload")   # drive | upload | email | whatsapp | team
+    drive_file_id: Mapped[str] = mapped_column(String(200), default="")
+    data: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)   # kept here only without Drive
+    line_ids: Mapped[list] = mapped_column(JSON, default=list)          # the booked screens it is for
+    status: Mapped[str] = mapped_column(String(20), default="received")
+    # received | checking | passed | warnings | failed | error | approved | rejected | superseded
+    probe: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # what ffprobe measured
+    results: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    team_summary: Mapped[str] = mapped_column(Text, default="")
+    error: Mapped[str] = mapped_column(Text, default="")
+    message_id: Mapped[Optional[int]] = mapped_column(ForeignKey("messages.id"), nullable=True)
+    received_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    decided_by: Mapped[str] = mapped_column(String(254), default="")
+    decided_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    decision_note: Mapped[str] = mapped_column(Text, default="")
+
+    booking: Mapped[Booking] = relationship()
+    frames: Mapped[list["CreativeFrame"]] = relationship(order_by="CreativeFrame.at_seconds",
+                                                         cascade="all, delete-orphan")
+
+    __table_args__ = (Index("ix_creatives_booking", "booking_id"), Index("ix_creatives_drive", "drive_file_id"))
+
+
+class CreativeFrame(Base):
+    """A still taken from a video (or the image itself), shown as evidence and sent to Claude."""
+    __tablename__ = "creative_frames"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    creative_id: Mapped[int] = mapped_column(ForeignKey("creatives.id", ondelete="CASCADE"))
+    at_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    jpeg: Mapped[bytes] = mapped_column(LargeBinary)
+
+
+class CreativeCase(Base):
+    """A file with known answers: the test set for the creative checks."""
+    __tablename__ = "creative_cases"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    filename: Mapped[str] = mapped_column(String(300))
+    content_type: Mapped[str] = mapped_column(String(120), default="")
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    spec_id: Mapped[int] = mapped_column(ForeignKey("specs.id"))
+    ad_seconds: Mapped[int] = mapped_column(Integer, default=10)
+    client_name: Mapped[str] = mapped_column(String(200), default="")
+    expected: Mapped[dict] = mapped_column(JSON, default=dict)          # check key -> pass | fail
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[str] = mapped_column(String(254), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    spec: Mapped[Spec] = relationship()
+
+
+class CreativeRun(Base):
+    __tablename__ = "creative_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    status: Mapped[str] = mapped_column(String(20), default="queued")
+    started_by: Mapped[str] = mapped_column(String(254), default="")
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    results: Mapped[list] = mapped_column(JSON, default=list)
+    summary: Mapped[dict] = mapped_column(JSON, default=dict)
+    usd: Mapped[float] = mapped_column(Float, default=0.0)

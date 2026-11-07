@@ -47,6 +47,28 @@
   </table>
 </div>
 
+{% if files.collecting %}
+<h2>Creative</h2>
+<div class="card">
+  <p class="small">{% if b.creative_requested_at %}Files requested {{ b.creative_requested_at|dt }}, due <strong>{{ files.deadline|date }}</strong>.{% else %}Files not requested yet.{% endif %}
+    {% if files.upload_url %} Client's upload link: <span class="mono">{{ files.upload_url }}</span>{% endif %}
+    {% if files.drive_url %} · <a href="{{ files.drive_url }}" target="_blank" rel="noopener">Drive folder</a>{% endif %}</p>
+  <table class="small">
+    <tr><th>Screen</th><th>Needs</th><th>File</th><th></th></tr>
+    {% for x in files.coverage %}<tr><td>{{ x.screen.code }}</td>
+      <td>{% if x.spec %}{{ x.spec.width_px }}x{{ x.spec.height_px }}, {{ x.line.ad_seconds }}s{% else %}<span class="pill warning">no spec</span>{% endif %}</td>
+      <td>{% if x.creative %}<a href="{{ url_for('creatives.creative_page', cid=x.creative.id) }}">v{{ x.creative.version }} {{ x.creative.filename }}</a>{% else %}—{% endif %}</td>
+      <td><span class="pill {{ {'approved': 'ok', 'passed': 'ok', 'warnings': 'partial', 'failed': 'no', 'error': 'no', 'missing': ''}.get(x.state, 'hold') }}">{{ x.state }}</span></td></tr>{% endfor %}
+  </table>
+  <div class="actions" style="margin-top:10px">
+    {% if (can('approve_creative') or can('confirm')) and not b.creative_requested_at %}<form method="post" action="{{ url_for('creatives.request_files', code=b.code) }}" class="inline">{{ m.csrf() }}<button class="primary">Request the files</button></form>{% endif %}
+    {% if can('approve_creative') or can('hold') %}<form method="post" enctype="multipart/form-data" action="{{ url_for('creatives.team_upload', code=b.code) }}" class="actions">{{ m.csrf() }}
+      <input type="file" name="files" multiple accept="video/*,image/*" style="width:auto"><button>Add files</button></form>{% endif %}
+  </div>
+  {% if files.files|length > files.coverage|length %}<details style="margin-top:8px"><summary class="small">All versions ({{ files.files|length }})</summary><table class="small">
+    {% for c in files.files %}<tr><td><a href="{{ url_for('creatives.creative_page', cid=c.id) }}">v{{ c.version }}</a></td><td>{{ c.filename }}</td><td>{{ c.status }}</td><td class="muted">{{ c.received_at|dt }}</td></tr>{% endfor %}</table></details>{% endif %}
+</div>
+{% endif %}
 {% if proposal %}<p class="small">From proposal <a href="{{ url_for('inbox.proposal_page', ref=proposal.ref) }}">{{ proposal.ref }}</a> ({{ proposal.channel }}{% if proposal.auto_held %}, held by the agent{% endif %}).</p>{% endif %}
 {% if docs %}<h2>Documents</h2><div class="card">{% for d in docs %}<p><a href="{{ url_for('inbox.booking_document', code=b.code, doc_id=d.id) }}">{{ d.filename }}</a> <span class="small muted">uploaded by {{ d.uploaded_by }}, {{ d.uploaded_at|dt }}</span></p>{% endfor %}</div>{% endif %}
 {% if messages %}<h2>Messages to the client</h2><div class="card table-wrap"><table class="small">
@@ -55,7 +77,7 @@
 
 {% if b.notes %}<h2>Notes</h2><div class="card"><p style="white-space:pre-wrap">{{ b.notes }}</p></div>{% endif %}
 
-{% if b.status in ('hold', 'confirmed') and (b.status == 'hold' and can('cancel_hold') or can('cancel_confirmed')) %}
+{% if b.status not in ('cancelled', 'expired', 'completed') and (b.status == 'hold' and can('cancel_hold') or can('cancel_confirmed')) %}
 <details class="card" style="margin-top:16px">
   <summary class="danger"><strong>Cancel this booking</strong></summary>
   <form method="post" action="{{ url_for('bookings.booking_action', code=b.code, action='cancel') }}">

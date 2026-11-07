@@ -9,7 +9,7 @@ from ..google_client import get_client, service_account_email, spreadsheet_id_fr
 from ..jobs import enqueue, recent_problems
 from ..models import ROLES, Activity, Client, Job, Screen, SheetChange, SheetWatch, User, utcnow
 from ..sync import accept_change, queue_sheet_mirror
-from ..web import current_user, done, f_int, f_str, get_db, login_required, needs
+from ..web import current_user, done, f_float, f_int, f_str, get_db, login_required, needs
 
 bp = Blueprint("admin", __name__)
 
@@ -35,6 +35,16 @@ def general():
             settings.put(s, "mirror_tab", f_str("mirror_tab") or "Bookings (from app)")
             settings.put(s, "company_name", f_str("company_name") or "Billboard Ops")
             settings.put(s, "auto_hold", request.form.get("auto_hold") == "1")
+            if "creative_lead_days" in request.form:      # the Creative section was on the form
+                settings.put(s, "creative_lead_days", max(0, min(30, f_int("creative_lead_days", 5))))
+                settings.put(s, "weekend_days", ",".join(x.strip() for x in f_str("weekend_days").split(",")
+                                                         if x.strip() in list("0123456")))
+                settings.put(s, "black_max_s", max(0.0, f_float("black_max_s", 0.5)))
+                settings.put(s, "freeze_max_s", max(1.0, f_float("freeze_max_s", 5.0)))
+                settings.put(s, "drive_parent_folder_id", spreadsheet_id_from(f_str("drive_parent_folder_id")
+                                                                               .replace("/folders/", "/d/")))
+                settings.put(s, "content_rules", request.form.get("content_rules", "").strip())
+                settings.put(s, "auto_send_technical", request.form.get("auto_send_technical") == "1")
             settings.put(s, "remind_clients", request.form.get("remind_clients") == "1")
             after = settings.all_settings(s)
             log(s, current_user().email, "changed", "settings", "general", "General settings changed",

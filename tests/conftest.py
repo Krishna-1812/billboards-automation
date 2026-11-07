@@ -52,6 +52,34 @@ class FakeGoogle:
         self.calls.append(("delete", cal, event_id))
         self.events.get(cal, {}).pop(event_id, None)
 
+    # Drive
+    def drive_folder(self, name, parent):
+        self.folders = getattr(self, "folders", {})
+        key = (parent, name)
+        if key not in self.folders:
+            self._n += 1
+            self.folders[key] = f"folder{self._n}"
+        return self.folders[key]
+
+    def drive_share(self, file_id, email, role="writer"):
+        self.calls.append(("share", file_id, email, role))
+
+    def drive_list(self, folder_id):
+        return [dict(id=k, **{x: y for x, y in v.items() if x != "data"})
+                for k, v in getattr(self, "files", {}).items() if v["folder"] == folder_id]
+
+    def drive_download(self, file_id, path):
+        with open(path, "wb") as fh:
+            fh.write(self.files[file_id]["data"])
+
+    def drive_upload(self, folder_id, filename, path, mimetype):
+        self.files = getattr(self, "files", {})
+        self._n += 1
+        with open(path, "rb") as fh:
+            self.files[f"file{self._n}"] = {"folder": folder_id, "name": filename, "mimeType": mimetype,
+                                            "data": fh.read()}
+        return f"file{self._n}"
+
 
 def _config(**over):
     os.environ.pop("GOOGLE_CLIENT_ID", None)

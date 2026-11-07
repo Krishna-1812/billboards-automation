@@ -73,14 +73,14 @@ def cost(model, usage):
 
 
 def complete_json(session, *, purpose, system, content, schema, actor="agent", client_id=None,
-                  proposal_id=None, eval_run_id=None, max_tokens=16000):
+                  proposal_id=None, eval_run_id=None, booking_id=None, creative_id=None, max_tokens=16000):
     """Ask Claude for JSON matching `schema`. Returns the parsed object. Every call is logged with its cost,
     including failed ones; raises AIFailed when there is no usable answer."""
     cfg = runtime.config
     model = cfg.PROPOSAL_MODEL if cfg else "claude-opus-5-5"
     effort = cfg.PROPOSAL_EFFORT if cfg else "medium"
     row = AiCall(purpose=purpose, model=model, actor=actor or "agent", client_id=client_id,
-                 proposal_id=proposal_id, eval_run_id=eval_run_id)
+                 proposal_id=proposal_id, eval_run_id=eval_run_id, booking_id=booking_id, creative_id=creative_id)
     session.add(row)
     kwargs = dict(model=model, max_tokens=max_tokens, system=system,
                   messages=[{"role": "user", "content": content}],

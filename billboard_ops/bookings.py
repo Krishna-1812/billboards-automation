@@ -216,6 +216,10 @@ def confirm(session, user, booking, now=None, document=None):
     booking.hold_expires_at = None
     log(session, actor_of(user), "confirmed", "booking", booking.code, f"Confirmed for {booking.client.name}")
     sync.queue_booking(session, booking)
+    # Phase 3: ask the client for the files (the message is a draft until a person approves it).
+    from .jobs import enqueue
+    session.flush()
+    enqueue(session, "creative_request", {"booking_id": booking.id}, dedupe_key=f"creative_request:{booking.id}")
     return booking
 
 
@@ -292,7 +296,8 @@ def remind_holds(session, now=None):
 def complete_finished(session, today):
     """Confirmed bookings whose last day has passed are marked completed."""
     done = []
-    for b in session.scalars(select(Booking).where(Booking.status.in_(("confirmed", "scheduled", "live")))).all():
+    from .models import BOOKED
+    for b in session.scalars(select(Booking).where(Booking.status.in_(BOOKED))).all():
         if b.end_date and b.end_date < today:
             b.status = "completed"
             log(session, "system", "completed", "booking", b.code, "Campaign ended")

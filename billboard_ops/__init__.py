@@ -42,11 +42,12 @@ def create_app(config=None):
     )
 
     # Every job handler registers itself on import.
-    from . import evaluate, intake, mail, outbox, sync  # noqa: F401
+    from . import creative_eval, creatives, evaluate, intake, mail, outbox, sync  # noqa: F401
     from .channels import email_in  # noqa: F401
 
-    from .views import admin, auth, bookings, imports, inbox, main, screens, webhooks
-    for bp in (auth.bp, main.bp, bookings.bp, screens.bp, imports.bp, admin.bp, inbox.bp, webhooks.bp):
+    from .views import admin, auth, bookings, creatives as creative_views, imports, inbox, main, screens, webhooks
+    for bp in (auth.bp, main.bp, bookings.bp, screens.bp, imports.bp, admin.bp, inbox.bp, webhooks.bp,
+               creative_views.bp):
         app.register_blueprint(bp)
 
     app.teardown_appcontext(close_db)
@@ -57,6 +58,8 @@ def create_app(config=None):
             return
         if request.endpoint and request.endpoint.startswith("webhooks."):
             return                          # signed by the sender instead (see views/webhooks.py)
+        if request.endpoint in creative_views.BIG_UPLOAD_ENDPOINTS:
+            request.max_content_length = creative_views.BIG_UPLOAD    # video files; every other form stays at 20 MB
         check_csrf()
         g.user = None
         uid = session.get("uid")
@@ -67,6 +70,10 @@ def create_app(config=None):
             else:
                 session.clear()
         g.lang = (g.user.language if g.user else None) or session.get("lang") or "en"
+
+    @app.errorhandler(413)
+    def _too_big(_e):
+        return render_template("error.html", code=413, message="That file is too large to upload here."), 413
 
     @app.context_processor
     def _globals():

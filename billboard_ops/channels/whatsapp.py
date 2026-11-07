@@ -114,22 +114,26 @@ def receive_webhook(session, payload):
 def fetch_pending_media(session, proposal):
     """Download photos and documents sent on WhatsApp that haven't been fetched yet."""
     for m in proposal.messages:
-        for a in m.attachments:
-            if a.data or not a.external_ref:
-                continue
-            if not runtime.config or not runtime.config.whatsapp:
-                continue
-            try:
-                meta = http().get(f"{_base()}/{a.external_ref}", headers=_auth(), timeout=30)
-                meta.raise_for_status()
-                info = meta.json()
-                blob = http().get(info["url"], headers=_auth(), timeout=60)
-                blob.raise_for_status()
-                a.data = blob.content
-                a.size = len(a.data)
-                a.content_type = info.get("mime_type") or a.content_type
-            except Exception as e:  # noqa: BLE001 - read without it, and say so
-                log.warning("couldn't download WhatsApp media %s: %s", a.external_ref, e)
+        fetch_message_media(session, m)
+
+
+def fetch_message_media(session, m):
+    for a in m.attachments:
+        if a.data or not a.external_ref:
+            continue
+        if not runtime.config or not runtime.config.whatsapp:
+            continue
+        try:
+            meta = http().get(f"{_base()}/{a.external_ref}", headers=_auth(), timeout=30)
+            meta.raise_for_status()
+            info = meta.json()
+            blob = http().get(info["url"], headers=_auth(), timeout=60)
+            blob.raise_for_status()
+            a.data = blob.content
+            a.size = len(a.data)
+            a.content_type = info.get("mime_type") or a.content_type
+        except Exception as e:  # noqa: BLE001 - read without it, and say so
+            log.warning("couldn't download WhatsApp media %s: %s", a.external_ref, e)
 
 
 def last_inbound_at(session, phone):

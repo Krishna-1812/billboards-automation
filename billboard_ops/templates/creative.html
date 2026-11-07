@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}v{{ c.version }} {{ c.filename }} · Billboard Ops{% endblock %}
+{% block head %}{% if c.status in ('received', 'checking') %}<meta http-equiv="refresh" content="6">{% endif %}{% endblock %}
+{% macro row(x) %}
+  <tr><td>{{ x.label }}</td>
+    <td><span class="pill {{ {'pass': 'ok', 'fail': 'no', 'warn': 'partial', 'skip': ''}[x.status] }}">{{ {'pass': 'pass', 'fail': 'fail', 'warn': 'look at it', 'skip': '—'}[x.status] }}</span></td>
+    <td dir="auto">{{ x.measured }}</td><td>{{ x.required }}</td>
+    <td class="small" dir="auto">{{ x.detail }}{% if x.at is not none %} <a href="#" onclick="seek({{ x.at }});return false">at {{ mmss(x.at) }}</a>{% endif %}
+      {% for n in x.frames[:4] %}{% set fr = c.frames[n - 1] if n - 1 < c.frames|length else none %}{% if fr %}<a href="{{ url_for('creatives.creative_frame', frame_id=fr.id) }}" target="_blank"><img src="{{ url_for('creatives.creative_frame', frame_id=fr.id) }}" style="height:44px;border-radius:4px;vertical-align:middle;margin-inline-start:4px" alt="frame {{ n }}"></a>{% endif %}{% endfor %}</td></tr>
+{% endmacro %}
+{% block content %}
+<div class="head">
+  <div><h1>v{{ c.version }} · {{ c.filename }} <span class="pill {{ {'approved': 'ok', 'passed': 'ok', 'warnings': 'partial', 'failed': 'no', 'error': 'no', 'rejected': 'no'}.get(c.status, 'hold') }}">{{ c.status }}</span></h1>
+    <p class="muted"><a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a> · {{ b.client.name }} · from {{ c.source }} {{ c.received_at|dt }}
+      {% if c.probe %} · {{ c.probe.get('kind') }} {{ c.probe.get('width') }}x{{ c.probe.get('height') }}{% if c.probe.get('duration') %}, {{ '%.1f'|format(c.probe.duration) }}s{% endif %}, {{ (c.size / 1000000)|round(1) }} MB{% endif %}</p></div>
+  <div class="actions"><a class="btn" href="{{ url_for('creatives.creative_file', cid=c.id, download=1) }}">Download</a></div>
+</div>
+{% if c.error %}<div class="flash error">{{ c.error }}</div>{% endif %}
+{% if c.status in ('received', 'checking') %}<div class="note">Checking this file. The page refreshes on its own.</div>{% endif %}
+{% if c.team_summary %}<div class="flash {{ {'failed': 'error', 'warnings': 'warning'}.get((c.results or {}).get('verdict'), 'ok') }}">{{ c.team_summary }}
+  {% set fx = (c.results or {}).get('fixed') %}{% if fx and fx.had %}<div class="small">Since v{{ fx.previous }}: {{ fx.fixed|length }} of {{ fx.had }} problems fixed{% if fx.still %}; still: {{ fx.still|join(', ') }}{% endif %}{% if fx.new %}; new: {{ fx.new|join(', ') }}{% endif %}.</div>{% endif %}</div>{% endif %}
+{% if c.decision_note %}<div class="flash warning">{{ c.status|capitalize }} by {{ c.decided_by }}: {{ c.decision_note }}</div>{% endif %}
+
+<div class="split">
+  <div>
+    {% set w = spec.width_px if spec else (c.probe or {}).get('width', 16) %}{% set h = spec.height_px if spec else (c.probe or {}).get('height', 9) %}
+    <div class="card" style="padding:10px">
+      <div style="aspect-ratio: {{ w }} / {{ h }}; background:#000; border-radius:6px; overflow:hidden; max-height:70vh; margin:auto">
+        {% if (c.probe or {}).get('kind') == 'image' or c.content_type.startswith('image/') %}
+          <img src="{{ url_for('creatives.creative_file', cid=c.id) }}" style="width:100%;height:100%;object-fit:fill" alt="the ad">
+        {% else %}
+          <video id="player" src="{{ url_for('creatives.creative_file', cid=c.id) }}" controls muted loop style="width:100%;height:100%;object-fit:fill"></video>
+        {% endif %}
+      </div>
+      <p class="small muted">Shown in the screen's shape{% if spec %} ({{ spec.width_px }}x{{ spec.height_px }}){% endif %}. A file of the wrong shape looks stretched here, as it would on the screen.</p>
+    </div>
+    {% if c.frames %}<div class="card"><h3 style="margin-top:0">Stills the checks looked at</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">{% for f in c.frames %}<a href="{{ url_for('creatives.creative_frame', frame_id=f.id) }}" target="_blank" title="frame {{ loop.index }} at {{ mmss(f.at_seconds) }}">
+        <img src="{{ url_for('creatives.creative_frame', frame_id=f.id) }}" style="height:64px;border-radius:4px" alt="frame {{ loop.index }}"><div class="small muted" style="text-align:center">{{ loop.index }} · {{ mmss(f.at_seconds) }}</div></a>{% endfor %}</div></div>{% endif %}
+    <div class="card"><h3 style="margin-top:0">Versions</h3><table class="small">
+      {% for v in versions %}<tr {% if v.id == c.id %}style="font-weight:600"{% endif %}><td><a href="{{ url_for('creatives.creative_page', cid=v.id) }}">v{{ v.version }}</a></td><td>{{ v.filename }}</td><td>{{ v.status }}</td><td class="muted">{{ v.received_at|dt }}</td></tr>{% endfor %}</table></div>
+  </div>
+  <div>
+    {% for t in (c.results or {}).get('targets', []) %}
+      <div class="card table-wrap"><h3 style="margin-top:0">Measured, against {{ t.spec_name }} · {{ t.ad_seconds }}s · {{ t.screens|join(', ') }}</h3>
+        <table class="small"><tr><th>Check</th><th></th><th>Measured</th><th>Needed</th><th>Detail</th></tr>{% for x in t.checks %}{{ row(x) }}{% endfor %}</table></div>
+    {% endfor %}
+    {% if (c.results or {}).get('content') %}
+      <div class="card table-wrap"><h3 style="margin-top:0">Content, read by Claude</h3>
+        <table class="small"><tr><th>Check</th><th></th><th>Found</th><th>Needed</th><th>Detail</th></tr>{% for x in c.results.content %}{{ row(x) }}{% endfor %}</table>
+        <p class="small muted">Content findings are for a person to confirm by watching the file.</p></div>
+    {% endif %}
+
+    {% if can('approve_creative') and c.status not in ('approved', 'superseded', 'rejected', 'received', 'checking') %}
+    <div class="card">
+      <h3 style="margin-top:0">Decide</h3>
+      <form method="post">{{ m.csrf() }}
+        <label>Note <span class="hint">needed to reject, or to approve a file that failed</span></label>
+        <input type="text" name="note" placeholder="e.g. the end card is fine as a still">
+        <p class="actions" style="margin-top:10px">
+          <button class="primary" formaction="{{ url_for('creatives.creative_action', cid=c.id, action='approve') }}">Approve</button>
+          <button formaction="{{ url_for('creatives.creative_action', cid=c.id, action='reject') }}" class="danger">Reject and tell the client</button>
+          <button formaction="{{ url_for('creatives.creative_action', cid=c.id, action='feedback') }}">Draft feedback</button>
+          <button formaction="{{ url_for('creatives.creative_action', cid=c.id, action='recheck') }}">Check again</button>
+        </p>
+      </form>
+      <details><summary class="small">This file is for which screens?</summary>
+        <form method="post" action="{{ url_for('creatives.creative_action', cid=c.id, action='assign') }}">{{ m.csrf() }}
+          {% for l in b.lines %}<label class="check"><input type="checkbox" name="line_id" value="{{ l.id }}" {{ 'checked' if l.id in (c.line_ids or []) }}> {{ l.screen.code }} {{ l.screen.name }} ({{ l.screen.spec.width_px ~ 'x' ~ l.screen.spec.height_px if l.screen.spec else 'no spec' }}, {{ l.ad_seconds }}s)</label>{% endfor %}
+          <p><button>Save and check again</button></p></form></details>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script>function seek(t){const p=document.getElementById('player'); if(p){p.currentTime=t; p.pause(); p.scrollIntoView({block:'center'});}}</script>{% endblock %}

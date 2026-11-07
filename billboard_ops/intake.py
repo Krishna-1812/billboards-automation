@@ -77,7 +77,21 @@ def receive(session, *, channel, sender="", sender_name="", subject="", body="",
         seen = session.scalars(select(Message).where(Message.external_id == external_id)).first()
         if seen is not None:
             return seen.proposal, seen, False
+    from . import creatives
+    has_media = any(creatives.is_media(a.get("filename"), a.get("content_type")) or a.get("external_ref")
+                    for a in attachments)
+    booking = creatives.booking_for_reply(session, channel, sender, list(reply_ids), has_media) \
+        if channel in ("email", "whatsapp") else None
+    if booking is not None:
+        return _receive_files(session, booking, channel=channel, sender=sender, subject=subject, body=body,
+                              attachments=attachments, external_id=external_id, reply_ids=reply_ids,
+                              received_at=received_at)
     p = find_thread(session, channel=channel, sender=sender, subject=subject, reply_ids=list(reply_ids))
+    if p is not None and p.status == "held" and has_media and p.booking is not None \
+            and p.booking.status in creatives.CREATIVE_STAGES:
+        return _receive_files(session, p.booking, channel=channel, sender=sender, subject=subject, body=body,
+                              attachments=attachments, external_id=external_id, reply_ids=reply_ids,
+                              received_at=received_at, proposal=p)
     new = p is None
     if new:
         p = Proposal(channel=channel, sender=sender, sender_name=sender_name, subject=subject[:300],
@@ -112,6 +126,34 @@ def receive(session, *, channel, sender="", sender_name="", subject="", body="",
         f"{'New request' if new else 'New message'} by {channel} from {sender_name or sender or 'someone'}"
         + (f", {len(attachments)} attachment(s)" if attachments else ""))
     return p, m, new
+
+
+def _receive_files(session, booking, *, channel, sender, subject, body, attachments, external_id, reply_ids,
+                   received_at, proposal=None):
+    """A client's reply carrying their ad files: it joins the booking, and each file becomes a version to check."""
+    from . import creatives
+    from .channels import whatsapp
+    m = Message(proposal=proposal, booking_id=booking.id, direction="in", channel=channel, kind="files",
+                status="received", sender=sender, subject=subject[:300], body=body or "",
+                external_id=external_id[:300], in_reply_to=(list(reply_ids) or [""])[0][:300],
+                language=extract.guess_language(body))
+    if received_at is not None:
+        m.created_at = received_at
+    session.add(m)
+    for a in attachments:
+        data = a.get("data")
+        m.attachments.append(Attachment(filename=(a.get("filename") or "")[:300],
+                                        content_type=(a.get("content_type") or "")[:120],
+                                        size=len(data) if data else int(a.get("size") or 0), data=data,
+                                        external_ref=a.get("external_ref") or ""))
+    session.flush()
+    if any(a.external_ref and not a.data for a in m.attachments):
+        whatsapp.fetch_message_media(session, m)
+    made = creatives.files_from_message(session, booking, m)
+    if not made:
+        notify(session, f"{sender} wrote about {booking.code}: “{(body or '')[:80]}”", kind="info",
+               link=f"/bookings/{booking.code}")
+    return proposal, m, False
 
 
 def queue_read(session, p, actor="agent"):
@@ -415,22 +457,34 @@ def auto_hold_allowed(session):
     return gate(session)["passed"]
 
 
+def client_contact(session, booking):
+    """How to reach a booking's client: back through the proposal it came from, else the client's email.
+    Returns dict(channel, to, lang, name, reply, proposal), or None when there's no way to reach them."""
+    p = session.scalars(select(Proposal).where(Proposal.booking_id == booking.id)).first()
+    if p is not None:
+        channel, to = _recipient(session, p)
+        return {"channel": channel, "to": to, "lang": _lang(p), "name": _name(p), "reply": _last_inbound_id(p),
+                "proposal": p}
+    c = booking.client
+    if c and (c.email or c.whatsapp):
+        return {"channel": "email" if c.email else "whatsapp", "to": c.email or c.whatsapp,
+                "lang": c.language if c.language in ("en", "ar") else "en", "name": c.contact_name, "reply": "",
+                "proposal": None}
+    return {"channel": "manual", "to": "", "lang": (c.language if c else "en") or "en",
+            "name": c.contact_name if c else "", "reply": "", "proposal": None}
+
+
 def hold_reminder_drafts(session, booking):
     """A reminder to the client that their hold expires soon, as a draft for the team to approve."""
     if not settings.get(session, "remind_clients"):
         return None
-    p = session.scalars(select(Proposal).where(Proposal.booking_id == booking.id)).first()
-    if p is not None:
-        channel, to = _recipient(session, p)
-        lang, name, reply = _lang(p), _name(p), _last_inbound_id(p)
-    elif booking.client and booking.client.email:
-        channel, to, lang, name, reply = "email", booking.client.email, booking.client.language, \
-            booking.client.contact_name, ""
-    else:
+    who = client_contact(session, booking)
+    if not who["to"] and who["proposal"] is None:
         return None
-    subject, body = drafts.hold_reminder(lang, name, settings.get(session, "company_name"), booking)
-    return drafts.new_draft(session, kind="hold_reminder", channel=channel, recipient=to, subject=subject,
-                            body=body, language=lang, proposal=p, booking=booking, in_reply_to=reply)
+    subject, body = drafts.hold_reminder(who["lang"], who["name"], settings.get(session, "company_name"), booking)
+    return drafts.new_draft(session, kind="hold_reminder", channel=who["channel"], recipient=who["to"],
+                            subject=subject, body=body, language=who["lang"], proposal=who["proposal"],
+                            booking=booking, in_reply_to=who["reply"])
 
 
 def counts(session):

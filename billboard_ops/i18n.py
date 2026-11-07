@@ -13,6 +13,7 @@ STRINGS = {
     "calendar":         ("Calendar", "التقويم"),
     "proposals":        ("Proposals", "الطلبات"),
     "outbox":           ("Outbox", "الرسائل الصادرة"),
+    "creative":         ("Creative", "التصاميم"),
     "availability":     ("Check vacancy", "التحقق من التوفر"),
     "bookings":         ("Bookings", "الحجوزات"),
     "clients":          ("Clients", "العملاء"),

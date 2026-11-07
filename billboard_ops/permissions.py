@@ -11,6 +11,7 @@ CAN = {
     "cancel_confirmed": ("owner", "manager"),
     "override":         ("owner", "manager"),                   # book past a screen's capacity, with a reason
     "edit_screens":     ("owner", "manager", "ops"),
+    "approve_creative": ("owner", "manager", "ops"),                # approve, reject, re-check a client's file
     "edit_clients":     ("owner", "manager", "sales"),
     "import":           ("owner", "manager"),
     "review_sheet":     ("owner", "manager"),
