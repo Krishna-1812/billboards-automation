@@ -1,8 +1,8 @@
 # Billboard Ops
 
-Bookings, creative checks and the owner's dashboard for a network of digital screens. This app is separate from
-the main platform: it has its own Railway project, its own Postgres database and its own logins. The build plan
-has five phases. This folder holds **Phase 1: screens, specs and the booking calendar** and **Phase 2: proposal
+Bookings, creative checks and the owner's dashboard for a network of digital screens. It is a standalone app
+with its own Railway project, its own Postgres database and its own logins. The build plan has five phases. This
+repository holds **Phase 1: screens, specs and the booking calendar** and **Phase 2: proposal
 intake** and **Phase 3: creative collection and automatic checks**.
 
 ## What Phase 1 does
@@ -189,7 +189,10 @@ intake** and **Phase 3: creative collection and automatic checks**.
 ## Running it locally
 
 ```bash
-cd apps/billboard-ops
+git clone https://github.com/Krishna-1812/billboards-automation.git && cd billboards-automation
+```
+
+```bash
 pip install -r requirements.txt
 ```
 
@@ -226,26 +229,25 @@ To run the same tests on Postgres, as CI does:
 TEST_DATABASE_URL=postgresql://user:pass@localhost:5432/billboard_test python -m pytest tests -q
 ```
 
-CI runs both, plus a check that the migrations match the models (`.github/workflows/billboard-ops-tests.yml`).
+CI runs both, plus a check that the migrations match the models (`.github/workflows/tests.yml`).
 
 ## Deploying on Railway
 
 The app runs as one Railway project with three parts: **Postgres**, **web** and **worker**. Web and worker are
-both built from this repo, from the folder `apps/billboard-ops`.
+both built from the root of this repo.
 
 1. **New project → Deploy from GitHub repo →** this repository. Then **Add → Database → PostgreSQL**.
 2. On the **web** service, open **Settings** and set:
-    - **Root Directory:** `apps/billboard-ops`
+    - **Root Directory:** leave empty (the repo root).
     - **Pre-deploy Command:** `alembic upgrade head`. This builds or updates the tables before each release.
     - **Custom Start Command:** `gunicorn 'billboard_ops:create_app()' --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 60`
     - **Healthcheck Path:** `/health`
-    - **Watch Paths:** `/apps/billboard-ops/**`
     - **Networking:** generate a domain, or add the client's own (for example `ops.clientdomain.com`).
 
    `railway.json` records the same settings. Enter them by hand anyway: config files are deprecated for new
    Railway services.
 3. **Add a second service** from the same repo for the **worker**:
-    - **Root Directory:** `apps/billboard-ops`
+    - **Root Directory:** leave empty (the repo root).
     - **Custom Start Command:** `python -m billboard_ops.worker`
     - **Healthcheck Path:** leave empty.
     - **Restart Policy:** Always.

@@ -1,0 +1,49 @@
+name: Billboard Ops tests
+
+# The tests run twice: once on SQLite and once on Postgres, the database the app runs on in Railway.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: billboard_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+      - name: ffmpeg (the creative checks measure real video files)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: pip install -r requirements.txt
+      - name: Tests on SQLite
+        run: python -m pytest tests -q
+      - name: Migrations match the models (Postgres)
+        env:
+          DATABASE_URL: postgresql://postgres:test@localhost:5432/billboard_test
+        run: |
+          alembic upgrade head
+          alembic check
+          alembic downgrade base
+      - name: Tests on Postgres
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/billboard_test
+        run: python -m pytest tests -q
