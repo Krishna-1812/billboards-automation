@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Settings · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>{{ t('settings') }}</h1></div></div>
+{% include "_settings_nav.html" %}
+<form method="post" class="card">
+  {{ m.csrf() }}
+  <div class="row">
+    <div><label>Company name</label><input type="text" name="company_name" value="{{ st.company_name }}"></div>
+    <div><label>A hold lasts (days)</label><input type="number" min="1" max="60" name="hold_days" value="{{ st.hold_days }}"></div>
+    <div><label>Remind before a hold expires (hours)</label><input type="number" min="0" name="hold_reminder_hours" value="{{ st.hold_reminder_hours }}"></div>
+  </div>
+  <div class="row">
+    <div><label>Dates like 03/04/2026 in sheets mean</label>
+      <select name="date_order"><option value="dmy" {{ 'selected' if st.date_order == 'dmy' }}>3 April (day first)</option>
+        <option value="mdy" {{ 'selected' if st.date_order == 'mdy' }}>March 4 (month first)</option></select></div>
+    <div><label>Time zone for new screens</label><input type="text" name="default_timezone" value="{{ st.default_timezone }}"></div>
+  </div>
+  <fieldset><legend>Mirror sheet</legend>
+    <p class="small muted">The app keeps one tab of this Google Sheet up to date with every booking, so the team's sheet views keep working.
+      Share the sheet with the app's Google account as an editor.</p>
+    <div class="row">
+      <div><label>Sheet link</label><input type="text" name="mirror_spreadsheet_id" value="{{ st.mirror_spreadsheet_id }}"></div>
+      <div><label>Tab name</label><input type="text" name="mirror_tab" value="{{ st.mirror_tab }}"></div>
+    </div>
+  </fieldset>
+  <p><button class="primary" type="submit">{{ t('save') }}</button></p>
+</form>
+{% endblock %}

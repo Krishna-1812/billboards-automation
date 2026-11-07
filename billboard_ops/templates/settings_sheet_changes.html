@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Sheet changes · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>Edits made directly in the old sheets</h1>
+  <p class="muted">During the switch-over the app re-reads the sheets it imported from every 10 minutes. Make the same change in the app if it's needed, then mark it reviewed.</p></div>
+  <form method="post" class="actions">{{ m.csrf() }}<button name="action" value="check_now">Check now</button></form></div>
+{% include "_settings_nav.html" %}
+<div class="card table-wrap"><table class="small">
+  <tr><th>Seen</th><th>Sheet tab</th><th>Row</th><th>Change</th><th>Row now</th><th></th></tr>
+  {% for c in changes %}<tr><td style="white-space:nowrap">{{ c.detected_at|dt }}</td><td>{{ watches[c.watch_id].tab }}</td><td>{{ c.row_key }}</td>
+    <td><span class="pill {{ 'no' if c.change == 'removed' else 'partial' }}">{{ c.change }}</span></td>
+    <td>{{ (c.after or [])|join(' · ') }}</td>
+    <td><form method="post">{{ m.csrf() }}<input type="hidden" name="change_id" value="{{ c.id }}"><button name="action" value="accept">Reviewed</button></form></td></tr>
+  {% else %}<tr><td colspan="6" class="empty">No direct edits. The app and the sheets agree.</td></tr>{% endfor %}
+</table></div>
+<h2>Sheets being watched</h2>
+<div class="card table-wrap"><table class="small">
+  <tr><th>Tab</th><th>Last checked</th><th></th></tr>
+  {% for w in watches.values() if w.active %}<tr><td>{{ w.tab }} <span class="muted mono">{{ w.spreadsheet_id[:12] }}…</span></td><td>{{ w.last_checked_at|dt or 'not yet' }}</td>
+    <td><form method="post">{{ m.csrf() }}<input type="hidden" name="watch_id" value="{{ w.id }}"><button class="linkish" name="action" value="stop">Stop watching (sheet retired)</button></form></td></tr>
+  {% else %}<tr><td colspan="3" class="empty">None.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

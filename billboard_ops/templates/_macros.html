@@ -1,0 +1,30 @@
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro status(s) %}<span class="pill {{ s }}">{{ status_label(s) }}</span>{% endmacro %}
+
+{% macro screens_of(b) %}{% for l in b.lines %}<a href="{{ url_for('screens.screen_detail', screen_id=l.screen_id) }}">{{ l.screen.code }}</a>{{ ", " if not loop.last }}{% endfor %}{% endmacro %}
+
+{% macro frequency(l) %}{% if l.exclusive %}Whole screen{% else %}{{ l.ad_seconds }}s × {{ l.plays_per_hour|num }} plays/hour{% endif %}{% endmacro %}
+
+{% macro vacancy_result(r, screen) %}
+  <span class="pill {{ r.status }}">{{ t(r.status) }}</span>
+  {% if r.reason == 'more_than_capacity' %}
+    <p>This asks for {{ r.need_seconds|round|int }} seconds of every hour, more than the screen has ({{ r.capacity|round|int }}s).</p>
+  {% elif r.status != 'fits' %}
+    <p class="small">{{ r.ok_days }} of {{ r.days|length }} days fit fully.
+      {% if r.blocking %} In the way: {% for c in r.blocking %}<a href="{{ url_for('bookings.booking_detail', code=c) }}">{{ c }}</a>{{ ", " if not loop.last }}{% endfor %}.{% endif %}</p>
+    <details><summary class="small">Days with a problem ({{ r.problem_days|length }})</summary>
+      <table class="small">
+        <tr><th>Day</th><th>Problem</th><th class="num">Already used</th></tr>
+        {% for d in r.problem_days[:60] %}
+        <tr><td>{{ d.day|date }}</td>
+          <td>{% if d.blackout %}Blackout day{% else %}
+              {% if d.full %}No room at {{ d.full|map('string')|join(':00, ') }}:00{% endif %}
+              {% if d.outside %}{{ "; " if d.full }}Screen is off at {{ d.outside|map('string')|join(':00, ') }}:00{% endif %}
+              {% endif %}</td>
+          <td class="num">{{ d.peak_used_pct|pct }}</td></tr>
+        {% endfor %}
+      </table>
+    </details>
+  {% endif %}
+{% endmacro %}

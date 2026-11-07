@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Bookings · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>{{ t('bookings') }}</h1></div>
+  <div class="actions">{% if can('hold') %}<a class="btn primary" href="{{ url_for('bookings.booking_new') }}">{{ t('place_hold') }}</a>{% endif %}</div>
+</div>
+<form method="get" class="card row" style="align-items:end">
+  <div><label>Status</label>
+    <select name="status">
+      <option value="">All</option>
+      <option value="open" {{ 'selected' if status == 'open' }}>Open (not cancelled, expired or done)</option>
+      {% for s in STATUSES %}<option value="{{ s }}" {{ 'selected' if status == s }}>{{ status_label(s) }}</option>{% endfor %}
+    </select></div>
+  <div><label>Client</label>
+    <select name="client"><option value="">All</option>
+      {% for c in clients %}<option value="{{ c.id }}" {{ 'selected' if c.id == client_id }}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div><label>Screen</label>
+    <select name="screen"><option value="">All</option>
+      {% for s in screens %}<option value="{{ s.id }}" {{ 'selected' if s.id == screen_id }}>{{ s.code }}</option>{% endfor %}</select></div>
+  <div><label>{{ t('search') }}</label><input type="text" name="q" value="{{ term }}" placeholder="Code, campaign or client"></div>
+  <div><button type="submit">Filter</button></div>
+</form>
+<div class="card table-wrap" style="margin-top:16px">
+  <table>
+    <tr><th>Booking</th><th>Client</th><th>Campaign</th><th>Screens</th><th>Dates</th><th>Status</th></tr>
+    {% for b in items %}
+      <tr>
+        <td><a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a>
+          {% if b.override_reason %}<span class="pill warning" title="{{ b.override_reason }}">over capacity</span>{% endif %}</td>
+        <td>{{ b.client.name }}</td><td>{{ b.title }}</td><td>{{ m.screens_of(b) }}</td>
+        <td style="white-space:nowrap">{{ b.start_date|date }} – {{ b.end_date|date }}</td>
+        <td>{{ m.status(b.status) }}{% if b.status == 'hold' and b.hold_expires_at %}<div class="small muted">until {{ b.hold_expires_at|dt }}</div>{% endif %}</td>
+      </tr>
+    {% else %}<tr><td colspan="6" class="empty">No bookings match.</td></tr>{% endfor %}
+  </table>
+</div>
+{% endblock %}

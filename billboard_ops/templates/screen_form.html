@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ sc.code or 'New screen' }} · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>{{ 'Edit ' ~ sc.code if sc.id else 'New screen' }}</h1></div></div>
+<form method="post" class="card">
+  {{ m.csrf() }}
+  <div class="row">
+    <div><label>Code</label><input type="text" name="code" value="{{ sc.code or '' }}" required></div>
+    <div><label>Name</label><input type="text" name="name" value="{{ sc.name or '' }}" required></div>
+    <div><label>Area <span class="hint">used to suggest nearby screens</span></label><input type="text" name="area" value="{{ sc.area or '' }}"></div>
+  </div>
+  <label>Address</label><input type="text" name="address" value="{{ sc.address or '' }}">
+  <div class="row">
+    <div><label>Latitude</label><input type="number" step="any" name="lat" value="{{ sc.lat if sc.lat is not none else '' }}"></div>
+    <div><label>Longitude</label><input type="number" step="any" name="lng" value="{{ sc.lng if sc.lng is not none else '' }}"></div>
+    <div><label>Physical size</label><input type="text" name="physical_size" value="{{ sc.physical_size or '' }}" placeholder="12m x 4m"></div>
+    <div><label>Spec</label><select name="spec_id"><option value="">None yet</option>
+      {% for sp in specs %}<option value="{{ sp.id }}" {{ 'selected' if sp.id == sc.spec_id }}>{{ sp.name }} ({{ sp.width_px }}×{{ sp.height_px }})</option>{% endfor %}</select></div>
+  </div>
+  <fieldset><legend>The loop</legend>
+    <div class="row">
+      <div><label>Loop length (seconds)</label><input type="number" min="1" name="loop_seconds" value="{{ sc.loop_seconds }}" required></div>
+      <div><label>Slot length (seconds)</label><input type="number" min="1" name="slot_seconds" value="{{ sc.slot_seconds }}" required></div>
+      <div><label>Sellable airtime (%) <span class="hint">the rest is house content</span></label><input type="number" min="1" max="100" step="any" name="sellable_pct" value="{{ sc.sellable_pct|num }}"></div>
+    </div>
+    <p class="small muted">For example, a 120-second loop of 10-second slots has 12 slots; one slot plays 30 times an hour.</p>
+  </fieldset>
+  <fieldset><legend>Operating hours</legend>
+    <div class="row">
+      <div><label>Opens at (0–23)</label><input type="number" min="0" max="23" name="open_hour" value="{{ sc.open_hour }}"></div>
+      <div><label>Closes at (1–24) <span class="hint">earlier than opening = past midnight</span></label><input type="number" min="1" max="24" name="close_hour" value="{{ sc.close_hour }}"></div>
+      <div><label>Time zone</label><input type="text" name="timezone" value="{{ sc.timezone or '' }}" placeholder="Asia/Dubai"></div>
+    </div>
+    <p class="small muted">0 to 24 means all day. Blackout days and special hours are set under Blackouts &amp; hours.</p>
+  </fieldset>
+  <label>Google Calendar ID <span class="hint">the calendar this screen's bookings are mirrored to; share it with the app's Google account</span></label>
+  <input type="text" name="calendar_id" value="{{ sc.calendar_id or '' }}" placeholder="…@group.calendar.google.com">
+  <label>Notes</label><textarea name="notes">{{ sc.notes or '' }}</textarea>
+  <label class="check"><input type="checkbox" name="active" value="1" {{ 'checked' if sc.active }}> Active (can be booked)</label>
+  <p class="actions"><button class="primary" type="submit">{{ t('save') }}</button>
+    <a class="btn" href="{{ url_for('screens.screen_detail', screen_id=sc.id) if sc.id else url_for('screens.screen_list') }}">{{ t('cancel') }}</a></p>
+</form>
+{% endblock %}

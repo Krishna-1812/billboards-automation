@@ -1,0 +1,3 @@
+# Local development database (Railway uses Postgres)
+billboard_ops.db
+*.db

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Check vacancy · Billboard Ops{% endblock %}
+{% macro hour_select(name, value, blank) %}
+  <select name="{{ name }}">
+    <option value="">{{ blank }}</option>
+    {% for h in range(0, 25) %}<option value="{{ h }}" {{ 'selected' if value != '' and value is not none and value|string == h|string }}>{{ '%02d:00'|format(h) }}</option>{% endfor %}
+  </select>
+{% endmacro %}
+{% block content %}
+<div class="head">
+  <div><h1>{{ t('availability') }}</h1>
+    <p class="muted">Is there room in the loop for these dates, hours and plays? Holds and confirmed bookings both count.</p></div>
+</div>
+
+<form method="post" class="card">
+  {{ m.csrf() }}
+  <fieldset>
+    <legend>Screens</legend>
+    {% for area_name, group in screens|groupby('area') %}
+      <div class="small muted" style="margin-top:6px">{{ area_name or 'No area' }}</div>
+      <div class="row">
+      {% for s in group %}
+        <label class="check"><input type="checkbox" name="screen_id" value="{{ s.id }}" {{ 'checked' if s.id in chosen }}>
+          {{ s.code }} <span class="muted small">{{ s.name[:28] }}</span></label>
+      {% endfor %}
+      </div>
+    {% else %}<p class="muted">No screens yet.</p>{% endfor %}
+  </fieldset>
+  <div class="row">
+    <div><label>From</label><input type="date" name="start_date" required value="{{ form.get('start_date', '') }}"></div>
+    <div><label>To</label><input type="date" name="end_date" required value="{{ form.get('end_date', '') }}"></div>
+    <div><label>Hours from <span class="hint">empty = all hours</span></label>{{ hour_select('start_hour', form.get('start_hour', ''), 'All hours') }}</div>
+    <div><label>Hours to</label>{{ hour_select('end_hour', form.get('end_hour', ''), '—') }}</div>
+  </div>
+  <div class="row">
+    <div><label>Ad length (seconds) <span class="hint">empty = the screen's slot</span></label>
+      <input type="number" name="ad_seconds" min="1" value="{{ form.get('ad_seconds', '') }}"></div>
+    <div><label>Frequency</label>
+      <select name="freq_mode">
+        {% for v, label in [('slots', 'Slots in the loop'), ('pph', 'Plays per hour'), ('whole', 'Whole screen')] %}
+          <option value="{{ v }}" {{ 'selected' if form.get('freq_mode', 'slots') == v }}>{{ label }}</option>{% endfor %}
+      </select></div>
+    <div><label>How many <span class="hint">slots or plays</span></label>
+      <input type="number" name="freq_value" min="0.1" step="any" value="{{ form.get('freq_value', '1') }}"></div>
+  </div>
+  {% if error %}<p class="flash error">{{ error }}</p>{% endif %}
+  <p><button class="primary" type="submit">{{ t('check') }}</button></p>
+</form>
+
+{% if results %}
+<h2>Result</h2>
+{% set all_fit = results|selectattr('2.status', 'equalto', 'fits')|list|length == results|length %}
+{% for s, req, r in results %}
+  <div class="card">
+    <div class="head" style="margin-bottom:6px">
+      <div><strong><a href="{{ url_for('screens.screen_detail', screen_id=s.id) }}">{{ s.code }}</a> {{ s.name }}</strong>
+        <span class="muted small"> · needs {{ r.need_seconds|round|int }}s of each hour, of {{ r.capacity|round|int }}s</span></div>
+    </div>
+    {{ m.vacancy_result(r, s) }}
+    {% if r.alt_dates %}
+      <p class="small"><strong>Nearest dates that fit:</strong>
+      {% for a, b in r.alt_dates %}<a href="{{ url_for('bookings.availability', screen_id=s.id, start_date=a.isoformat(), end_date=b.isoformat(), start_hour=form.get('start_hour',''), end_hour=form.get('end_hour',''), ad_seconds=form.get('ad_seconds',''), freq_mode=form.get('freq_mode','slots'), freq_value=form.get('freq_value','1')) }}">{{ a|date(false) }} – {{ b|date }}</a>{{ "; " if not loop.last }}{% endfor %}</p>
+    {% endif %}
+    {% if r.alt_screens %}
+      <p class="small"><strong>Other screens{{ ' in ' ~ s.area if s.area }} with the same spec that fit:</strong>
+      {% for o in r.alt_screens %}<a href="{{ url_for('bookings.availability', screen_id=o.id, start_date=form.get('start_date'), end_date=form.get('end_date'), start_hour=form.get('start_hour',''), end_hour=form.get('end_hour',''), ad_seconds=form.get('ad_seconds',''), freq_mode=form.get('freq_mode','slots'), freq_value=form.get('freq_value','1')) }}">{{ o.code }}</a>{{ ", " if not loop.last }}{% endfor %}</p>
+    {% endif %}
+  </div>
+{% endfor %}
+{% if can('hold') %}
+  <p style="margin-top:12px">
+    <a class="btn primary" href="{{ url_for('bookings.booking_new', screen_id=chosen, start_date=form.get('start_date'), end_date=form.get('end_date'), start_hour=form.get('start_hour',''), end_hour=form.get('end_hour',''), ad_seconds=form.get('ad_seconds',''), freq_mode=form.get('freq_mode','slots'), freq_value=form.get('freq_value','1')) }}">{{ t('place_hold') }}{{ '' if all_fit else ' anyway' }}</a>
+    {% if not all_fit %}<span class="muted small">Only a Manager can book past capacity, with a reason.</span>{% endif %}
+  </p>
+{% endif %}
+{% endif %}
+{% endblock %}

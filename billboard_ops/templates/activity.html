@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Activity · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>{{ t('activity') }}</h1><p class="muted">Every change, by whom and when.</p></div>
+  <form method="get" class="actions">
+    <input type="text" name="who" value="{{ who }}" placeholder="Person's email" style="width:220px">
+    <select name="type"><option value="">Everything</option>{% for k in types %}<option {{ 'selected' if k == kind }}>{{ k }}</option>{% endfor %}</select>
+    <button type="submit">Filter</button></form></div>
+<div class="card table-wrap"><table class="small">
+  <tr><th>When</th><th>Who</th><th>What</th><th>Details</th></tr>
+  {% for a in items %}<tr><td style="white-space:nowrap">{{ a.at|dt }}</td><td>{{ a.actor }}</td>
+    <td>{% if a.entity_type == 'booking' %}<a href="{{ url_for('bookings.booking_detail', code=a.entity_id) }}">{{ a.entity_id }}</a> {% endif %}{{ a.summary }}</td>
+    <td>{% if a.changes %}<details><summary>changes</summary><pre class="mono" style="white-space:pre-wrap">{{ a.changes|tojson(indent=1) }}</pre></details>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="4" class="empty">Nothing yet.</td></tr>{% endfor %}
+</table></div>
+<p class="actions">{% if page > 1 %}<a class="btn" href="?page={{ page - 1 }}&who={{ who }}&type={{ kind }}">‹ Newer</a>{% endif %}
+  {% if more %}<a class="btn" href="?page={{ page + 1 }}&who={{ who }}&type={{ kind }}">Older ›</a>{% endif %}</p>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ screen.code }} {{ day|date }} · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head">
+  <div>
+    <h1>{{ screen.code }} · {{ day.strftime('%A') }} {{ day|date }}</h1>
+    <p class="muted">{{ screen.name }}. {{ screen.loop_seconds }}s loop of {{ screen.slot_seconds }}s slots; {{ screen.sellable_pct|num }}% of airtime can be sold.</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('bookings.calendar_day', screen_id=screen.id, day=prev_day.isoformat()) }}">‹ Day before</a>
+    <a class="btn" href="{{ url_for('bookings.calendar_day', screen_id=screen.id, day=next_day.isoformat()) }}">Day after ›</a>
+    {% if can('hold') %}<a class="btn primary" href="{{ url_for('bookings.availability', screen_id=screen.id, start_date=day.isoformat(), end_date=day.isoformat()) }}">Check this day</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid cols-2">
+  <div class="card table-wrap">
+    <h2 style="margin-top:0">Hour by hour</h2>
+    {% if hours %}
+    <table class="small">
+      <tr><th>Hour</th><th style="width:50%">Sold</th><th class="num"></th><th>Who</th></tr>
+      {% for d, h, pct, uses in hours %}
+        <tr><td style="white-space:nowrap">{{ '%02d:00'|format(h) }}{% if d != day %} <span class="muted">(+1 day)</span>{% endif %}</td>
+          <td><div class="bar {{ 'full' if pct >= 99.99 }}"><i style="width:{{ [pct, 100]|min }}%"></i></div></td>
+          <td class="num">{{ pct|pct }}</td>
+          <td>{% for u in uses %}<a href="{{ url_for('bookings.booking_detail', code=u.booking_code) }}">{{ u.booking_code }}</a>{{ ", " if not loop.last }}{% endfor %}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}
+      <p class="empty">The screen is closed this day (blackout).</p>
+    {% endif %}
+  </div>
+  <div class="card table-wrap">
+    <h2 style="margin-top:0">Bookings this day</h2>
+    <table class="small">
+      <tr><th>Booking</th><th>Client</th><th>Status</th><th>Frequency</th></tr>
+      {% for b in bookings %}
+        {% for l in b.lines if l.screen_id == screen.id %}
+        <tr><td><a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a></td><td>{{ b.client.name }}</td>
+          <td>{{ m.status(b.status) }}</td><td>{{ m.frequency(l) }}<br><span class="muted">{{ fmt_hours(l.start_hour, l.end_hour) }}</span></td></tr>
+        {% endfor %}
+      {% else %}<tr><td colspan="4" class="empty">Nothing booked.</td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

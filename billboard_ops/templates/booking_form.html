@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ booking.code if booking else 'New hold' }} · Billboard Ops{% endblock %}
+{% macro hour_select(name, value, blank) %}
+  <select name="{{ name }}">
+    <option value="">{{ blank }}</option>
+    {% for h in range(0, 25) %}<option value="{{ h }}" {{ 'selected' if value != '' and value is not none and value|string == h|string }}>{{ '%02d:00'|format(h) }}</option>{% endfor %}
+  </select>
+{% endmacro %}
+{% macro line_fields(l) %}
+<div class="line-row">
+  <input type="hidden" name="line_id" value="{{ l.get('id') or '' }}">
+  <div class="row">
+    <div><label>Screen</label>
+      <select name="screen_id" required>
+        <option value="">Choose…</option>
+        {% for s in screens %}<option value="{{ s.id }}" {{ 'selected' if l.get('screen_id') == s.id }}>{{ s.code }} · {{ s.name[:30] }}</option>{% endfor %}
+      </select></div>
+    <div><label>From</label><input type="date" name="start_date" value="{{ l.get('start_date', '') }}" required></div>
+    <div><label>To</label><input type="date" name="end_date" value="{{ l.get('end_date', '') }}" required></div>
+    <div><label>Hours from</label>{{ hour_select('start_hour', l.get('start_hour', ''), 'All hours') }}</div>
+    <div><label>Hours to</label>{{ hour_select('end_hour', l.get('end_hour', ''), '—') }}</div>
+  </div>
+  <div class="row">
+    <div><label>Ad length (s) <span class="hint">empty = slot length</span></label><input type="number" min="1" name="ad_seconds" value="{{ l.get('ad_seconds', '') }}"></div>
+    <div><label>Frequency</label>
+      <select name="freq_mode">
+        {% for v, label in [('slots', 'Slots in the loop'), ('pph', 'Plays per hour'), ('whole', 'Whole screen')] %}
+          <option value="{{ v }}" {{ 'selected' if l.get('freq_mode', 'slots') == v }}>{{ label }}</option>{% endfor %}
+      </select></div>
+    <div><label>How many</label><input type="number" min="0.1" step="any" name="freq_value" value="{{ l.get('freq_value', '1') }}"></div>
+    <div style="align-self:end"><button type="button" class="linkish danger" onclick="removeLine(this)">Remove this screen</button></div>
+  </div>
+</div>
+{% endmacro %}
+{% block content %}
+<div class="head"><div><h1>{{ 'Edit ' ~ booking.code if booking else t('place_hold') }}</h1>
+  {% if booking %}<p class="muted">{{ booking.client.name }} · {{ m.status(booking.status) }}</p>{% endif %}</div></div>
+
+{% if overbooked %}
+<div class="card" style="border-color:var(--bad)">
+  <h2 style="margin-top:0">Not enough room</h2>
+  {% for li, s, r in overbooked %}
+    <div style="margin-bottom:10px"><strong>{{ s.code }}</strong> {{ m.vacancy_result(r, s) }}</div>
+  {% endfor %}
+  {% if can('override') %}
+    <p>You can still save this past the screen's capacity. Say why below; the team will be told.</p>
+  {% else %}
+    <p>Change the dates, hours or frequency, or ask a Manager to book it past capacity.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<form method="post" class="card" id="bookingForm">
+  {{ m.csrf() }}
+  {% if not booking %}
+  <div class="row">
+    <div><label>Client</label>
+      <select name="client_id" onchange="document.getElementById('newClient').hidden = this.value !== 'new'">
+        <option value="">Choose…</option>
+        {% for c in clients %}<option value="{{ c.id }}" {{ 'selected' if form.get('client_id') == c.id|string }}>{{ c.name }}</option>{% endfor %}
+        <option value="new" {{ 'selected' if form.get('client_id') == 'new' }}>+ New client</option>
+      </select></div>
+    <div id="newClient" {{ '' if form.get('client_id') == 'new' else 'hidden' }}>
+      <label>New client's name</label><input type="text" name="new_client" value="{{ form.get('new_client', '') }}">
+      <label>Their email</label><input type="email" name="new_client_email" value="{{ form.get('new_client_email', '') }}">
+    </div>
+  </div>
+  {% endif %}
+  <label>Campaign</label><input type="text" name="title" value="{{ form.get('title', booking.title if booking else '') }}">
+
+  <h2>Screens</h2>
+  <div id="lines">{% for l in lines %}{{ line_fields(l) }}{% endfor %}</div>
+  <template id="lineTpl">{{ line_fields({}) }}</template>
+  <p><button type="button" onclick="addLine()">+ Add a screen</button></p>
+
+  <label>Notes</label><textarea name="notes">{{ form.get('notes', booking.notes if booking else '') }}</textarea>
+  {% if overbooked and can('override') %}
+    <label>Reason for booking past capacity</label>
+    <input type="text" name="override_reason" required value="{{ form.get('override_reason', '') }}" placeholder="e.g. Owner agreed to bump house content for this client">
+  {% endif %}
+  {% if not booking and can('confirm') %}
+    <label class="check"><input type="checkbox" name="status" value="confirmed" {{ 'checked' if form.get('status') == 'confirmed' }}> Save as confirmed, not a hold</label>
+  {% endif %}
+  <p class="actions" style="margin-top:16px">
+    <button class="primary" type="submit">{{ t('save') }}</button>
+    <a class="btn" href="{{ url_for('bookings.booking_detail', code=booking.code) if booking else url_for('bookings.booking_list') }}">{{ t('cancel') }}</a>
+  </p>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+function addLine() {
+  const tpl = document.getElementById('lineTpl').content.cloneNode(true);
+  const rows = document.querySelectorAll('#lines .line-row');
+  if (rows.length) {   // a new screen starts with the previous one's dates and frequency
+    const last = rows[rows.length - 1];
+    for (const n of ['start_date', 'end_date', 'start_hour', 'end_hour', 'ad_seconds', 'freq_mode', 'freq_value']) {
+      tpl.querySelector(`[name=${n}]`).value = last.querySelector(`[name=${n}]`).value;
+    }
+  }
+  document.getElementById('lines').appendChild(tpl);
+}
+function removeLine(btn) {
+  const rows = document.querySelectorAll('#lines .line-row');
+  if (rows.length > 1) btn.closest('.line-row').remove();
+}
+</script>
+{% endblock %}

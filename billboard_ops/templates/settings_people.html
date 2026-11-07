@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}People · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>People</h1><p class="muted">Only people on this list can sign in.</p></div></div>
+{% include "_settings_nav.html" %}
+<div class="card table-wrap">
+  <table class="small">
+    <tr><th>Role</th><th>Can</th></tr>
+    <tr><td><strong>Owner</strong></td><td>Everything, including people and settings</td></tr>
+    <tr><td><strong>Manager</strong></td><td>Confirm and cancel bookings, book past capacity with a reason, edit screens, import</td></tr>
+    <tr><td><strong>Sales</strong></td><td>Check vacancy, place, change, extend and cancel holds; manage clients</td></tr>
+    <tr><td><strong>Ops</strong></td><td>See everything; edit screens, specs, blackouts and hours</td></tr>
+    <tr><td><strong>Client</strong></td><td>Their own bookings, in the client portal (opens in Phase 4)</td></tr>
+  </table>
+</div>
+<form method="post" class="card">
+  {{ m.csrf() }}
+  <h3 style="margin-top:0">Add someone</h3>
+  <div class="row">
+    <div><label>Email</label><input type="email" name="email" required></div>
+    <div><label>Name</label><input type="text" name="name"></div>
+    <div><label>Role</label><select name="role">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == 'sales' }}>{{ r|capitalize }}</option>{% endfor %}</select></div>
+    <div><label>Client <span class="hint">for client logins</span></label><select name="client_id"><option value="">—</option>{% for c in clients %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
+  </div>
+  <p><button class="primary" type="submit">Add</button></p>
+</form>
+{% for p in people %}<form method="post" id="person{{ p.id }}">{{ m.csrf() }}<input type="hidden" name="user_id" value="{{ p.id }}"></form>{% endfor %}
+<div class="card table-wrap"><table>
+  <tr><th>Person</th><th>Role</th><th>Access</th><th>Last sign-in</th><th></th></tr>
+  {% for p in people %}{% set f = 'person' ~ p.id %}
+  <tr>
+    <td>{{ p.name }}<div class="small muted">{{ p.email }}</div></td>
+    <td><select name="role" form="{{ f }}">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == p.role }}>{{ r|capitalize }}</option>{% endfor %}</select>
+      {% if p.role == 'client' %}<select name="client_id" form="{{ f }}"><option value="">—</option>{% for c in clients %}<option value="{{ c.id }}" {{ 'selected' if c.id == p.client_id }}>{{ c.name }}</option>{% endfor %}</select>{% endif %}</td>
+    <td><select name="active" form="{{ f }}"><option value="1" {{ 'selected' if p.active }}>Can sign in</option><option value="0" {{ 'selected' if not p.active }}>Removed</option></select></td>
+    <td class="small">{{ p.last_login_at|dt or 'never' }}</td>
+    <td><button type="submit" form="{{ f }}">{{ t('save') }}</button></td></tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

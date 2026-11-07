@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Calendar matching · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>Match the existing Google Calendar</h1>
+  <p class="muted">So the app updates the events the team already has, instead of making duplicates. Each screen's own calendar is read; if all screens share one calendar today, give it below.</p></div></div>
+<form method="post" class="card">
+  {{ m.csrf() }}
+  <label>One shared calendar for all screens <span class="hint">leave empty if each screen has its own (set on the screen)</span></label>
+  <input type="text" name="shared_calendar" placeholder="…@group.calendar.google.com">
+  <p class="actions"><button name="action" value="match" class="primary">Read and match the calendar</button>
+    <button name="action" value="mirror">{{ 'Start mirroring' if result else 'Skip matching and start mirroring' }}</button></p>
+</form>
+{% if result %}
+<div class="grid cols-4" style="margin-top:16px">
+  <div class="card stat"><div class="num">{{ result.matched|length }}</div><div class="lbl">Events matched to a booking</div></div>
+  <div class="card stat"><div class="num" style="color:var(--warn)">{{ result.unmatched|length }}</div><div class="lbl">Events with no booking</div></div>
+  <div class="card stat"><div class="num">{{ result.without_event|length }}</div><div class="lbl">Bookings with no event yet</div></div>
+</div>
+{% if result.unmatched %}
+<h2>Events with no matching booking</h2>
+<p class="muted small">Check each one: a booking missing from the sheet, or an old event that can be deleted.</p>
+<div class="card table-wrap"><table class="small"><tr><th>Event</th><th>Dates</th></tr>
+  {% for e in result.unmatched %}<tr><td>{{ e.event }}</td><td>{{ e.dates }}</td></tr>{% endfor %}</table></div>
+{% endif %}
+{% if result.matched %}
+<details class="card" style="margin-top:16px"><summary>Matched ({{ result.matched|length }})</summary>
+  <table class="small"><tr><th>Event</th><th>Dates</th><th>Booking</th><th>Screen</th></tr>
+  {% for e in result.matched %}<tr><td>{{ e.event }}</td><td>{{ e.dates }}</td><td>{{ e.booking }}</td><td>{{ e.screen }}</td></tr>{% endfor %}</table>
+</details>
+{% endif %}
+{% endif %}
+{% endblock %}

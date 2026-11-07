@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Clients · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>{{ t('clients') }}</h1></div>
+  <div class="actions">{% if can('edit_clients') %}<a class="btn primary" href="{{ url_for('bookings.client_edit') }}">{{ t('new') }}</a>{% endif %}</div></div>
+<div class="card table-wrap">
+  <table>
+    <tr><th>Client</th><th>Contact</th><th>Email</th><th>WhatsApp</th><th>Language</th><th class="num">Bookings</th></tr>
+    {% for c in items %}
+      <tr><td><a href="{{ url_for('bookings.client_edit', client_id=c.id) }}">{{ c.name }}</a></td><td>{{ c.contact_name }}</td>
+        <td>{{ c.email }}</td><td>{{ c.whatsapp }}</td><td>{{ 'Arabic' if c.language == 'ar' else 'English' }}</td>
+        <td class="num">{{ counts.get(c.id, 0) }}</td></tr>
+    {% else %}<tr><td colspan="6" class="empty">No clients yet.</td></tr>{% endfor %}
+  </table>
+</div>
+{% endblock %}

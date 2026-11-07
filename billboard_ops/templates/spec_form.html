@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ sp.name or 'New spec' }} · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>{{ sp.name or 'New spec' }}</h1></div></div>
+<form method="post" class="card">
+  {{ m.csrf() }}
+  <div class="row">
+    <div><label>Name</label><input type="text" name="name" value="{{ sp.name or '' }}" required></div>
+    <div><label>Width (px)</label><input type="number" min="1" name="width_px" value="{{ sp.width_px }}" required></div>
+    <div><label>Height (px)</label><input type="number" min="1" name="height_px" value="{{ sp.height_px }}" required></div>
+  </div>
+  <div class="row">
+    <div><label>File types <span class="hint">comma list</span></label><input type="text" name="file_types" value="{{ sp.file_types }}"></div>
+    <div><label>Video codecs</label><input type="text" name="video_codecs" value="{{ sp.video_codecs }}"></div>
+    <div><label>Allowed ad lengths (s) <span class="hint">e.g. 10,15</span></label><input type="text" name="durations_s" value="{{ sp.durations_s }}" required></div>
+    <div><label>Length tolerance (s)</label><input type="number" step="any" min="0" name="duration_tolerance_s" value="{{ sp.duration_tolerance_s|num }}"></div>
+  </div>
+  <div class="row">
+    <div><label>Lowest frame rate</label><input type="number" step="any" name="fps_min" value="{{ sp.fps_min|num if sp.fps_min is not none else '' }}"></div>
+    <div><label>Highest frame rate</label><input type="number" step="any" name="fps_max" value="{{ sp.fps_max|num if sp.fps_max is not none else '' }}"></div>
+    <div><label>Largest file (MB)</label><input type="number" step="any" name="max_file_mb" value="{{ sp.max_file_mb|num if sp.max_file_mb is not none else '' }}"></div>
+    <div><label>Safe margin (% of each edge)</label><input type="number" step="any" min="0" max="25" name="safe_margin_pct" value="{{ sp.safe_margin_pct|num }}"></div>
+  </div>
+  <label class="check"><input type="checkbox" name="audio_allowed" value="1" {{ 'checked' if sp.audio_allowed }}> Sound allowed</label>
+  <p class="note small">Language rule: Arabic only, or Arabic plus English. English only, or any other language, fails. This rule applies to every spec.</p>
+  <label>Notes</label><textarea name="notes">{{ sp.notes or '' }}</textarea>
+  {% if can('edit_screens') %}<p><button class="primary" type="submit">{{ t('save') }}</button></p>{% endif %}
+</form>
+{% if screens %}<p class="small muted">Used by: {% for s in screens %}<a href="{{ url_for('screens.screen_detail', screen_id=s.id) }}">{{ s.code }}</a>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
+{% endblock %}

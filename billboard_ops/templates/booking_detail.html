@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ b.code }} · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head">
+  <div>
+    <h1>{{ b.code }} {{ m.status(b.status) }}</h1>
+    <p class="muted"><a href="{{ url_for('bookings.client_edit', client_id=b.client_id) }}">{{ b.client.name }}</a>{% if b.title %} · {{ b.title }}{% endif %}
+      · {{ b.start_date|date }} – {{ b.end_date|date }}</p>
+  </div>
+  <div class="actions">
+    {% if b.status == 'hold' and can('hold') or b.status not in ('hold', 'cancelled', 'expired', 'completed') and can('edit_confirmed') %}
+      <a class="btn" href="{{ url_for('bookings.booking_edit', code=b.code) }}">{{ t('edit') }}</a>{% endif %}
+    {% if b.status == 'hold' and can('confirm') %}
+      <form method="post" action="{{ url_for('bookings.booking_action', code=b.code, action='confirm') }}" class="inline">
+        {{ m.csrf() }}<button class="primary" type="submit">{{ t('confirm') }}</button></form>{% endif %}
+  </div>
+</div>
+
+{% if b.status == 'hold' %}
+<div class="note">This hold expires on <strong>{{ b.hold_expires_at|dt }} UTC</strong>. Until then it keeps its screen time.
+  {% if can('hold') %}
+  <form method="post" action="{{ url_for('bookings.booking_action', code=b.code, action='extend') }}" class="inline">
+    {{ m.csrf() }} Extend by <input type="number" name="days" value="2" min="1" max="30" style="width:70px;display:inline-block"> days
+    <button type="submit">{{ t('extend_hold') }}</button></form>{% endif %}
+</div>
+{% endif %}
+{% if b.override_reason %}<div class="flash warning" style="margin-top:12px">Booked past capacity: {{ b.override_reason }}</div>{% endif %}
+{% if b.status == 'cancelled' %}<div class="flash error" style="margin-top:12px">Cancelled: {{ b.cancel_reason }}</div>{% endif %}
+
+<h2>Screens</h2>
+<div class="card table-wrap">
+  <table>
+    <tr><th>Screen</th><th>Dates</th><th>Hours</th><th>Frequency</th><th>Room now</th><th>Calendar</th></tr>
+    {% for l in b.lines %}
+      <tr>
+        <td><a href="{{ url_for('screens.screen_detail', screen_id=l.screen_id) }}">{{ l.screen.code }}</a> {{ l.screen.name }}</td>
+        <td style="white-space:nowrap">{{ l.start_date|date }} – {{ l.end_date|date }}</td>
+        <td>{{ fmt_hours(l.start_hour, l.end_hour) }}</td>
+        <td>{{ m.frequency(l) }}</td>
+        <td>{% for cl, r in checks if cl.id == l.id %}<span class="pill {{ r.status }}">{{ t(r.status) }}</span>{% if r.blocking %}<div class="small muted">with {{ r.blocking|join(', ') }}</div>{% endif %}{% else %}<span class="muted">—</span>{% endfor %}</td>
+        <td class="small">{% if l.calendar_event_id %}<span class="pill ok">mirrored</span>{% elif not l.screen.calendar_id %}<span class="muted">no calendar set</span>{% else %}<span class="muted">waiting</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% if b.notes %}<h2>Notes</h2><div class="card"><p style="white-space:pre-wrap">{{ b.notes }}</p></div>{% endif %}
+
+{% if b.status in ('hold', 'confirmed') and (b.status == 'hold' and can('cancel_hold') or can('cancel_confirmed')) %}
+<details class="card" style="margin-top:16px">
+  <summary class="danger"><strong>Cancel this booking</strong></summary>
+  <form method="post" action="{{ url_for('bookings.booking_action', code=b.code, action='cancel') }}">
+    {{ m.csrf() }}
+    <label>Why?</label><input type="text" name="reason" required>
+    <p><button class="danger" type="submit">Cancel booking and free its screen time</button></p>
+  </form>
+</details>
+{% endif %}
+
+<h2>History</h2>
+<div class="card table-wrap">
+  <table class="small">
+    {% for a in history %}
+      <tr><td class="muted" style="white-space:nowrap">{{ a.at|dt }}</td><td>{{ a.actor }}</td><td>{{ a.summary }}</td></tr>
+    {% else %}<tr><td class="empty">No history.</td></tr>{% endfor %}
+  </table>
+</div>
+<p class="small muted">Created by {{ b.created_by }} on {{ b.created_at|dt }}{% if b.source != 'manual' %}, from {{ b.source }}{% endif %}.</p>
+{% endblock %}

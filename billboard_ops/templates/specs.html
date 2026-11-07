@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Specs · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>{{ t('specs') }}</h1><p class="muted">What a file must be to play. Phase 3's automatic checks read every rule from here.</p></div>
+  <div class="actions">{% if can('edit_screens') %}<a class="btn primary" href="{{ url_for('screens.spec_edit') }}">{{ t('new') }}</a>{% endif %}</div></div>
+<div class="card table-wrap"><table>
+  <tr><th>Spec</th><th>Size</th><th>Files</th><th>Ad lengths</th><th>Frame rate</th><th>Max size</th><th>Sound</th><th class="num">Screens</th></tr>
+  {% for sp in specs %}<tr><td><a href="{{ url_for('screens.spec_edit', spec_id=sp.id) }}">{{ sp.name }}</a></td>
+    <td>{{ sp.width_px }}×{{ sp.height_px }} <span class="muted small">{{ sp.orientation }}</span></td><td class="small">{{ sp.file_types }}</td>
+    <td>{{ sp.durations_s }}s</td><td class="small">{% if sp.fps_min or sp.fps_max %}{{ sp.fps_min|num if sp.fps_min else '' }}–{{ sp.fps_max|num if sp.fps_max else '' }}{% else %}—{% endif %}</td>
+    <td>{{ (sp.max_file_mb|num ~ ' MB') if sp.max_file_mb else '—' }}</td><td>{{ 'allowed' if sp.audio_allowed else 'no' }}</td>
+    <td class="num">{{ counts.get(sp.id, 0) }}</td></tr>
+  {% else %}<tr><td colspan="8" class="empty">No specs yet.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

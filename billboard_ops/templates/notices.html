@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Notices · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>{{ t('notifications') }}</h1><p class="muted">Reminders, warnings and anything the team should know.</p></div></div>
+<div class="card table-wrap">
+  <table>
+    <tr><th>When</th><th>Notice</th><th></th></tr>
+    {% for n in items %}
+      <tr {% if n.id > seen %}style="font-weight:600"{% endif %}>
+        <td class="small muted" style="white-space:nowrap">{{ n.created_at|dt }}</td>
+        <td><span class="pill {{ n.kind }}">{{ n.kind }}</span> {{ n.text }}</td>
+        <td>{% if n.link %}<a href="{{ n.link }}">Open</a>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="3" class="empty">Nothing yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

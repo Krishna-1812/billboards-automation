@@ -1,0 +1,7 @@
+<div class="actions" style="margin-bottom:16px">
+  {% set ep = request.endpoint %}
+  {% if can('settings') %}<a class="btn {{ 'primary' if ep == 'admin.general' }}" href="{{ url_for('admin.general') }}">General</a>{% endif %}
+  {% if can('people') %}<a class="btn {{ 'primary' if ep == 'admin.people' }}" href="{{ url_for('admin.people') }}">People</a>{% endif %}
+  {% if can('settings') %}<a class="btn {{ 'primary' if ep == 'admin.connections' }}" href="{{ url_for('admin.connections') }}">Connections</a>{% endif %}
+  {% if can('review_sheet') %}<a class="btn {{ 'primary' if ep == 'admin.sheet_changes' }}" href="{{ url_for('admin.sheet_changes') }}">Sheet changes</a>{% endif %}
+</div>

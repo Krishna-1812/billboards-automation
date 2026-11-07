@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Blackouts & hours · Billboard Ops{% endblock %}
+{% macro hour_select(name, blank) %}<select name="{{ name }}"><option value="">{{ blank }}</option>{% for h in range(0, 25) %}<option value="{{ h }}">{{ '%02d:00'|format(h) }}</option>{% endfor %}</select>{% endmacro %}
+{% block content %}
+<div class="head"><div><h1>Blackouts &amp; special hours</h1>
+  <p class="muted">Days a screen is off (maintenance, events), and stretches with different hours (for example a holiday month). The vacancy check and the calendar follow them.</p></div></div>
+{% if can('edit_screens') %}
+<form method="post" action="{{ url_for('screens.closure_add') }}" class="card">
+  {{ m.csrf() }}
+  <div class="row">
+    <div><label>Screen</label><select name="screen_id"><option value="">All screens</option>
+      {% for s in screens.values() %}<option value="{{ s.id }}">{{ s.code }} · {{ s.name[:30] }}</option>{% endfor %}</select></div>
+    <div><label>Kind</label><select name="kind"><option value="blackout">Blackout (off all day)</option><option value="hours">Special hours</option></select></div>
+    <div><label>From</label><input type="date" name="start_date" required></div>
+    <div><label>To</label><input type="date" name="end_date"></div>
+    <div><label>Opens (special hours)</label>{{ hour_select('open_hour', '—') }}</div>
+    <div><label>Closes</label>{{ hour_select('close_hour', '—') }}</div>
+  </div>
+  <label>Reason</label><input type="text" name="reason">
+  <p><button class="primary" type="submit">Add</button></p>
+</form>
+{% endif %}
+<h2>Blackouts</h2>
+<div class="card table-wrap"><table>
+  <tr><th>Screen</th><th>Dates</th><th>Reason</th><th></th></tr>
+  {% for b in blackouts %}<tr><td>{{ screens[b.screen_id].code if b.screen_id else 'All screens' }}</td><td>{{ b.start_date|date }} – {{ b.end_date|date }}</td><td>{{ b.reason }}</td>
+    <td>{% if can('edit_screens') %}<form method="post" class="inline" action="{{ url_for('screens.closure_delete', kind='blackout', item_id=b.id) }}">{{ m.csrf() }}<button class="linkish danger">Remove</button></form>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="4" class="empty">None.</td></tr>{% endfor %}
+</table></div>
+<h2>Special hours</h2>
+<div class="card table-wrap"><table>
+  <tr><th>Screen</th><th>Dates</th><th>Hours</th><th>Reason</th><th></th></tr>
+  {% for o in overrides %}<tr><td>{{ screens[o.screen_id].code if o.screen_id else 'All screens' }}</td><td>{{ o.start_date|date }} – {{ o.end_date|date }}</td>
+    <td>{{ fmt_hours(o.open_hour, o.close_hour) }}</td><td>{{ o.reason }}</td>
+    <td>{% if can('edit_screens') %}<form method="post" class="inline" action="{{ url_for('screens.closure_delete', kind='hours', item_id=o.id) }}">{{ m.csrf() }}<button class="linkish danger">Remove</button></form>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="5" class="empty">None.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

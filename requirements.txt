@@ -1,0 +1,14 @@
+# Billboard Ops: its own Railway services (web + worker), built from this folder.
+flask>=3.0
+sqlalchemy>=2.0.30
+alembic>=1.13
+psycopg2-binary>=2.9.9
+gunicorn>=22.0
+# Google sign-in (ID token check), Sheets, Calendar and Drive through a service account.
+google-auth>=2.29
+google-api-python-client>=2.127
+# Importing .xlsx exports of the old sheets.
+openpyxl>=3.1
+# Screen time zones on hosts without a system zone database.
+tzdata>=2024.1
+pytest>=8.0

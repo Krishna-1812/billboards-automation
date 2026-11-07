@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ sc.code }} · Billboard Ops{% endblock %}
+{% macro hour_select(name, blank) %}<select name="{{ name }}"><option value="">{{ blank }}</option>{% for h in range(0, 25) %}<option value="{{ h }}">{{ '%02d:00'|format(h) }}</option>{% endfor %}</select>{% endmacro %}
+{% block content %}
+<div class="head">
+  <div><h1>{{ sc.code }} · {{ sc.name }} {% if not sc.active %}<span class="pill">inactive</span>{% endif %}</h1>
+    <p class="muted">{{ sc.area }}{% if sc.address %} · {{ sc.address }}{% endif %}</p></div>
+  <div class="actions">
+    <a class="btn primary" href="{{ url_for('bookings.availability', screen_id=sc.id) }}">{{ t('availability') }}</a>
+    {% if can('edit_screens') %}<a class="btn" href="{{ url_for('screens.screen_edit', screen_id=sc.id) }}">{{ t('edit') }}</a>{% endif %}
+  </div>
+</div>
+<div class="grid cols-2">
+  <div class="card">
+    <h3 style="margin-top:0">The screen</h3>
+    <table class="small">
+      <tr><th>Spec</th><td>{% if sc.spec %}<a href="{{ url_for('screens.spec_edit', spec_id=sc.spec_id) }}">{{ sc.spec.name }}</a>: {{ sc.spec.width_px }}×{{ sc.spec.height_px }} {{ sc.spec.orientation }}, ads of {{ sc.spec.durations_s }}s{% else %}<span class="pill warning">No spec yet</span>{% endif %}</td></tr>
+      <tr><th>Loop</th><td>{{ sc.loop_seconds }}s: {{ sc.slots_per_loop }} slots of {{ sc.slot_seconds }}s; one slot = {{ sc.plays_per_hour_per_slot|num }} plays an hour</td></tr>
+      <tr><th>Sellable</th><td>{{ sc.sellable_pct|num }}% of airtime</td></tr>
+      <tr><th>Hours</th><td>{{ '24 hours' if sc.open_hour == 0 and sc.close_hour == 24 else fmt_hours(sc.open_hour, sc.close_hour) }} ({{ sc.timezone }})</td></tr>
+      <tr><th>Physical size</th><td>{{ sc.physical_size or '—' }}</td></tr>
+      <tr><th>Calendar</th><td class="mono">{{ sc.calendar_id or 'not set' }}</td></tr>
+    </table>
+    {% if sc.notes %}<p class="small" style="white-space:pre-wrap">{{ sc.notes }}</p>{% endif %}
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Next 30 days</h3>
+    <div class="strip">{% for d, peak, avg, closed in strip %}<a class="{{ peak|heat(closed) }}" title="{{ d|date }}: {{ 'closed' if closed else peak|pct }}" href="{{ url_for('bookings.calendar_day', screen_id=sc.id, day=d.isoformat()) }}"></a>{% endfor %}</div>
+    <p class="small muted">Each bar is a day, shaded by its busiest hour. Click one for the hours.</p>
+  </div>
+</div>
+
+<h2>Booked from today</h2>
+<div class="card table-wrap"><table>
+  <tr><th>Booking</th><th>Client</th><th>Dates</th><th>Hours</th><th>Frequency</th><th>Status</th></tr>
+  {% for l in upcoming %}<tr><td><a href="{{ url_for('bookings.booking_detail', code=l.booking.code) }}">{{ l.booking.code }}</a></td>
+    <td>{{ l.booking.client.name }}</td><td style="white-space:nowrap">{{ l.start_date|date }} – {{ l.end_date|date }}</td>
+    <td class="small">{{ fmt_hours(l.start_hour, l.end_hour) }}</td><td class="small">{{ m.frequency(l) }}</td><td>{{ m.status(l.booking.status) }}</td></tr>
+  {% else %}<tr><td colspan="6" class="empty">Nothing booked.</td></tr>{% endfor %}
+</table></div>
+
+<h2>Blackouts and special hours</h2>
+<div class="card">
+  {% for b in blackouts %}<p><span class="pill no">Blackout</span> {{ b.start_date|date }} – {{ b.end_date|date }} {{ b.reason }}</p>{% endfor %}
+  {% for o in overrides %}<p><span class="pill partial">Hours</span> {{ o.start_date|date }} – {{ o.end_date|date }}: {{ fmt_hours(o.open_hour, o.close_hour) }} {{ o.reason }}</p>{% endfor %}
+  {% if not blackouts and not overrides %}<p class="muted">None coming up.</p>{% endif %}
+  {% if can('edit_screens') %}
+  <details><summary>Add one for this screen</summary>
+    <form method="post" action="{{ url_for('screens.closure_add') }}">
+      {{ m.csrf() }}<input type="hidden" name="screen_id" value="{{ sc.id }}"><input type="hidden" name="back" value="{{ request.path }}">
+      <div class="row">
+        <div><label>Kind</label><select name="kind"><option value="blackout">Blackout (off all day)</option><option value="hours">Special hours</option></select></div>
+        <div><label>From</label><input type="date" name="start_date" required></div>
+        <div><label>To</label><input type="date" name="end_date"></div>
+        <div><label>Opens (special hours)</label>{{ hour_select('open_hour', '—') }}</div>
+        <div><label>Closes</label>{{ hour_select('close_hour', '—') }}</div>
+      </div>
+      <label>Reason</label><input type="text" name="reason">
+      <p><button type="submit">Add</button></p>
+    </form>
+  </details>
+  {% endif %}
+</div>
+{% endblock %}

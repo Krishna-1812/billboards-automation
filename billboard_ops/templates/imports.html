@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Import · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>{{ t('imports') }}</h1>
+  <p class="muted">Bring in the existing sheets, in this order: specs, then screens, then bookings. Nothing is saved until you've seen the trial run.</p></div></div>
+<form method="post" action="{{ url_for('imports.import_new') }}" enctype="multipart/form-data" class="card">
+  {{ m.csrf() }}
+  <div class="row">
+    <div><label>What's in the sheet</label><select name="kind">{% for k, label in kinds.items() %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select></div>
+    <div><label>Google Sheet link</label><input type="text" name="sheet" placeholder="https://docs.google.com/spreadsheets/d/…" {{ '' if connected else 'disabled' }}></div>
+    <div><label>Tab name</label><input type="text" name="tab" placeholder="e.g. Bookings 2026"></div>
+  </div>
+  {% if connected %}
+    <p class="small muted">Share the sheet (view access is enough) with <span class="mono">{{ sa_email }}</span>.</p>
+  {% else %}
+    <p class="small muted">Google isn't connected yet, so upload the sheet instead (File → Download → .xlsx).</p>
+  {% endif %}
+  <label>Or upload an .xlsx or .csv</label><input type="file" name="file" accept=".xlsx,.xlsm,.csv">
+  <p><button class="primary" type="submit">Read it</button></p>
+</form>
+<h2>Imports so far</h2>
+<div class="card table-wrap"><table>
+  <tr><th>#</th><th>What</th><th>From</th><th>Rows</th><th>Status</th><th>By</th><th>When</th></tr>
+  {% for r in runs %}<tr><td><a href="{{ url_for('imports.import_preview', run_id=r.id) }}">{{ r.id }}</a></td><td>{{ kinds[r.kind] }}</td>
+    <td class="small">{{ r.source_label }}</td><td>{{ r.rows|length }}</td><td><span class="pill {{ 'ok' if r.status == 'committed' else '' }}">{{ r.status }}</span></td>
+    <td class="small">{{ r.created_by }}</td><td class="small">{{ r.created_at|dt }}</td></tr>
+  {% else %}<tr><td colspan="7" class="empty">None yet.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

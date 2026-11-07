@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Match columns · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>Match the columns</h1>
+  <p class="muted">{{ kinds[run.kind] }} from {{ run.source_label }}: {{ run.rows|length }} rows. The matches below are guessed from the column names; correct any that are wrong.</p></div></div>
+<form method="post" class="card">
+  {{ m.csrf() }}
+  <table>
+    <tr><th>In the app</th><th>Column in the sheet</th><th>First values</th></tr>
+    {% for field, label, required, _ in fields %}
+      {% set cur = run.mapping.get(field) %}
+      <tr><td>{{ label }}{% if required %} <span class="pill hold">needed</span>{% endif %}</td>
+        <td><select name="map_{{ field }}"><option value="">— not in the sheet —</option>
+          {% for h in run.header %}<option value="{{ loop.index0 }}" {{ 'selected' if cur == loop.index0 }}>{{ h or ('Column ' ~ loop.index) }}</option>{% endfor %}</select></td>
+        <td class="small muted">{% if cur is not none %}{% for r in sample %}{{ r[cur] if cur < r|length else '' }}{{ " · " if not loop.last }}{% endfor %}{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  <p><button class="primary" type="submit">Run the trial</button></p>
+</form>
+{% endblock %}

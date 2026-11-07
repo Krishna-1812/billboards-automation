@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Dashboard · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>{{ t('dashboard') }}</h1><p class="muted">{{ today()|date }}. The full owner dashboard grows with each phase.</p></div>
+  <div class="actions">
+    <a class="btn primary" href="{{ url_for('bookings.availability') }}">{{ t('availability') }}</a>
+    {% if can('hold') %}<a class="btn" href="{{ url_for('bookings.booking_new') }}">{{ t('place_hold') }}</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid cols-4">
+  <div class="card stat"><div class="num">{{ week_avg|pct }}</div><div class="lbl">Loop time sold, next 7 days (average across screens)</div></div>
+  <div class="card stat"><div class="num">{{ running|length }}</div><div class="lbl">Campaigns running today</div></div>
+  <div class="card stat"><div class="num">{{ holds|length }}</div><div class="lbl">Open holds, {{ expiring|length }} expire within 48 hours</div></div>
+  <div class="card stat"><div class="num">{{ starting|length }}</div><div class="lbl">Bookings starting in the next 7 days</div></div>
+</div>
+
+{% if overrides or sheet_changes or problems %}
+<h2>Needs attention</h2>
+<div class="card">
+  {% if overrides %}<p><span class="pill warning">Over capacity</span> {{ overrides|length }} booking(s) were allowed past a screen's capacity:
+    {% for b in overrides[:10] %}<a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a>{{ ", " if not loop.last }}{% endfor %}.</p>{% endif %}
+  {% if sheet_changes %}<p><span class="pill warning">Old sheet</span> {{ sheet_changes|length }} direct edit(s) to the old sheet need reviewing. <a href="{{ url_for('admin.sheet_changes') }}">Review</a></p>{% endif %}
+  {% if problems %}<p><span class="pill error">Sync</span> {{ problems|length }} recent background task(s) didn't finish, e.g. "{{ (problems[0].last_error or '').splitlines()[0][:120] }}".
+    {% if can('settings') %}<a href="{{ url_for('admin.connections') }}">See connections</a>{% endif %}</p>{% endif %}
+</div>
+{% endif %}
+
+<div class="grid cols-2" style="margin-top:16px">
+  <div>
+    <h2>Holds expiring soonest</h2>
+    <div class="card table-wrap">
+      <table>
+        <tr><th>Booking</th><th>Client</th><th>Screens</th><th>Expires (UTC)</th></tr>
+        {% for b in holds[:8] %}
+          <tr><td><a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a></td>
+            <td>{{ b.client.name }}</td><td>{{ m.screens_of(b) }}</td>
+            <td {% if b in expiring %}style="color:var(--bad);font-weight:600"{% endif %}>{{ b.hold_expires_at|dt }}</td></tr>
+        {% else %}<tr><td colspan="4" class="empty">No open holds.</td></tr>{% endfor %}
+      </table>
+    </div>
+  </div>
+  <div>
+    <h2>Starting in the next 7 days</h2>
+    <div class="card table-wrap">
+      <table>
+        <tr><th>Booking</th><th>Client</th><th>Starts</th><th>Status</th></tr>
+        {% for b in starting[:8] %}
+          <tr><td><a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a></td>
+            <td>{{ b.client.name }}</td><td>{{ b.start_date|date }}</td><td>{{ m.status(b.status) }}</td></tr>
+        {% else %}<tr><td colspan="4" class="empty">Nothing starts this week.</td></tr>{% endfor %}
+      </table>
+    </div>
+  </div>
+</div>
+
+<h2>Screens today</h2>
+<div class="card table-wrap">
+  <table>
+    <tr><th>Screen</th><th>Area</th><th>Busiest hour today</th><th></th></tr>
+    {% for s in screens %}
+      <tr><td><a href="{{ url_for('screens.screen_detail', screen_id=s.id) }}">{{ s.code }}</a> {{ s.name }}</td>
+        <td>{{ s.area }}</td>
+        <td style="width:40%"><div class="bar {{ 'full' if today_peak.get(s.id, 0) >= 99.99 }}"><i style="width:{{ [today_peak.get(s.id, 0), 100]|min }}%"></i></div></td>
+        <td class="num small">{{ today_peak.get(s.id, 0)|pct }}</td></tr>
+    {% else %}
+      <tr><td colspan="4" class="empty">No screens yet. {% if can('import') %}<a href="{{ url_for('imports.import_list') }}">Import them</a> or {% endif %}<a href="{{ url_for('screens.screen_edit') }}">add one</a>.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>Recent activity</h2>
+<div class="card table-wrap">
+  <table class="small">
+    {% for a in activity %}
+      <tr><td class="muted" style="white-space:nowrap">{{ a.at|dt }}</td><td>{{ a.actor }}</td><td>{{ a.summary }}</td></tr>
+    {% else %}<tr><td class="empty">Nothing yet.</td></tr>{% endfor %}
+  </table>
+</div>
+{% endblock %}

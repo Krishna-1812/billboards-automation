@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Calendar · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head">
+  <div>
+    <h1>{{ t('calendar') }}</h1>
+    <p class="muted">Each cell shows how full that screen's busiest hour is that day. Click a cell to see its hours and bookings.</p>
+  </div>
+  <form class="actions" method="get">
+    <select name="view" onchange="this.form.submit()">
+      {% for v in ['week', 'month', 'quarter'] %}<option value="{{ v }}" {{ 'selected' if v == view }}>{{ v|capitalize }}</option>{% endfor %}
+    </select>
+    <select name="area" onchange="this.form.submit()">
+      <option value="">All areas</option>
+      {% for a in areas %}<option {{ 'selected' if a == area }}>{{ a }}</option>{% endfor %}
+    </select>
+    <select name="spec" onchange="this.form.submit()">
+      <option value="">All specs</option>
+      {% for sp in specs %}<option value="{{ sp.id }}" {{ 'selected' if sp.id == spec_id }}>{{ sp.name }}</option>{% endfor %}
+    </select>
+    <input type="hidden" name="start" value="{{ start.isoformat() }}">
+  </form>
+</div>
+
+<div class="actions" style="margin-bottom:12px">
+  <a class="btn" href="{{ url_for('bookings.calendar_grid', view=view, start=prev_start.isoformat(), area=area, spec=spec_id or '') }}">‹ Earlier</a>
+  <strong><bdi>{{ dates[0]|date }} – {{ dates[-1]|date }}</bdi></strong>
+  <a class="btn" href="{{ url_for('bookings.calendar_grid', view=view, start=next_start.isoformat(), area=area, spec=spec_id or '') }}">Later ›</a>
+  <a class="btn" href="{{ url_for('bookings.calendar_grid', view=view, area=area, spec=spec_id or '') }}">Today</a>
+</div>
+
+<div class="card table-wrap">
+  {% if screens %}
+  <table class="cal">
+    <tr><th class="scr"></th>
+      {% for d in dates %}<th class="day {{ 'today' if d == today() }}" title="{{ d|date }}">{{ d.strftime('%a')[:2] }}<br>{{ d.day }}</th>{% endfor %}
+    </tr>
+    {% for s in screens %}
+      <tr>
+        <th class="scr"><a href="{{ url_for('screens.screen_detail', screen_id=s.id) }}">{{ s.code }}</a> <span class="muted">{{ s.name[:22] }}</span></th>
+        {% for d, peak, avg, closed in grid[s.id] %}
+          <td><a class="{{ peak|heat(closed) }}" href="{{ url_for('bookings.calendar_day', screen_id=s.id, day=d.isoformat()) }}"
+                 title="{{ s.code }} · {{ d|date }}: {% if closed %}closed{% else %}busiest hour {{ peak|pct }}, day average {{ avg|pct }}{% endif %}">{% if not closed and peak > 0 and view != 'quarter' %}{{ peak|round|int }}{% endif %}</a></td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p class="empty">No screens to show.</p>
+  {% endif %}
+</div>
+<div class="legend" style="margin-top:10px">
+  <span><span class="sw heat-0"></span>Empty</span>
+  <span><span class="sw heat-1"></span>Under 50%</span>
+  <span><span class="sw heat-2"></span>50–80%</span>
+  <span><span class="sw heat-3"></span>80–99%</span>
+  <span><span class="sw heat-4"></span>Full</span>
+  <span><span class="sw heat-closed"></span>Closed or blackout</span>
+</div>
+{% endblock %}

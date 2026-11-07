@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Import #{{ run.id }} · Billboard Ops{% endblock %}
+{% block content %}
+{% set c = p.get('counts', {}) %}
+<div class="head">
+  <div><h1>{{ kinds[run.kind] }} import #{{ run.id }} <span class="pill {{ 'ok' if run.status == 'committed' }}">{{ run.status }}</span></h1>
+    <p class="muted">{{ run.source_label }} · {{ c.get('total', 0) }} rows</p></div>
+  <div class="actions">
+    {% if run.status != 'committed' %}
+      <a class="btn" href="{{ url_for('imports.import_map', run_id=run.id) }}">Change column matches</a>
+      {% if run.source_kind == 'sheet' %}<form method="post" class="inline" action="{{ url_for('imports.import_reread', run_id=run.id) }}">{{ m.csrf() }}<button>Read the sheet again</button></form>{% endif %}
+    {% elif run.kind == 'bookings' %}
+      <a class="btn" href="{{ url_for('imports.import_calendar', run_id=run.id) }}">Calendar matching</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid cols-4">
+  <div class="card stat"><div class="num">{{ c.get('ok', 0) }}</div><div class="lbl">Ready</div></div>
+  <div class="card stat"><div class="num" style="color:var(--bad)">{{ c.get('error', 0) }}</div><div class="lbl">Can't be read</div></div>
+  {% if run.kind == 'bookings' %}
+  <div class="card stat"><div class="num" style="color:var(--bad)">{{ c.get('clash', 0) }}</div><div class="lbl">Clash (past a screen's capacity)</div></div>
+  <div class="card stat"><div class="num">{{ c.get('skip', 0) }}</div><div class="lbl">Already imported</div></div>
+  {% endif %}
+</div>
+{% if p.get('new_clients') %}<p class="small" style="margin-top:12px">New clients that will be created: {{ p['new_clients']|join(', ') }}</p>{% endif %}
+{% if p.get('result') %}<div class="flash ok" style="margin-top:12px">Imported: {% for k, v in p['result'].items() if not k.startswith('_') %}{{ v }} {{ k }}{{ ", " if not loop.last }}{% endfor %}.</div>{% endif %}
+
+{% if run.status != 'committed' %}
+<form method="post" action="{{ url_for('imports.import_commit', run_id=run.id) }}" class="card" style="margin-top:16px">
+  {{ m.csrf() }}
+  {% if c.get('error') %}<label class="check"><input type="checkbox" name="skip_errors" value="1"> Skip the {{ c['error'] }} row(s) that can't be read</label>{% endif %}
+  {% if c.get('clash') %}<label class="check"><input type="checkbox" name="import_clashes" value="1"> Import the {{ c['clash'] }} clashing booking(s), flagged for review</label>{% endif %}
+  <p class="small muted">Best practice: fix problems in the sheet, then "Read the sheet again", until the trial is clean.</p>
+  <p class="actions"><button class="primary" type="submit">Import</button></p>
+</form>
+<form method="post" action="{{ url_for('imports.import_discard', run_id=run.id) }}" class="inline">{{ m.csrf() }}<button class="linkish danger">Discard this import</button></form>
+{% endif %}
+
+<h2>Rows</h2>
+<p class="small"><a href="?show=problems" class="{{ 'muted' if show_filter != 'problems' }}">Problems only</a> · <a href="?show=all" class="{{ 'muted' if show_filter != 'all' }}">All rows</a></p>
+<div class="card table-wrap"><table class="small">
+  <tr><th>Row</th><th>State</th><th>Values</th><th>Notes</th></tr>
+  {% for r in p.get('rows', []) if show_filter == 'all' or r.state != 'ok' or r.warnings %}
+    <tr><td>{{ r.n }}</td><td><span class="pill {{ r.state }}">{{ r.state }}</span>{% if r.get('action') %}<div class="muted">{{ r.action }}</div>{% endif %}</td>
+      <td>{% for k, v in r.show.items() if v not in (none, '') %}<span class="muted">{{ k|replace('_', ' ') }}:</span> {{ v }}{{ "; " if not loop.last }}{% endfor %}</td>
+      <td>{% for e in r.errors %}<div style="color:var(--bad)">{{ e }}</div>{% endfor %}
+        {% if r.state == 'clash' %}<div style="color:var(--bad)">No room: {{ r.get('clash_reason') }}{% if r.get('clash_with') %}, with {{ r['clash_with']|join(', ') }}{% endif %}</div>{% endif %}
+        {% for w in r.warnings %}<div class="muted">{{ w }}</div>{% endfor %}</td></tr>
+  {% else %}<tr><td colspan="4" class="empty">No problems.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

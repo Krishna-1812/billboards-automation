@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Connections · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>Connections</h1></div></div>
+{% include "_settings_nav.html" %}
+{% if test %}<div class="flash {{ test[0] }}">{{ test[1] }}</div>{% endif %}
+<div class="grid cols-2">
+  <div class="card">
+    <h3 style="margin-top:0">Google (Sheets and Calendar)</h3>
+    {% if connected %}
+      <p><span class="pill ok">connected</span> The app's Google account is <span class="mono">{{ sa_email }}</span>.</p>
+      <p class="small">Share each sheet and each screen's calendar with that address ("Make changes to events" for calendars, "Editor" for the mirror sheet).</p>
+      <form method="post">{{ m.csrf() }}
+        <label>Test a sheet</label><input type="text" name="sheet" placeholder="Sheet link">
+        <p class="actions"><button name="action" value="test_sheet">Test</button>
+          {% if mirror %}<button name="action" value="mirror_now">Rewrite the mirror tab now</button>{% endif %}</p></form>
+    {% else %}
+      <p><span class="pill no">not connected</span> Set <span class="mono">GOOGLE_SERVICE_ACCOUNT_JSON</span> on Railway (both services). Until then, imports work from uploaded .xlsx files and nothing is mirrored.</p>
+    {% endif %}
+    {% if no_calendar %}<p class="small"><span class="pill warning">{{ no_calendar|length }}</span> active screen(s) have no calendar set:
+      {% for s in no_calendar[:15] %}<a href="{{ url_for('screens.screen_edit', screen_id=s.id) }}">{{ s.code }}</a>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Worker and email</h3>
+    <p>Worker: {% if heartbeat %}last seen {{ heartbeat[:16]|replace('T', ' ') }} UTC{% else %}<span class="pill no">not seen yet</span>{% endif %}; {{ queued }} task(s) waiting.</p>
+    <p>Email: {% if cfg.SMTP_HOST %}<span class="pill ok">set up</span> from {{ cfg.MAIL_FROM }}{% else %}<span class="pill warning">not set up</span> reminders show in the app only{% endif %}.</p>
+    <p>Error alerts go to: {{ cfg.ALERT_EMAILS|join(', ') or 'nobody yet (ALERT_EMAILS)' }}.</p>
+  </div>
+</div>
+<h2>Background tasks that didn't finish</h2>
+<div class="card table-wrap"><table class="small">
+  <tr><th>When</th><th>Task</th><th>State</th><th>Why</th><th></th></tr>
+  {% for j in problems %}<tr><td style="white-space:nowrap">{{ j.finished_at|dt }}</td><td>{{ j.kind }}</td><td><span class="pill {{ 'error' if j.status == 'failed' else 'warning' }}">{{ j.status }}</span></td>
+    <td>{{ (j.last_error or '').splitlines()[0][:200] }}</td>
+    <td><form method="post">{{ m.csrf() }}<input type="hidden" name="job_id" value="{{ j.id }}"><button class="linkish" name="action" value="retry">Try again</button></form></td></tr>
+  {% else %}<tr><td colspan="5" class="empty">None.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}
