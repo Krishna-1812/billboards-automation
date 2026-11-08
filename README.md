@@ -470,7 +470,7 @@ service.
 | `OWNER_EMAILS` | yes | The owners' Google addresses. Owners add everyone else in Settings → People. |
 | `APP_URL` | yes | For links in calendar events, emails and portal sign-in links |
 | `GOOGLE_CLIENT_ID` | for sign-in | A Google OAuth client ID ("Web application"), with the app's address as an authorised JavaScript origin |
-| `SECRET_KEY` | no | Signs the sign-in cookies. If it isn't set, the app makes one and keeps it in the database. |
+| `SECRET_KEY` | no | Signs the sign-in cookies. If it isn't set, the app derives one from the database password. |
 | `LOGIN_REQUIRED` | no | Sign-in comes on by itself once `GOOGLE_CLIENT_ID` is set. `LOGIN_REQUIRED=0` keeps it off; `1` turns it on without Google (only with `DEV_LOGIN`, for local use). |
 | `WORKER_IN_WEB` | no | `0` when a separate worker service runs |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | for Sheets, Calendar and Drive | The whole JSON key of a Google service account |

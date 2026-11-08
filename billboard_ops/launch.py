@@ -52,7 +52,7 @@ def checks(session, cfg, today=None):
             "Railway: add Postgres and set DATABASE_URL on the web service (README → Launch, in order)"),
         _ok("ok" if cfg.SECRET_KEY and cfg.SECRET_KEY not in ("dev-only-not-secret", "test") else "todo",
             "Sign-in cookies are signed with a secret key",
-            "Made by the app and kept in the database (a SECRET_KEY variable on Railway would replace it)"
+            "Made by the app from the database password (a SECRET_KEY variable on Railway would replace it)"
             if getattr(cfg, "SECRET_KEY_STORED", False) else "", "Railway → web service → Variables → SECRET_KEY"),
         _ok("ok" if beat_ok else "todo", "The worker is running",
             "" if beat_ok else ("never seen" if age is None else f"last seen {int(age.total_seconds() // 60)} min ago"),

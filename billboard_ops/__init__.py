@@ -31,7 +31,7 @@ def create_app(config=None):
         if cfg.TESTING or cfg.DEV_LOGIN or cfg.DATABASE_URL.startswith("sqlite"):
             cfg.SECRET_KEY = "dev-only-not-secret"
         else:
-            cfg.SECRET_KEY, cfg.SECRET_KEY_STORED = stored_secret(), True
+            cfg.SECRET_KEY, cfg.SECRET_KEY_STORED = derived_secret(cfg.DATABASE_URL), True
     if cfg.LOGIN_REQUIRED and not cfg.TESTING and not has_real_owner(cfg):
         # Switching sign-in on with nobody allowed in would lock everyone out: keep it off and say why.
         cfg.LOGIN_REQUIRED = False
@@ -122,25 +122,13 @@ def create_app(config=None):
     return app
 
 
-def stored_secret():
-    """No SECRET_KEY was set: make one once and keep it in the database, so every process signs cookies alike.
-    Setting SECRET_KEY on Railway replaces it."""
-    import secrets
-
-    from sqlalchemy.exc import IntegrityError
-
-    from .models import Setting
-    with db.session_scope() as s:
-        row = s.get(Setting, "secret_key")
-        if row is not None and row.value and row.value.get("v"):
-            return row.value["v"]
-    try:
-        with db.session_scope() as s:
-            s.add(Setting(key="secret_key", value={"v": secrets.token_urlsafe(48)}))
-    except IntegrityError:
-        pass                                   # another process made it first; use theirs
-    with db.session_scope() as s:
-        return s.get(Setting, "secret_key").value["v"]
+def derived_secret(database_url):
+    """No SECRET_KEY was set: derive one from the database address, whose password is just as secret. Every
+    process gets the same key without reading anything at start-up. Changing the database password, or setting
+    SECRET_KEY on Railway, signs everyone out once."""
+    import hashlib
+    import hmac
+    return hmac.new(database_url.encode(), b"billboard-ops session key", hashlib.sha256).hexdigest()
 
 
 STAND_IN_OWNER = "owner@billboards.local"
@@ -151,9 +139,13 @@ def has_real_owner(cfg):
     if cfg.OWNER_EMAILS:
         return True
     from sqlalchemy import func, select
-    with db.session_scope() as s:
-        return s.scalars(select(User.id).where(User.role == "owner", User.active.is_(True),
-                                               func.lower(User.email) != STAND_IN_OWNER)).first() is not None
+    try:
+        with db.session_scope() as s:
+            return s.scalars(select(User.id).where(User.role == "owner", User.active.is_(True),
+                                                   func.lower(User.email) != STAND_IN_OWNER)).first() is not None
+    except Exception:  # noqa: BLE001 - the database isn't reachable yet: keep sign-in on rather than open the app
+        log.warning("Couldn't check for an owner at start-up; leaving sign-in on.", exc_info=True)
+        return True
 
 
 def open_access_user(s, cfg):

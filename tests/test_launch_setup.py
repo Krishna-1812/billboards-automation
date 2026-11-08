@@ -3,16 +3,17 @@
 import importlib.util
 from pathlib import Path
 
-from billboard_ops import create_app, db, has_real_owner, stored_secret
+from billboard_ops import create_app, db, derived_secret, has_real_owner
 from billboard_ops.models import User
 
 from conftest import _config
 
 
-def test_the_stored_secret_is_made_once_and_kept(app):
-    first = stored_secret()
-    assert len(first) > 40
-    assert stored_secret() == first
+def test_the_secret_comes_from_the_database_password_alone():
+    a = derived_secret("postgresql://u:pw1@db.internal:5432/railway")
+    assert len(a) == 64 and a == derived_secret("postgresql://u:pw1@db.internal:5432/railway")
+    assert a != derived_secret("postgresql://u:pw2@db.internal:5432/railway")
+    assert "pw1" not in a
 
 
 def test_a_real_owner_is_needed_before_sign_in_switches_on(tmp_path):
