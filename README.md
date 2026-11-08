@@ -430,8 +430,8 @@ background worker next to the app (see `gunicorn.conf.py`), so there is no separ
    | `OWNER_EMAILS` | The owner's Google address. More than one: separate them with commas. |
    | `APP_URL` | The app's address, for example `https://billboards-automation-production.up.railway.app` |
 
-   Railway deploys again by itself. Before each release, `alembic upgrade head` builds or updates the tables
-   (`railway.json` → `preDeployCommand`). The new database starts empty; the demo data on the old temporary
+   Railway deploys again by itself. Each time the app starts, it builds or updates the tables itself
+   (`alembic upgrade head`, from `gunicorn.conf.py`), so no pre-deploy setting is needed. The new database starts empty; the demo data on the old temporary
    database is gone.
 3. **Google** (one Google Cloud project for all of it):
     - Enable the **Google Sheets API**, **Google Calendar API** and **Google Drive API**.
@@ -453,7 +453,7 @@ Settings → People), so switching it on can't lock everyone out; the banner say
 
 ### Settings Railway reads from `railway.json`
 
-- **Pre-deploy command:** `alembic upgrade head`.
+- **Pre-deploy command:** `alembic upgrade head`. Optional: the app also runs it when it starts.
 - **Start command:** `gunicorn 'billboard_ops:create_app()' --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 60`.
   Gunicorn also reads `gunicorn.conf.py`, which starts the worker and starts it again if it stops.
 - **Healthcheck path:** `/health`. Its `worker_seconds_since_heartbeat` shows the worker is running.

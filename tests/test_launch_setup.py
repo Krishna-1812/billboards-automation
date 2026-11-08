@@ -60,3 +60,11 @@ def test_the_web_service_runs_the_worker_unless_told_not_to():
     assert conf.worker_wanted({"WORKER_IN_WEB": "1"})
     for off in ("0", "false", "no", "OFF"):
         assert not conf.worker_wanted({"WORKER_IN_WEB": off})
+
+
+def test_the_tables_are_built_at_start_up_on_postgres_only():
+    conf = _gunicorn_conf()
+    assert conf.migrate_wanted({"DATABASE_URL": "postgresql://u:p@h/db"})
+    assert conf.migrate_wanted({"DATABASE_URL": "postgres://u:p@h/db"})
+    assert not conf.migrate_wanted({"DATABASE_URL": "sqlite:///x.db"})
+    assert not conf.migrate_wanted({"DATABASE_URL": "postgresql://u:p@h/db", "MIGRATE_ON_START": "0"})

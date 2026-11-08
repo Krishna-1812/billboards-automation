@@ -1,5 +1,8 @@
 """Gunicorn reads this file on its own (it sits where gunicorn starts).
 
+Before the web processes start, it builds or updates the database tables (`alembic upgrade head`), so a release
+never depends on Railway's pre-deploy setting. MIGRATE_ON_START=0 turns this off.
+
 Besides serving the app, the web service also runs the background worker (`python -m billboard_ops.worker`) next to
 it, and starts it again if it stops. So one Railway service is enough: no separate worker service to set up.
 
@@ -17,9 +20,32 @@ _proc = None
 _stopping = False
 
 
+_OFF = ("0", "false", "no", "off")
+
+
 def worker_wanted(environ=None):
     value = (environ if environ is not None else os.environ).get("WORKER_IN_WEB", "1")
-    return value.strip().lower() not in ("0", "false", "no", "off")
+    return value.strip().lower() not in _OFF
+
+
+def migrate_wanted(environ=None):
+    env = environ if environ is not None else os.environ
+    url = env.get("DATABASE_URL", "")
+    return url.startswith(("postgres://", "postgresql")) and env.get("MIGRATE_ON_START", "1").strip().lower() not in _OFF
+
+
+def on_starting(server):
+    if not migrate_wanted():
+        return
+    here = os.path.dirname(os.path.abspath(globals().get("__file__") or "gunicorn.conf.py"))
+    for attempt in range(1, 7):
+        if subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=here).returncode == 0:
+            server.log.info("The database tables are up to date")
+            return
+        # The database may not be reachable for the first few seconds of a deploy: wait and try again.
+        server.log.warning("Updating the database tables failed (try %s of 6)", attempt)
+        time.sleep(5 * attempt)
+    raise RuntimeError("Couldn't build or update the database tables; see the errors above.")
 
 
 def _supervise(server):

@@ -22,6 +22,9 @@ def run_online():
     with engine.connect() as conn:
         context.configure(connection=conn, target_metadata=target_metadata, render_as_batch=True)
         with context.begin_transaction():
+            if conn.dialect.name == "postgresql":
+                # One release at a time: a second run (pre-deploy and start-up both) waits, then finds nothing to do.
+                conn.exec_driver_sql("SELECT pg_advisory_xact_lock(4207731)")
             context.run_migrations()
 
 
