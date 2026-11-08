@@ -7,7 +7,10 @@ repository holds:
 - **Phase 1:** screens, specs and the booking calendar;
 - **Phase 2:** proposal intake;
 - **Phase 3:** creative collection and automatic checks;
-- **Phase 4:** the play plan, the client portal and going live.
+- **Phase 4:** the play plan, the client portal and going live;
+- **Phase 5:** the owner dashboard, hardening and launch.
+
+How the app is secured is in [SECURITY.md](SECURITY.md).
 
 ## What Phase 1 does
 
@@ -227,6 +230,111 @@ From a confirmed booking to the end of the campaign, for the team and for the cl
 - **Preferred channel.** A client can be set to hear from the team by email or WhatsApp, whatever way they first
   wrote.
 
+## What Phase 5 does
+
+- **The owner dashboard** (the home page) answers "how full are we, what's at risk, and what needs me?" on one page:
+    - **Top numbers.** Loop time sold this week and this month (seconds sold of seconds sellable, in each screen's
+      open hours), campaigns live and starting, open holds and how many expire this week, files waiting for a
+      decision or failing, and Claude's spend. Revenue is added once pricing is decided.
+    - **At risk.** Campaigns starting within 7 days that aren't ready, holds expiring within 48 hours, and clients who
+      haven't answered for 3 days. Each line says what's missing and who owns the next step.
+    - **The next 12 weeks.** Every screen against the next 12 weeks, shaded by how full the loop is; pale cells are
+      gaps worth selling. A click opens that week in the calendar.
+    - **Pipeline.** Requests, holds, confirmed bookings and campaigns started, this month against last.
+    - **Screens map.** Every screen with a map pin, coloured by this week's occupancy; a click opens the screen.
+    - Every table exports as Excel, CSV or PDF, or to a tab of the mirror Google Sheet.
+- **By client and by screen.** A client's page shows their campaigns, plays booked, how often their files fail and
+  why, and Claude's cost for them. A screen's page shows its next 12 weeks, its main clients and its file mistakes.
+- **Performance** (owner and Managers). It shows:
+    - the median time from a request to a hold, and from confirmation to approved files;
+    - the most common file mistakes;
+    - what the agent did on its own;
+    - how often people changed its work: its reading of proposals, its message drafts and its play plans.
+
+  Use it with the accuracy tests to decide what to switch to automatic.
+- **Costs.** Claude's cost by month, by step, by client and now by booking.
+- **The Monday summary.** Every Monday from 07:00 local time, the owners get an email with:
+    - the numbers;
+    - the pipeline;
+    - what's at risk;
+    - what waits for a decision;
+    - the emptiest screens of the week.
+
+  Preview it, or send it now, from the dashboard. Extra recipients are set in Settings → Automation.
+- **Hardening:**
+    - **Security.** Response headers; rate limits on sign-in links, upload links, sign-in and the WhatsApp webhook;
+      `pip-audit` in CI; and tests that open every page as someone not signed in, and as a client. The full review
+      is in [SECURITY.md](SECURITY.md).
+    - **Backups.** Every night at 02:00 a compressed copy of every record goes to the Shared Drive's **Backups**
+      folder (the last 30 are kept), plus a "Download a backup now" button. See "Testing a restore" below.
+    - **Monitoring.** Every background job reports how its connection did: Drive, Sheets, Calendar, email in and out,
+      client messages, Claude and backups. Settings → Connections shows each one. A connection down for 30 minutes
+      alerts the owner and `ALERT_EMAILS`. `/health/full` answers 503 when the worker has stopped or a connection is
+      down, for an outside uptime check.
+    - **Data rules.** Files and proof are kept 12 months after a campaign ends, and message text 24 months; both are
+      settings. Older contents are removed every night, while bookings and the activity log stay. On a client's
+      request, the owner can delete everything about that client (their page → Delete all of this client's data).
+    - **Load test.** `python -m billboard_ops.loadtest` fills an empty database and times the pages (results below).
+- **Launch** (Settings → Launch). The launch checklist checks most items itself, for example:
+    - Postgres, the worker, sign-in and email;
+    - Claude, Google and Drive;
+    - every screen having a spec;
+    - the accuracy tests;
+    - last night's backup and a tested restore;
+    - the team and the test clients.
+
+  The rest are ticked by the owner (Railway backups, the uptime check, training, the Arabic checked), with who and
+  when. Settings → Launch also starts the 2-week **parallel run**. **Cut-over** (typing CUT OVER) makes the app
+  the single source of truth and stops watching the old sheets.
+- **Help.** A one-page guide for each role (owner, Managers, Sales, Ops, and clients in the portal), in English and
+  Arabic, ready to print for training.
+
+### Load test results
+
+On a laptop-class machine with Postgres 16: 900 bookings (300 a month for 3 months, as twice an assumed busiest
+month of 150), 40 screens, 1,840 booked screens, 1,800 messages. These are median times for one request:
+
+| Page or job | Time |
+| --- | --- |
+| Dashboard | 0.7 s |
+| Calendar (a month) | 0.3 s |
+| Playlist (a day, all screens) | 0.4 s |
+| Creative | 0.35 s |
+| Bookings, a booking, the play plan, the portal | under 0.15 s |
+| Monday summary (once a week) | 0.8 s |
+| The worker's once-a-minute stage check | 1.2 s |
+
+Run it again with the client's real busiest month once it's known:
+
+```bash
+DATABASE_URL=postgresql://… python -m billboard_ops.loadtest --per-month <twice the busiest month> --screens <screens>
+```
+
+Run it on an **empty** scratch database only.
+
+### Testing a restore
+
+Do this once before launch, on a scratch Postgres database (for example a second Railway Postgres service):
+
+1. In Settings → Connections, choose **Download a backup now** (or take last night's file from the Drive's Backups
+   folder).
+2. Make the empty database's tables:
+
+   ```bash
+   DATABASE_URL=<the scratch database> alembic upgrade head
+   ```
+
+3. Load the backup into it:
+
+   ```bash
+   DATABASE_URL=<the scratch database> python -m billboard_ops.backup restore billboard-ops-YYYY-MM-DD.json.gz
+   ```
+
+4. Open the app against it and check a few bookings.
+
+The restore records itself in the database it was loaded into. Since that's the scratch database, tick
+**Restoring a backup was tested** on Settings → Launch yourself.
+
 ## Layout
 
 | Path | What it is |
@@ -252,6 +360,9 @@ From a confirmed booking to the end of the campaign, for the team and for the cl
 | `billboard_ops/loading.py`, `proof.py` | Playlists and their exports, the ZIP and Ready to load folder; proof of play and play reports |
 | `billboard_ops/client_messages.py`, `notices.py`, `automation.py` | Stage messages to clients; notices by topic and by email; the automation switches |
 | `billboard_ops/views/portal.py`, `portal_text.py` | The client portal and its English and Arabic words |
+| `billboard_ops/insights.py`, `summary.py`, `exports.py` | Phase 5: the dashboard's numbers, the Monday summary, exports to Excel, CSV, PDF and Sheets |
+| `billboard_ops/security.py`, `monitor.py`, `backup.py`, `retention.py` | Phase 5: headers and rate limits; watching the connections; backups and restore; data rules and deleting a client |
+| `billboard_ops/launch.py`, `help_text.py`, `loadtest.py` | Phase 5: the launch checklist and cut-over; the role guides; the load test |
 | `billboard_ops/views/`, `templates/`, `static/` | The pages |
 | `migrations/` | Alembic migrations, which Railway runs before each deploy |
 | `tests/` | The test suite. It runs on SQLite, and on Postgres when `TEST_DATABASE_URL` is set |
@@ -337,7 +448,7 @@ both built from the root of this repo.
    | `GOOGLE_SERVICE_ACCOUNT_JSON` | for Sheets and Calendar | The whole JSON key of a Google service account (see below) |
    | `APP_URL` | recommended | For example `https://ops.clientdomain.com`, for links in calendar events, emails and portal sign-in links |
    | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | for email | Without these, reminders show only in the app |
-   | `ALERT_EMAILS` | recommended | Who gets an email when something breaks |
+   | `ALERT_EMAILS` | recommended | Who gets an email when something breaks, or a connection is down for 30 minutes |
    | `ANTHROPIC_API_KEY` | for Phase 2 | Claude reads the proposals. Without it, proposals arrive and the team fills them in by hand. |
    | `PROPOSAL_MODEL`, `PROPOSAL_EFFORT` | optional | Defaults: `claude-opus-5-5`, `medium`. A cheaper model can be tried here, then checked with the accuracy test. |
    | `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` | for email intake | The proposals mailbox. For Google Workspace: `imap.gmail.com`, port 993, and an app password. |
@@ -419,3 +530,12 @@ both built from the root of this repo.
 - [ ] One client can never see another client's data (the portal tests cover every page and file link).
 - [ ] The day-before readiness alert catches a booking that is deliberately left unready.
 - [ ] SMTP is set up, so sign-in links and alerts actually go out by email.
+
+## Phase 5 checklist ("done when")
+
+- [ ] The owner can answer "how full are we, what's at risk, and what needs me?" from the dashboard in under a minute.
+- [ ] The security review (SECURITY.md) is passed: sign-in is on, and its open points are accepted.
+- [ ] A backup restore has been tested (Settings → Launch shows it).
+- [ ] The 2-week parallel run ends with no differences left unexplained.
+- [ ] Every team member and the test clients have been trained (Help has the guides).
+- [ ] The old sheet is read-only, cut-over is done, and the app runs the business.

@@ -24,6 +24,17 @@
   <label>Notes</label><textarea name="notes">{{ c.notes or '' }}</textarea>
   {% if can('edit_clients') %}<p><button class="primary" type="submit">{{ t('save') }}</button></p>{% endif %}
 </form>
+{% if stats %}
+<h2>At a glance</h2>
+<div class="grid cols-4">
+  <div class="card stat"><div class="num">{{ stats.campaigns }}</div><div class="lbl">Campaigns booked ({{ stats.completed }} finished){% if stats.first %}, since {{ stats.first|date }}{% endif %}</div></div>
+  <div class="card stat"><div class="num">{{ '{:,.0f}'.format(stats.plays) }}</div><div class="lbl">Plays booked, over {{ stats.screen_days }} screen-days</div></div>
+  <div class="card stat"><div class="num">{{ '%.0f%%'|format(stats.fail_rate) if stats.fail_rate is not none else '—' }}</div><div class="lbl">of {{ stats.files }} files checked failed at least one check</div></div>
+  <div class="card stat"><div class="num">${{ '%.2f'|format(stats.ai_usd) }}</div><div class="lbl">Claude spent on this client</div></div>
+</div>
+{% if stats.mistakes %}<p class="small">Their files most often fail on: {% for label, n in stats.mistakes %}{{ label }} ({{ n }}){{ ', ' if not loop.last }}{% endfor %}.</p>{% endif %}
+<p class="small muted">Spend appears here once pricing is set up.</p>
+{% endif %}
 {% if c.id %}
 <h2 id="portal">Client portal</h2>
 <div class="card">
@@ -55,5 +66,15 @@
   {% for b in history %}<tr><td><a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a></td><td>{{ b.title }}</td>
     <td>{{ b.start_date|date }} – {{ b.end_date|date }}</td><td>{{ m.status(b.status) }}</td></tr>{% endfor %}
 </table></div>
+{% endif %}
+{% if c.id and can('people') %}
+<details class="card" style="margin-top:16px" id="delete">
+  <summary class="danger"><strong>Delete all of {{ c.name }}'s data</strong></summary>
+  <p class="small">Only when the client asks for it. This removes their bookings, files, proof of play, messages, requests, portal logins and calendar events, and their name from the activity log. It can't be undone; download a backup first (Settings → Connections).</p>
+  <form method="post" action="{{ url_for('admin.delete_client', client_id=c.id) }}">
+    {{ m.csrf() }}<label>Type <strong>{{ c.name }}</strong> to confirm</label><input type="text" name="confirm_name" required autocomplete="off">
+    <p><button class="danger" type="submit">Delete everything about this client</button></p>
+  </form>
+</details>
 {% endif %}
 {% endblock %}

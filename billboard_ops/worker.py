@@ -46,6 +46,15 @@ def tick(now=None, today=None):
         creatives.tick(s, today or date.today())
     with db.session_scope() as s:
         lifecycle.tick(s, today)
+    from . import backup, monitor, retention, summary
+    with db.session_scope() as s:
+        summary.maybe_send(s, now)
+    with db.session_scope() as s:
+        monitor.check(s, now)
+    with db.session_scope() as s:
+        local = lifecycle.local_now(s)
+        if backup.maybe_queue(s, local):          # once a night: the backup, then the data rules
+            retention.purge(s, local.date())
     if runtime.config is not None and runtime.config.email_in:
         with db.session_scope() as s:
             jobs.enqueue(s, "poll_email", {}, dedupe_key="poll_email")
@@ -73,8 +82,8 @@ def main():
     if cfg.DATABASE_URL.startswith("sqlite"):
         from .models import Base
         Base.metadata.create_all(db.engine())
-    from . import (creative_eval, creatives, evaluate, intake, loading, mail, outbox, plans,  # noqa: F401
-                   sync)  # job handlers
+    from . import (backup, creative_eval, creatives, evaluate, intake, loading, mail, outbox,  # noqa: F401
+                   plans, sync)  # job handlers
     from .channels import email_in  # noqa: F401
     signal.signal(signal.SIGTERM, _on_term)
     signal.signal(signal.SIGINT, _on_term)

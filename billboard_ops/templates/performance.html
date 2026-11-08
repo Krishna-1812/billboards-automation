@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Performance · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>Team and agent performance</h1><p class="muted">The last {{ p.days }} days.</p></div>
+  <div class="actions small"><a class="btn" href="{{ url_for('main.performance', format='xlsx') }}">Excel</a>
+    <a class="btn" href="{{ url_for('main.performance', format='pdf') }}">PDF</a></div>
+</div>
+{% macro hours(pair) %}{% if pair[0] is none %}<span class="muted">not enough yet</span>{% elif pair[0] < 48 %}{{ pair[0]|round(1) }} hours{% else %}{{ (pair[0] / 24)|round(1) }} days{% endif %}{% endmacro %}
+<div class="grid cols-2">
+  <div class="card stat"><div class="num">{{ hours(p.to_hold) }}</div><div class="lbl">From a request arriving to the hold (median of {{ p.to_hold[1] }})</div></div>
+  <div class="card stat"><div class="num">{{ hours(p.to_files) }}</div><div class="lbl">From confirmation to every file approved (median of {{ p.to_files[1] }})</div></div>
+</div>
+
+<div class="grid cols-2" style="margin-top:16px">
+  <div>
+    <h2>The most common file mistakes</h2>
+    <div class="card table-wrap"><table>
+      <tr><th>Check</th><th class="num">Files</th></tr>
+      {% for label, n in p.mistakes %}<tr><td>{{ label }}</td><td class="num">{{ n }}</td></tr>
+      {% else %}<tr><td colspan="2" class="empty">No failed files.</td></tr>{% endfor %}
+    </table>
+    <p class="small muted">{{ p.files_failed }} of {{ p.files_checked }} files checked failed at least one check.</p></div>
+  </div>
+  <div>
+    <h2>What the agent did on its own</h2>
+    <div class="card table-wrap"><table>
+      {% for label, n in p.agent_work.items() %}<tr><td>{{ label }}</td><td class="num">{{ n }}</td></tr>{% endfor %}
+    </table></div>
+  </div>
+</div>
+
+<h2>How often people changed the agent's work</h2>
+<div class="card table-wrap">
+  <table>
+    <tr><th></th><th class="num">Changed</th><th class="num">Out of</th><th class="num">Share</th></tr>
+    {% for label, v in p.changed.items() %}
+    <tr><td>{{ label }}</td><td class="num">{{ v.changed }}</td><td class="num">{{ v.n }}</td><td class="num">{{ '%.0f%%'|format(v.pct) if v.pct is not none else '—' }}</td></tr>
+    {% endfor %}
+  </table>
+  <p class="small muted">A low share means the agent's work is usually right as it is. Use it with the accuracy tests to decide which steps to make automatic (Settings → Automation).</p>
+</div>
+{% endblock %}

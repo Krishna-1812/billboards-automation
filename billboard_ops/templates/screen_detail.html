@@ -31,6 +31,14 @@
   </div>
 </div>
 
+<h2>The next 12 weeks</h2>
+<div class="card">
+  <table class="cal"><tr>{% for start, avg, peak, closed in stats.weeks %}<td><a class="{{ 'heat-closed' if closed else 'heat-' ~ heat(avg) }}" style="min-width:48px;height:auto;line-height:1.35;padding:3px 0"
+    href="{{ url_for('bookings.calendar_grid', start=start.isoformat()) }}" title="Week of {{ start|date }}: {{ avg|round|int }}% sold, busiest hour {{ peak|round|int }}%">{{ start.strftime('%d %b') }}<br>{{ '' if closed else avg|round|int ~ '%' }}</a></td>{% endfor %}</tr></table>
+  <p class="small" style="margin-top:8px">{{ stats.campaigns }} campaign(s) in the last 12 months{% if stats.clients %}, mostly {% for name, n in stats.clients %}{{ name }} ({{ n }}){{ ', ' if not loop.last }}{% endfor %}{% endif %}.
+    {% if stats.fail_rate is not none %}{{ '%.0f%%'|format(stats.fail_rate) }} of files for this screen failed a check{% if stats.mistakes %}, most often on {% for label, n in stats.mistakes[:3] %}{{ label|lower }}{{ ', ' if not loop.last }}{% endfor %}{% endif %}.{% endif %}</p>
+</div>
+
 <h2>Booked from today</h2>
 <div class="card table-wrap"><table>
   <tr><th>Booking</th><th>Client</th><th>Dates</th><th>Hours</th><th>Frequency</th><th>Status</th></tr>

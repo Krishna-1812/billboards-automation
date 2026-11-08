@@ -433,4 +433,6 @@ def client_edit(client_id=None):
         history = s.scalars(select(Booking).options(joinedload(Booking.lines))
                             .where(Booking.client_id == c.id).order_by(Booking.id.desc())).unique().all()
     from .portal import access_panel
-    return render_template("client_form.html", c=c, history=history, portal_users=access_panel(s, c) if c.id else [])
+    from .. import insights
+    return render_template("client_form.html", c=c, history=history, portal_users=access_panel(s, c) if c.id else [],
+                           stats=insights.client_stats(s, c) if c.id else None)

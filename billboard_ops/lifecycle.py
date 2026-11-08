@@ -11,7 +11,7 @@ plan is confirmed, and Ops has loaded it onto the screen. The status follows:
                  before the end, and the wrap-up after it.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -31,12 +31,16 @@ class LoadError(Exception):
     pass
 
 
-def today(session):
+def local_now(session):
     tz = settings.get(session, "default_timezone") or "Asia/Dubai"
     try:
-        return datetime.now(ZoneInfo(tz)).date()
+        return datetime.now(ZoneInfo(tz)).replace(tzinfo=None)
     except Exception:  # noqa: BLE001 - an unknown zone name falls back to UTC
-        return datetime.utcnow().date()
+        return datetime.utcnow()
+
+
+def today(session):
+    return local_now(session).date()
 
 
 # ── Where a booking stands ──────────────────────────────────────────────────────
@@ -170,8 +174,12 @@ def go_live(session, booking, actor="agent"):
 def tick(session, on=None):
     """The day-before readiness alert, going live, renewal offers and wrap-ups."""
     day = on or today(session)
+    # Only bookings around their start need looking at here: every other change (a file approved, a plan
+    # confirmed, a screen loaded) moves its booking on at the moment it happens.
+    near = select(BookingLine.booking_id).where(BookingLine.start_date <= day + timedelta(days=1),
+                                                BookingLine.end_date >= day)
     q = (select(Booking).options(selectinload(Booking.lines).selectinload(BookingLine.screen))
-         .where(Booking.status.in_(BOOKED)))
+         .where(Booking.status.in_(BOOKED), Booking.status != "live", Booking.id.in_(near)))
     for b in session.scalars(q).all():
         if not b.lines:
             continue

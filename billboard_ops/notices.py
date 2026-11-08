@@ -23,6 +23,8 @@ TOPICS = {
     "renewals":  ("Renewals", "Campaigns ending soon, to offer a renewal", ("sales",)),
     "client":    ("Client actions", "What clients do in the portal: accepting, approving, asking for changes",
                   ("owner", "manager", "sales")),
+    "system":    ("Problems with the app", "A connection (Drive, email, WhatsApp, Claude…) down for 30 minutes, or a "
+                  "backup that didn't run", ("owner",)),
 }
 
 

@@ -87,6 +87,11 @@ def automation():
         from ..plans import format_dayparts
         settings.put(s, "dayparts", format_dayparts(parts))
         settings.put(s, "load_filename", pattern)
+        settings.put(s, "weekly_summary", request.form.get("weekly_summary") == "1")
+        settings.put(s, "weekly_summary_to", ", ".join(e.strip() for e in f_str("weekly_summary_to").replace(";", ",")
+                                                       .split(",") if "@" in e))
+        settings.put(s, "keep_files_months", max(1, min(120, f_int("keep_files_months", 12))))
+        settings.put(s, "keep_messages_months", max(1, min(120, f_int("keep_messages_months", 24))))
         after = settings.all_settings(s)
         changed = {k: [before[k], after[k]] for k in after if before[k] != after[k]}
         log(s, current_user().email, "changed", "settings", "automation",
@@ -168,9 +173,75 @@ def connections():
     beat = settings.get(s, "worker_heartbeat")
     return render_template("settings_connections.html", cfg=cfg, sa_email=service_account_email(cfg),
                            connected=bool(cfg.service_account_info()), test=test, problems=recent_problems(s, 30),
-                           no_calendar=no_calendar, heartbeat=beat,
+                           no_calendar=no_calendar, heartbeat=beat, conns=_conn_status(s),
+                           last_backup=settings.get(s, "last_backup"), restore_tested=settings.get(s, "restore_tested"),
                            queued=s.scalar(select(func.count()).select_from(Job).where(Job.status == "queued")),
                            mirror=settings.get(s, "mirror_spreadsheet_id"))
+
+
+def _conn_status(s):
+    from ..monitor import status
+    return status(s)
+
+
+@bp.route("/settings/backup.json.gz", methods=["POST"])
+@needs("settings")
+def download_backup():
+    """A backup made now, straight to the browser (without file contents)."""
+    from flask import Response
+    from .. import backup
+    s = get_db()
+    raw = backup.dumps(backup.export(s))
+    log(s, current_user().email, "downloaded_backup", "settings", "backup", "Downloaded a backup")
+    s.commit()
+    return Response(raw, mimetype="application/gzip",
+                    headers={"Content-Disposition": f'attachment; filename="billboard-ops-{utcnow():%Y-%m-%d}.json.gz"'})
+
+
+@bp.route("/clients/<int:client_id>/delete-all", methods=["POST"])
+@needs("people")
+def delete_client(client_id):
+    from .. import retention
+    s = get_db()
+    client = s.get(Client, client_id) or abort(404)
+    try:
+        n = retention.delete_client(s, current_user(), client, f_str("confirm_name"))
+    except retention.RetentionError as e:
+        flash(str(e), "error")
+        return redirect(url_for("bookings.client_edit", client_id=client_id) + "#delete")
+    s.commit()
+    return done(f"Deleted: {n['bookings']} booking(s), {n['proposals']} request(s), {n['files']} file(s), "
+                f"{n['messages']} message(s) and {n['logins']} portal login(s).", "bookings.client_list")
+
+
+@bp.route("/settings/launch", methods=["GET", "POST"])
+@needs("settings")
+def launch_page():
+    """The launch checklist, the parallel run and cut-over day."""
+    from .. import launch
+    s = get_db()
+    u = current_user()
+    if request.method == "POST":
+        action = f_str("action")
+        if action in ("tick", "untick"):
+            launch.tick(s, u, f_str("key"), on=action == "tick")
+        elif action == "start_parallel":
+            launch.start_parallel(s, u)
+        elif action == "cutover":
+            if f_str("confirm") != "CUT OVER":
+                flash("Type CUT OVER to confirm.", "error")
+                return redirect(url_for("admin.launch_page"))
+            n = launch.cutover(s, u)
+            flash(f"Cut over. The app is the single source of truth; {n} old sheet(s) are no longer watched. "
+                  "Protect the old sheet in Google Sheets so nobody edits it by mistake.", "ok")
+        else:
+            abort(400)
+        s.commit()
+        return redirect(url_for("admin.launch_page"))
+    groups = launch.checks(s, current_app.config["APP"])
+    return render_template("settings_launch.html", groups=groups, summary=launch.summary(groups),
+                           parallel=settings.get(s, "parallel_started_on"), cutover=settings.get(s, "cutover_at"),
+                           days=launch.PARALLEL_DAYS)
 
 
 @bp.route("/settings/sheet-changes", methods=["GET", "POST"])

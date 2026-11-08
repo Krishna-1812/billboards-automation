@@ -5,6 +5,7 @@ P = {
     "portal":          ("Client portal", "بوابة العملاء"),
     "my_bookings":     ("My bookings", "حجوزاتي"),
     "new_request":     ("New request", "طلب جديد"),
+    "help":            ("Help", "المساعدة"),
     "sign_out":        ("Sign out", "تسجيل الخروج"),
     "language":        ("العربية", "English"),
     "sign_in":         ("Sign in", "تسجيل الدخول"),

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Weekly summary · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>The Monday summary</h1><p class="muted">Goes out every Monday from 07:00 to {{ to|join(', ') or 'nobody yet' }}. This is how it reads right now.</p></div>
+  <form method="post" class="actions"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="primary" type="submit">Send it now</button></form>
+</div>
+<div class="card"><p><strong>{{ subject }}</strong></p><pre style="white-space:pre-wrap;font-family:inherit;margin:0">{{ body }}</pre></div>
+<p class="small muted">Who gets it, and whether it goes out, is set in Settings → Automation.</p>
+{% endblock %}

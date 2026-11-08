@@ -39,6 +39,16 @@
         <input type="text" name="load_filename" class="mono" value="{{ st.load_filename }}"></div>
     </div>
   </div>
+  <div class="card">
+    <h2 style="margin-top:0">Weekly summary and keeping data</h2>
+    <label class="check"><input type="checkbox" name="weekly_summary" value="1" {{ 'checked' if st.weekly_summary }}> Email the owners a summary every Monday morning (<a href="{{ url_for('main.weekly_summary') }}">preview it</a>)</label>
+    <label>Also send it to <span class="hint">comma separated</span></label><input type="text" name="weekly_summary_to" value="{{ st.weekly_summary_to }}">
+    <div class="row">
+      <div><label>Keep files and proof for (months after a campaign ends)</label><input type="number" name="keep_files_months" min="1" max="120" value="{{ st.keep_files_months }}"></div>
+      <div><label>Keep message text and attachments for (months)</label><input type="number" name="keep_messages_months" min="1" max="120" value="{{ st.keep_messages_months }}"></div>
+    </div>
+    <p class="small muted">After that, the files and texts are removed from the app every night; bookings, dates and the activity log stay. Files in the client's Google Drive aren't touched.</p>
+  </div>
   <p><button class="primary" type="submit">{{ t('save') }}</button></p>
 </form>
 {% endblock %}

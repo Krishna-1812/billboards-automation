@@ -27,6 +27,9 @@ class OutboxError(Exception):
 def approve(session, user, msg, *, subject=None, body=None, recipient=None, channel=None):
     if msg.status not in ("draft", "failed"):
         raise OutboxError(f"This message is already {msg.status}.")
+    if (subject is not None and subject.strip() != (msg.subject or "").strip()) or \
+            (body is not None and body.strip() != (msg.body or "").strip()):
+        msg.edited = True                 # a person changed the agent's wording (shown on the dashboard)
     if subject is not None:
         msg.subject = subject
     if body is not None:

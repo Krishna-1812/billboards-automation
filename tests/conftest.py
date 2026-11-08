@@ -80,6 +80,10 @@ class FakeGoogle:
                                             "data": fh.read()}
         return f"file{self._n}"
 
+    def drive_delete(self, file_id):
+        self.calls.append(("delete_file", file_id))
+        self.files.pop(file_id, None)
+
     def drive_copy(self, file_id, folder_id, name):
         self.files = getattr(self, "files", {})
         self._n += 1
@@ -143,6 +147,8 @@ def s(app):
 @pytest.fixture(autouse=True)
 def _clear_mail():
     mail._sent.clear()
+    from billboard_ops import security
+    security.reset()
     yield
 
 

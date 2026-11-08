@@ -15,6 +15,7 @@ the bottom load that data from the database.
 
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import lru_cache
 from datetime import date, timedelta
 from typing import Optional
 
@@ -114,6 +115,12 @@ def days_between(start, end):
 def window(day, open_hour, close_hour):
     """The real (date, hour) slots of a span of hours on a broadcast day.
     close <= open runs past midnight; open == close (or 0 → 24) is all day."""
+    return _window(day, int(open_hour), int(close_hour))
+
+
+@lru_cache(maxsize=200_000)
+def _window(day, open_hour, close_hour):
+    # Cached: the same few windows are asked for millions of times when a dashboard covers months.
     o, c = int(open_hour) % 24, int(close_hour)
     if c == 24 and o == 0:
         hours = [(0, h) for h in range(24)]
@@ -123,7 +130,7 @@ def window(day, open_hour, close_hour):
         hours = [(0, h) for h in range(o, c)]
     else:
         hours = [(0, h) for h in range(o, 24)] + [(1, h) for h in range(0, c)]
-    return {(day + timedelta(days=off), h) for off, h in hours}
+    return frozenset((day + timedelta(days=off), h) for off, h in hours)
 
 
 def in_blackout(rules, day):
@@ -167,14 +174,49 @@ def usage(rules, uses, start, end):
     who = defaultdict(list)
     lo, hi = start - timedelta(days=1), end
     for u in uses:
+        plan = _compile(u.plan) if (u.plan and not u.exclusive) else None
+        flat = rules.capacity if u.exclusive else float(u.ad_seconds) * float(u.plays_per_hour)
         for day in days_between(max(u.start_date, lo), min(u.end_date, hi)):
+            if plan is None:
+                rate, hours = flat, None
+            else:
+                rate, hours = _plan_day(plan, day)
+                if rate is None and hours is None:
+                    continue                         # not a day it plays
+                rate = None if rate is None else float(u.ad_seconds) * rate
             for slot in playing_slots(rules, u, day):
-                need = slot_demand(u, rules, day, slot)
+                need = rate if hours is None else float(u.ad_seconds) * hours.get(slot[1], 0.0)
                 if need <= 0:
                     continue
                 used[slot] += need
                 who[slot].append(u)
     return used, who
+
+
+def _compile(plan):
+    """A plan in the shape `usage` reads fastest: date ranges, weekdays and plays by hour, worked out once."""
+    exceptions = []
+    for ex in plan.get("exceptions") or []:
+        try:
+            exceptions.append((date.fromisoformat(str(ex["from"])[:10]), date.fromisoformat(str(ex["to"])[:10]),
+                               float(ex.get("plays") or 0)))
+        except (KeyError, ValueError):
+            continue
+    days = plan.get("weekdays")
+    return (exceptions, None if days is None else set(days),
+            {int(h): float(v or 0) for h, v in (plan.get("hours") or {}).items()})
+
+
+def _plan_day(compiled, day):
+    """(flat plays, None) on a special date; (None, plays by hour) on a day it plays; (None, None) otherwise.
+    The same rules as `plan_plays`."""
+    exceptions, days, hours = compiled
+    for a, b, plays in exceptions:
+        if a <= day <= b:
+            return plays, None
+    if days is not None and day.weekday() not in days:
+        return None, None
+    return None, hours
 
 
 @dataclass

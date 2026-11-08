@@ -102,6 +102,9 @@ class DriveMixin:
         return self._drive_api().files().create(body={"name": filename, "parents": [folder_id]}, media_body=media,
                                                 fields="id", supportsAllDrives=True).execute()["id"]
 
+    def drive_delete(self, file_id):
+        self._drive_api().files().delete(fileId=file_id, supportsAllDrives=True).execute()
+
     def drive_copy(self, file_id, folder_id, name):
         """A copy of a Drive file in another folder, under a new name (the Ready to load folder, Phase 4)."""
         return self._drive_api().files().copy(fileId=file_id, body={"name": name, "parents": [folder_id]},

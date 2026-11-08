@@ -1,0 +1,7 @@
+{% extends "portal_base.html" %}
+{% block title %}{{ tp('help') }} · {{ tp('portal') }}{% endblock %}
+{% block content %}
+<h1>{{ g.title[i] }}</h1>
+<p class="muted">{{ g.intro[i] }}</p>
+<div class="card"><ol>{% for step in g.steps %}<li style="margin:6px 0">{{ step[i] }}</li>{% endfor %}</ol></div>
+{% endblock %}

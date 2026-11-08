@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Launch · Settings · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>{{ t('settings') }}</h1><p class="muted">Ready to launch? {{ summary.done }} of {{ summary.total }} done{% if summary.must_left %}; {{ summary.must_left|length }} must-haves left{% endif %}.</p></div></div>
+{% include "_settings_nav.html" %}
+{% for title, items in groups %}
+<h2>{{ title }}</h2>
+<div class="card table-wrap"><table>
+  {% for c in items %}
+  <tr><td style="width:36px">{% if c.state == 'ok' %}<span class="pill ok">✓</span>{% else %}<span class="pill {{ 'hold' if c.must else '' }}">…</span>{% endif %}</td>
+    <td>{{ c.label }}{% if not c.must %} <span class="small muted">(nice to have)</span>{% endif %}{% if c.detail %}<div class="small muted">{{ c.detail }}</div>{% endif %}</td>
+    <td class="small" style="width:34%">
+      {% if c.fix.startswith('tick:') %}
+        <form method="post" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="key" value="{{ c.fix[5:] }}">
+          {% if c.state == 'ok' %}<button class="linkish" name="action" value="untick" type="submit">untick</button>{% else %}<button name="action" value="tick" type="submit">Mark done</button>{% endif %}</form>
+      {% elif c.fix == 'start_parallel' %}
+        {% if not parallel %}<form method="post" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button name="action" value="start_parallel" type="submit">Start the parallel run today</button></form>{% else %}Started {{ parallel }}{% endif %}
+      {% elif c.fix == 'cutover' %}
+        {% if not cutover %}<details><summary>Cut over</summary>
+          <p>From now on the team works only in the app. The old sheets stop being watched; protect them in Google Sheets (Data → Protect sheets and ranges). The mirror sheet keeps being updated.</p>
+          {% if summary.must_left %}<p class="flash warning">{{ summary.must_left|length }} must-have(s) aren't done yet: {{ summary.must_left|join('; ') }}.</p>{% endif %}
+          <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Type CUT OVER to confirm</label><input type="text" name="confirm" autocomplete="off">
+            <p><button class="primary" name="action" value="cutover" type="submit">Cut over</button></p></form></details>{% endif %}
+      {% elif c.state != 'ok' %}{{ c.fix }}{% endif %}</td></tr>
+  {% endfor %}
+</table></div>
+{% endfor %}
+<p class="small muted">Guides for training each role, in English and Arabic: <a href="{{ url_for('main.help_page') }}">Help</a>.</p>
+{% endblock %}

@@ -427,5 +427,8 @@ def costs():
     for at, usd in s.execute(select(AiCall.at, AiCall.usd).where(AiCall.at >= month_start - timedelta(days=335))):
         by_month[at.strftime("%Y-%m")] = by_month.get(at.strftime("%Y-%m"), 0.0) + (usd or 0.0)
     months = sorted(by_month.items())
+    from .. import insights
+    per_booking = insights.costs_by_booking(s, month_start)
     return render_template("costs.html", rows=rows, per_client=per_client, reads=reads, recent=recent,
+                           per_booking=per_booking,
                            months=months[-12:], month_start=month_start, model=current_app.config["APP"].PROPOSAL_MODEL)

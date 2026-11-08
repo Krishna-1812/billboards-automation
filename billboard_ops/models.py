@@ -8,7 +8,7 @@ from datetime import date, datetime, timezone
 from typing import Optional
 
 from sqlalchemy import (JSON, Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, LargeBinary, String,
-                        Text)
+                        Text, false)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -208,6 +208,9 @@ class Booking(Base):
     renewal_prompted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     wrapped_up_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     load_folder_id: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    # Phase 5: what the agent drafted for the plan, to tell whether a person changed it before confirming.
+    plan_drafted_sig: Mapped[str] = mapped_column(String(40), default="", server_default="")
+    plan_edited: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     client: Mapped[Client] = relationship()
     lines: Mapped[list["BookingLine"]] = relationship(back_populates="booking", cascade="all, delete-orphan",
@@ -381,6 +384,8 @@ class Proposal(Base):
     duplicate_of_id: Mapped[Optional[int]] = mapped_column(ForeignKey("proposals.id"), nullable=True)
     booking_id: Mapped[Optional[int]] = mapped_column(ForeignKey("bookings.id"), nullable=True)
     auto_held: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Phase 5: a person changed what the agent read (screens, dates or client) before placing the hold.
+    edited: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     error: Mapped[str] = mapped_column(Text, default="")
     read_count: Mapped[int] = mapped_column(Integer, default=0)
     last_read_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -414,6 +419,8 @@ class Message(Base):
     external_id: Mapped[str] = mapped_column(String(300), default="")   # email Message-ID or WhatsApp message id
     in_reply_to: Mapped[str] = mapped_column(String(300), default="")
     approved_by: Mapped[str] = mapped_column(String(254), default="")
+    # Phase 5: a person changed the agent's draft before approving it.
+    edited: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     error: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

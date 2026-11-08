@@ -31,6 +31,11 @@ DEFAULTS = {
     "auto_send_content": False,           # feedback that includes Claude's content findings
     "auto_approve_passed": False,         # approve a file that passes every check with nothing to look at
     "auto_confirm_plan": False,           # confirm a play plan the agent drafted with confidence, when it fits
+    # Phase 5
+    "weekly_summary": True,               # the Monday email to the owner
+    "weekly_summary_to": "",              # more addresses for it, comma separated
+    "keep_files_months": 12,              # files and proof kept this long after a campaign ends
+    "keep_messages_months": 24,           # message text and attachments kept this long
 }
 
 
@@ -47,6 +52,7 @@ def put(session, key, value):
         session.add(Setting(key=key, value={"v": value}))
     else:
         row.value = {"v": value}
+    session.flush()        # so a later read in the same step sees it (the sessions don't autoflush)
 
 
 def all_settings(session):

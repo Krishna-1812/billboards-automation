@@ -118,8 +118,9 @@ def screen_detail(screen_id):
     overrides = s.scalars(select(HoursOverride).where(HoursOverride.screen_id == sc.id,
                                                       HoursOverride.end_date >= today)
                           .order_by(HoursOverride.start_date)).all()
+    from .. import insights
     return render_template("screen_detail.html", sc=sc, strip=strip, upcoming=upcoming, blackouts=blackouts,
-                           overrides=overrides)
+                           overrides=overrides, stats=insights.screen_stats(s, sc, today), heat=insights.heat)
 
 
 # ── Blackouts and special hours ─────────────────────────────────────────────────

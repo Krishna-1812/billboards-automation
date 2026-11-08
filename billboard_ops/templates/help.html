@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Help · Billboard Ops{% endblock %}
+{% block head %}<style>
+  @media print { .side, .no-print, .flash { display: none !important; } .shell { display: block; } main { padding: 0; }
+    .guide { break-after: page; box-shadow: none; border: 0; } }
+  .guide ol li { margin: 6px 0; }
+</style>{% endblock %}
+{% block content %}
+{% set i = 1 if glang == 'ar' else 0 %}
+<div class="head no-print">
+  <div><h1>Help</h1><p class="muted">A one-page guide for each role, for training. Print a role on its own, or all of them.</p></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('main.help_page', role=role, lang='en' if glang == 'ar' else 'ar') }}">{{ 'English' if glang == 'ar' else 'العربية' }}</a>
+    <button type="button" onclick="window.print()">Print</button>
+  </div>
+</div>
+<div class="actions no-print" style="margin-bottom:12px">
+  <a class="btn {{ 'primary' if not role }}" href="{{ url_for('main.help_page', lang=glang) }}">All</a>
+  {% for r in all_roles %}<a class="btn {{ 'primary' if role == r }}" href="{{ url_for('main.help_page', role=r, lang=glang) }}">{{ guides[r].title[0] }}</a>{% endfor %}
+</div>
+{% for r in roles %}{% set g = guides[r] %}
+<div class="card guide" dir="{{ 'rtl' if glang == 'ar' else 'ltr' }}" lang="{{ glang }}">
+  <h2 style="margin-top:0">{{ g.title[i] }}</h2>
+  <p>{{ g.intro[i] }}</p>
+  <ol>{% for step in g.steps %}<li>{{ step[i] }}</li>{% endfor %}</ol>
+</div>
+{% endfor %}
+{% endblock %}

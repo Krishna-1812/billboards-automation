@@ -76,6 +76,9 @@ def run_due(limit=20):
             log.exception("job %s (%s) failed", job_id, kind)
             status, error = "failed", f"{e}\n{traceback.format_exc(limit=3)}"
         with db.session_scope() as s:
+            if status != "skipped":                  # "not set up" isn't a connection problem
+                from .monitor import record
+                record(s, kind, status == "done", error)
             j = s.get(Job, job_id)
             j.last_error = error[:4000]
             if status == "failed" and attempts < MAX_ATTEMPTS:

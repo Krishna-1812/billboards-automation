@@ -4,5 +4,6 @@
   {% if can('settings') %}<a class="btn {{ 'primary' if ep == 'admin.automation' }}" href="{{ url_for('admin.automation') }}">Automation</a>{% endif %}
   {% if can('people') %}<a class="btn {{ 'primary' if ep == 'admin.people' }}" href="{{ url_for('admin.people') }}">People</a>{% endif %}
   {% if can('settings') %}<a class="btn {{ 'primary' if ep == 'admin.connections' }}" href="{{ url_for('admin.connections') }}">Connections</a>{% endif %}
+  {% if can('settings') %}<a class="btn {{ 'primary' if ep == 'admin.launch_page' }}" href="{{ url_for('admin.launch_page') }}">Launch</a>{% endif %}
   {% if can('review_sheet') %}<a class="btn {{ 'primary' if ep == 'admin.sheet_changes' }}" href="{{ url_for('admin.sheet_changes') }}">Sheet changes</a>{% endif %}
 </div>

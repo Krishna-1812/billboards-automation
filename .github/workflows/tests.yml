@@ -34,6 +34,8 @@ jobs:
       - name: ffmpeg (the creative checks measure real video files)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - run: pip install -r requirements.txt
+      - name: Known vulnerabilities in the dependencies
+        run: pip install pip-audit && pip-audit -r requirements.txt
       - name: Tests on SQLite
         run: python -m pytest tests -q
       - name: Migrations match the models (Postgres)

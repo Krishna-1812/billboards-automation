@@ -35,6 +35,25 @@
     <p>Error alerts go to: {{ cfg.ALERT_EMAILS|join(', ') or 'nobody yet (ALERT_EMAILS)' }}.</p>
   </div>
 </div>
+<h2>How the connections are doing</h2>
+<div class="card table-wrap"><table class="small">
+  <tr><th>Connection</th><th>State</th><th></th></tr>
+  {% for name, label, state, detail in conns %}<tr><td>{{ label }}</td>
+    <td><span class="pill {{ {'ok': 'ok', 'failing': 'warning', 'down': 'no'}.get(state, '') }}">{{ state }}</span></td><td>{{ detail }}</td></tr>
+  {% else %}<tr><td colspan="3" class="empty">Nothing has run yet.</td></tr>{% endfor %}
+</table>
+<p class="small muted">A connection down for 30 minutes alerts the owner (Notices → Problems with the app) and ALERT_EMAILS. For an outside uptime check, point it at <span class="mono">{{ (cfg.APP_URL or request.host_url.rstrip('/')) }}/health/full</span>: it answers 503 when the worker has stopped or a connection is down.</p></div>
+
+<h2>Backups</h2>
+<div class="card">
+  <p>Nightly backup to the Shared Drive's Backups folder:
+    {% if last_backup and last_backup.ok %}<span class="pill ok">last one {{ last_backup.at[:16]|replace('T', ' ') }} UTC</span> {{ last_backup.file }}, {{ '{:,}'.format(last_backup.rows) }} records
+    {% elif last_backup %}<span class="pill warning">not made</span> {{ last_backup.error }}{% else %}<span class="pill warning">none yet</span>{% endif %}</p>
+  <p>Restore tested: {% if restore_tested %}<span class="pill ok">{{ restore_tested.at[:10] }}</span> from {{ restore_tested.file }} ({{ '{:,}'.format(restore_tested.rows) }} records){% else %}<span class="pill warning">not yet</span> (see the README: “Testing a restore”){% endif %}</p>
+  <form method="post" action="{{ url_for('admin.download_backup') }}" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">Download a backup now</button></form>
+  <p class="small muted">Railway's own Postgres backups hold everything, files included; turn them on in the Postgres service. This backup is the portable copy, without the file contents kept in the database.</p>
+</div>
+
 <h2>Background tasks that didn't finish</h2>
 <div class="card table-wrap"><table class="small">
   <tr><th>When</th><th>Task</th><th>State</th><th>Why</th><th></th></tr>

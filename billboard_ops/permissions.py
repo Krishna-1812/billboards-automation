@@ -22,6 +22,7 @@ CAN = {
     "send_messages":    ("owner", "manager", "sales"),            # approve a draft to a client
     "accuracy":         ("owner", "manager"),                     # the accuracy test set and its runs
     "costs":            ("owner", "manager"),
+    "insights":         ("owner", "manager"),                     # Phase 5: performance, exports, the weekly summary
     "settings":         ("owner",),
     "people":           ("owner",),
 }

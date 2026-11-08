@@ -367,6 +367,7 @@ def place_hold(session, user, p, *, client, lines, title="", notes="", override_
         raise bookings.BookingError(f"{p.ref} is already {p.status}.")
     b = bookings.create(session, user, client, lines, title=title, notes=notes, override_reason=override_reason,
                         source="proposal", source_ref=p.ref)
+    p.edited = _changed_from_reading(p, client, lines)
     p.booking_id = b.id
     p.client_id = client.id
     p.status = "held"
@@ -378,6 +379,17 @@ def place_hold(session, user, p, *, client, lines, title="", notes="", override_
                      language=_lang(p), proposal=p, booking=b, in_reply_to=_last_inbound_id(p))
     log(session, bookings.actor_of(user), "held", "proposal", p.ref, f"Hold {b.code} placed from {p.ref}")
     return b
+
+
+def _changed_from_reading(p, client, lines):
+    """Whether the hold differs from what the agent read: another client, or other screens or dates."""
+    d = p.draft or {}
+    if d.get("client_id") and d.get("client_id") != client.id:
+        return True
+    read = sorted((ln.get("screen_id"), str(ln.get("start_date") or ""), str(ln.get("end_date") or ""))
+                  for ln in d.get("lines") or [])
+    held = sorted((li.screen_id, li.start_date.isoformat(), li.end_date.isoformat()) for li in lines)
+    return bool(d.get("unmatched")) or read != held
 
 
 def ask_client(session, user, p):

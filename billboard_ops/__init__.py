@@ -46,7 +46,7 @@ def create_app(config=None):
     )
 
     # Every job handler registers itself on import.
-    from . import creative_eval, creatives, evaluate, intake, loading, mail, outbox, plans, sync  # noqa: F401
+    from . import backup, creative_eval, creatives, evaluate, intake, loading, mail, outbox, plans, sync  # noqa: F401
     from .channels import email_in  # noqa: F401
 
     from .views import admin, auth, bookings, creatives as creative_views, imports, inbox, live, main, portal, \
@@ -56,10 +56,12 @@ def create_app(config=None):
         app.register_blueprint(bp)
 
     app.teardown_appcontext(close_db)
+    from . import security
+    security.init(app)
 
     @app.before_request
     def _load_user():
-        if request.endpoint in ("main.health", "static"):
+        if request.endpoint in ("main.health", "main.health_full", "static"):
             return
         if request.endpoint and request.endpoint.startswith("webhooks."):
             return                          # signed by the sender instead (see views/webhooks.py)

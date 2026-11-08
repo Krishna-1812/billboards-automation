@@ -34,6 +34,7 @@
       {% if can('import') %}<a href="{{ url_for('imports.import_list') }}" class="{{ 'on' if ep.startswith('imports.') }}">{{ t('imports') }}</a>{% endif %}
       <a href="{{ url_for('main.notices') }}" class="{{ 'on' if ep == 'main.notices' }}">{{ t('notifications') }} {% if unread_notices %}<span class="badge-count">{{ unread_notices }}</span>{% endif %}</a>
       <a href="{{ url_for('admin.activity') }}" class="{{ 'on' if ep == 'admin.activity' }}">{{ t('activity') }}</a>
+      <a href="{{ url_for('main.help_page') }}" class="{{ 'on' if ep == 'main.help_page' }}">{{ t('help') }}</a>
       {% if can('settings') %}<a href="{{ url_for('admin.general') }}" class="{{ 'on' if ep.startswith('admin.') and ep != 'admin.activity' }}">{{ t('settings') }}</a>
       {% elif can('review_sheet') %}<a href="{{ url_for('admin.sheet_changes') }}" class="{{ 'on' if ep == 'admin.sheet_changes' }}">Sheet changes</a>{% endif %}
     </nav>

@@ -14,6 +14,7 @@
     {% set ep = request.endpoint or '' %}
     <a href="{{ url_for('portal.home') }}" class="{{ 'on' if ep in ('portal.home', 'portal.booking') }}">{{ tp('my_bookings') }}</a>
     <a href="{{ url_for('portal.new_request') }}" class="{{ 'on' if ep == 'portal.new_request' }}">{{ tp('new_request') }}</a>
+    <a href="{{ url_for('portal.help_page') }}" class="{{ 'on' if ep == 'portal.help_page' }}">{{ tp('help') }}</a>
     {% endif %}
     <form method="post" action="{{ url_for('portal.language') }}" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">

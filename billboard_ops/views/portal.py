@@ -355,6 +355,13 @@ def proof_file(proof_id):
     return proof_response(s, p)
 
 
+@bp.route("/portal/help")
+@portal_required
+def help_page():
+    from ..help_text import GUIDES
+    return render_template("portal_help.html", g=GUIDES["client"], i=1 if _lang() == "ar" else 0)
+
+
 # ── A new request ───────────────────────────────────────────────────────────────
 
 @bp.route("/portal/request", methods=["GET", "POST"])

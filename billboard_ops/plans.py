@@ -155,6 +155,11 @@ def signature(plan):
     return hashlib.sha1(json.dumps(plan, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
 
+def _combined(booking):
+    return signature({str(l.id): {k: v for k, v in (l.plan or {}).items() if k != "evidence"}
+                      for l in booking.lines})
+
+
 def describe(plan, lang="en"):
     """'Morning peak 30/h, Evening peak 60/h; Fri, Sat' in plain words, for messages and the portal."""
     from .drafts import t
@@ -353,6 +358,7 @@ def draft(session, booking, actor="agent"):
         note = "Claude isn't connected. " + note
     for l in booking.lines:
         l.plan = plans[l.id]
+    booking.plan_drafted_sig = _combined(booking)
     booking.plan_status = "draft"
     booking.plan_note, booking.plan_confidence = note[:2000], confidence
     log(session, actor, "drafted_plan", "booking", booking.code, f"Play plan drafted ({confidence}): {note}"[:500])
@@ -415,6 +421,7 @@ def confirm(session, user, booking, override_reason="", automatic=False):
         booking.plan_override_reason = ""
     for l in booking.lines:
         l.confirmed_plan = l.plan
+    booking.plan_edited = bool(booking.plan_drafted_sig) and booking.plan_drafted_sig != _combined(booking)
     booking.plan_confirmed_by, booking.plan_confirmed_at = who, utcnow()
     booking.plan_client_note = ""
     total = sum(r["total"] for r in rows)

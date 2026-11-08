@@ -20,6 +20,10 @@
 </div>
 {% if months %}<h2>By month</h2><div class="card table-wrap"><table class="small"><tr>{% for mth, usd in months %}<th class="num">{{ mth }}</th>{% endfor %}</tr>
   <tr>{% for mth, usd in months %}<td class="num">${{ '%.2f'|format(usd) }}</td>{% endfor %}</tr></table></div>{% endif %}
+{% if per_booking %}<h2>By booking, this month</h2><div class="card table-wrap"><table class="small">
+  <tr><th>Booking</th><th>Client</th><th class="num">Calls</th><th class="num">Cost</th></tr>
+  {% for code, client, n, usd in per_booking %}<tr><td><a href="{{ url_for('bookings.booking_detail', code=code) }}">{{ code }}</a></td><td>{{ client }}</td><td class="num">{{ n }}</td><td class="num">${{ '%.3f'|format(usd) }}</td></tr>{% endfor %}
+</table></div>{% endif %}
 <h2>Recent calls</h2>
 <div class="card table-wrap"><table class="small">
   <tr><th>When</th><th>What</th><th>Who</th><th>Model</th><th class="num">Tokens in / out</th><th class="num">Cost</th><th></th></tr>

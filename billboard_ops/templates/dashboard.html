@@ -1,24 +1,52 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m with context %}
 {% block title %}Dashboard · Billboard Ops{% endblock %}
+{% block head %}{% if map_points %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>{% endif %}{% endblock %}
+{% macro exports(what) %}<span class="small export">
+  <a href="{{ url_for('main.dashboard', export=what, format='xlsx') }}">Excel</a> ·
+  <a href="{{ url_for('main.dashboard', export=what, format='csv') }}">CSV</a> ·
+  <a href="{{ url_for('main.dashboard', export=what, format='pdf') }}">PDF</a>
+  {% if can('insights') %} · <form method="post" action="{{ url_for('main.export_sheet') }}" class="inline">{{ m.csrf() }}<input type="hidden" name="what" value="{{ what }}"><button class="linkish" type="submit">Google Sheets</button></form>{% endif %}
+</span>{% endmacro %}
 {% block content %}
 <div class="head">
-  <div><h1>{{ t('dashboard') }}</h1><p class="muted">{{ today()|date }}. The full owner dashboard grows with each phase.</p></div>
+  <div><h1>{{ t('dashboard') }}</h1><p class="muted">{{ today()|date }} · {{ top.screens }} screens</p></div>
   <div class="actions">
     <a class="btn primary" href="{{ url_for('bookings.availability') }}">{{ t('availability') }}</a>
     {% if can('hold') %}<a class="btn" href="{{ url_for('bookings.booking_new') }}">{{ t('place_hold') }}</a>{% endif %}
+    {% if can('insights') %}<a class="btn" href="{{ url_for('main.performance') }}">Performance</a>
+      <a class="btn" href="{{ url_for('main.weekly_summary') }}">Weekly summary</a>{% endif %}
   </div>
 </div>
 
 <div class="grid cols-4">
-  <div class="card stat"><div class="num">{{ week_avg|pct }}</div><div class="lbl">Loop time sold, next 7 days (average across screens)</div></div>
-  <div class="card stat"><div class="num">{{ running|length }}</div><div class="lbl">Campaigns running today</div></div>
-  <div class="card stat"><div class="num">{{ holds|length }}</div><div class="lbl">Open holds, {{ expiring|length }} expire within 48 hours</div></div>
-  <div class="card stat"><div class="num">{{ starting|length }}</div><div class="lbl">Bookings starting in the next 7 days</div></div>
+  <div class="card stat"><div class="num">{{ top.week|pct }}</div><div class="lbl">Loop time sold this week</div></div>
+  <div class="card stat"><div class="num">{{ top.month|pct }}</div><div class="lbl">Loop time sold in {{ month0.strftime('%B') }}</div></div>
+  <div class="card stat"><div class="num">{{ top.live }}</div><div class="lbl">Campaigns live now</div></div>
+  <div class="card stat"><div class="num">{{ top.starting }}</div><div class="lbl">Campaigns starting in the next 7 days</div></div>
+  <div class="card stat"><div class="num">{{ top.holds }}</div><div class="lbl">Open holds, {{ top.holds_expiring }} expire this week</div></div>
+  <div class="card stat"><div class="num">{{ top.files_waiting }}</div><div class="lbl"><a href="{{ url_for('creatives.creative_list') }}">Files waiting for a decision</a></div></div>
+  <div class="card stat"><div class="num">{{ top.files_failing }}</div><div class="lbl">Files that failed, waiting for the client</div></div>
+  <div class="card stat"><div class="num">${{ '%.2f'|format(top.spend) }}</div><div class="lbl">{% if can('costs') %}<a href="{{ url_for('inbox.costs') }}">Claude this month</a>{% else %}Claude this month{% endif %}</div></div>
+</div>
+<p class="small muted">Revenue appears here once pricing is set up.</p>
+
+<div class="head" style="margin:24px 0 8px"><h2 style="margin:0">At risk</h2>{{ exports('risk') }}</div>
+<div class="card table-wrap">
+  <table>
+    <tr><th></th><th>Booking</th><th>Client</th><th>What</th><th>Next step is with</th></tr>
+    {% for r in risks[:25] %}
+    <tr><td><span class="pill {{ {3: 'no', 2: 'hold', 1: 'partial'}[r.severity] }}">{{ {3: 'urgent', 2: 'soon', 1: 'follow up'}[r.severity] }}</span></td>
+      <td><a href="{{ r.link }}">{{ r.code }}</a></td><td>{{ r.client }}</td><td>{{ r.text }}</td><td class="small">{{ r.owner }}</td></tr>
+    {% else %}<tr><td colspan="5" class="empty">Nothing at risk: every campaign starting this week is ready, no hold expires in the next 48 hours, and every client has answered.</td></tr>{% endfor %}
+  </table>
+  {% if risks|length > 25 %}<p class="small muted">And {{ risks|length - 25 }} more; download the list to see them all.</p>{% endif %}
 </div>
 
 {% if overrides or sheet_changes or problems %}
-<h2>Needs attention</h2>
+<h2>Needs a decision</h2>
 <div class="card">
   {% if overrides %}<p><span class="pill warning">Over capacity</span> {{ overrides|length }} booking(s) were allowed past a screen's capacity:
     {% for b in overrides[:10] %}<a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a>{{ ", " if not loop.last }}{% endfor %}.</p>{% endif %}
@@ -28,47 +56,43 @@
 </div>
 {% endif %}
 
-<div class="grid cols-2" style="margin-top:16px">
-  <div>
-    <h2>Holds expiring soonest</h2>
-    <div class="card table-wrap">
-      <table>
-        <tr><th>Booking</th><th>Client</th><th>Screens</th><th>Expires (UTC)</th></tr>
-        {% for b in holds[:8] %}
-          <tr><td><a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a></td>
-            <td>{{ b.client.name }}</td><td>{{ m.screens_of(b) }}</td>
-            <td {% if b in expiring %}style="color:var(--bad);font-weight:600"{% endif %}>{{ b.hold_expires_at|dt }}</td></tr>
-        {% else %}<tr><td colspan="4" class="empty">No open holds.</td></tr>{% endfor %}
-      </table>
-    </div>
-  </div>
-  <div>
-    <h2>Starting in the next 7 days</h2>
-    <div class="card table-wrap">
-      <table>
-        <tr><th>Booking</th><th>Client</th><th>Starts</th><th>Status</th></tr>
-        {% for b in starting[:8] %}
-          <tr><td><a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a></td>
-            <td>{{ b.client.name }}</td><td>{{ b.start_date|date }}</td><td>{{ m.status(b.status) }}</td></tr>
-        {% else %}<tr><td colspan="4" class="empty">Nothing starts this week.</td></tr>{% endfor %}
-      </table>
-    </div>
-  </div>
+<div class="head" style="margin:24px 0 8px"><h2 style="margin:0">The next 12 weeks</h2>{{ exports('grid') }}</div>
+<div class="card table-wrap">
+  <table class="cal">
+    <tr><th></th>{% for i in range(12) %}{% set d = week0 + timedelta(days=7 * i) %}<th class="day" style="min-width:44px">{{ d.strftime('%d %b') }}</th>{% endfor %}</tr>
+    {% for sc in screens %}
+    <tr><th class="scr"><a href="{{ url_for('screens.screen_detail', screen_id=sc.id) }}">{{ sc.code }}</a></th>
+      {% for start, avg, peak, closed in weeks[sc.id] %}
+      <td><a class="{{ 'heat-closed' if closed else 'heat-' ~ heat(avg) }}" style="min-width:44px"
+             href="{{ url_for('bookings.calendar_grid', start=start.isoformat()) }}"
+             title="{{ sc.code }}, week of {{ start|date }}: {{ avg|round|int }}% of loop time sold, busiest hour {{ peak|round|int }}%">{{ '' if closed else avg|round|int ~ '%' }}</a></td>
+      {% endfor %}</tr>
+    {% else %}<tr><td class="empty">No screens yet.</td></tr>{% endfor %}
+  </table>
+  <div class="legend" style="margin-top:8px"><span><span class="sw heat-0"></span>under 1%</span><span><span class="sw heat-1"></span>1–25%</span>
+    <span><span class="sw heat-2"></span>25–50%</span><span><span class="sw heat-3"></span>50–85%</span><span><span class="sw heat-4"></span>85% or more</span>
+    <span><span class="sw heat-closed"></span>off all week</span><span>Pale cells are gaps worth selling.</span></div>
 </div>
 
-<h2>Screens today</h2>
-<div class="card table-wrap">
-  <table>
-    <tr><th>Screen</th><th>Area</th><th>Busiest hour today</th><th></th></tr>
-    {% for s in screens %}
-      <tr><td><a href="{{ url_for('screens.screen_detail', screen_id=s.id) }}">{{ s.code }}</a> {{ s.name }}</td>
-        <td>{{ s.area }}</td>
-        <td style="width:40%"><div class="bar {{ 'full' if today_peak.get(s.id, 0) >= 99.99 }}"><i style="width:{{ [today_peak.get(s.id, 0), 100]|min }}%"></i></div></td>
-        <td class="num small">{{ today_peak.get(s.id, 0)|pct }}</td></tr>
-    {% else %}
-      <tr><td colspan="4" class="empty">No screens yet. {% if can('import') %}<a href="{{ url_for('imports.import_list') }}">Import them</a> or {% endif %}<a href="{{ url_for('screens.screen_edit') }}">add one</a>.</td></tr>
-    {% endfor %}
-  </table>
+<div class="grid cols-2" style="margin-top:16px">
+  <div>
+    <div class="head" style="margin:0 0 8px"><h2 style="margin:0">Pipeline</h2>{{ exports('pipeline') }}</div>
+    <div class="card table-wrap">
+      <table>
+        <tr><th></th><th class="num">{{ month0.strftime('%B') }}</th><th class="num">{{ last0.strftime('%B') }}</th></tr>
+        {% for key, label in [('requests', 'Requests'), ('holds', 'Holds placed'), ('confirmed', 'Confirmed'), ('started', 'Campaigns started')] %}
+        <tr><td>{{ label }}</td><td class="num"><strong>{{ this_month[key] }}</strong></td><td class="num muted">{{ last[key] }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+  <div>
+    <div class="head" style="margin:0 0 8px"><h2 style="margin:0">Screens</h2>{{ exports('screens') }}</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      {% if map_points %}<div id="map" style="height:300px"></div>
+      {% else %}<p class="muted" style="padding:16px">Add each screen's map pin (latitude and longitude) to see them on a map.</p>{% endif %}
+    </div>
+  </div>
 </div>
 
 <h2>Recent activity</h2>
@@ -78,5 +102,29 @@
       <tr><td class="muted" style="white-space:nowrap">{{ a.at|dt }}</td><td>{{ a.actor }}</td><td>{{ a.summary }}</td></tr>
     {% else %}<tr><td class="empty">Nothing yet.</td></tr>{% endfor %}
   </table>
+  <p class="small"><a href="{{ url_for('admin.activity') }}">All activity</a></p>
 </div>
 {% endblock %}
+{% block scripts %}{% if map_points %}
+<script>
+  (function () {
+    var points = {{ map_points|tojson }};
+    var css = getComputedStyle(document.documentElement);
+    var map = L.map('map', {scrollWheelZoom: false});
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {maxZoom: 18, attribution: '&copy; OpenStreetMap contributors'}).addTo(map);
+    var bounds = [];
+    points.forEach(function (p) {
+      var colour = css.getPropertyValue('--heat-' + p.heat).trim() || '#888';
+      var mk = L.circleMarker([p.lat, p.lng], {radius: 10, color: '#333', weight: 1, fillColor: colour, fillOpacity: 0.95})
+        .addTo(map);
+      var a = document.createElement('a');
+      a.href = '/screens/' + p.id; a.textContent = p.code + ' ' + p.name;
+      var box = document.createElement('div'); box.appendChild(a);
+      box.appendChild(document.createTextNode(': ' + p.pct + '% of loop time sold this week'));
+      mk.bindPopup(box);
+      bounds.push([p.lat, p.lng]);
+    });
+    if (bounds.length === 1) { map.setView(bounds[0], 13); } else { map.fitBounds(bounds, {padding: [24, 24]}); }
+  })();
+</script>{% endif %}{% endblock %}
