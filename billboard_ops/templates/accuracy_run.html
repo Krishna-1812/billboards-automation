@@ -2,7 +2,7 @@
 {% block title %}Accuracy run #{{ run.id }} · Billboard Ops{% endblock %}
 {% block head %}{% if run.status in ('queued', 'running') %}<meta http-equiv="refresh" content="8">{% endif %}{% endblock %}
 {% block content %}
-<div class="head"><div><h1>Accuracy run #{{ run.id }} <span class="pill {{ 'ok' if run.summary.get('passed') else '' }}">{{ run.status }}</span></h1>
+<div class="head"><div><h1>Accuracy run #{{ run.id }} <span class="pill {{ 'ok' if run.summary.get('passed') else '' }}">{{ run.status|nice }}</span></h1>
   <p class="muted">{{ run.model }} · started by {{ run.started_by }} {{ run.started_at|dt }} · cost ${{ '%.2f'|format(run.usd or 0) }}</p></div></div>
 {% if run.summary %}
 <div class="grid cols-4">
@@ -16,7 +16,7 @@
     {% set c = cases.get(r.case_id) %}
     <tr><td>{{ r.name }}</td>
       {% if r.get('error') %}<td colspan="{{ fields|length }}" style="color:var(--bad)">{{ r.error }}</td>
-      {% else %}{% for f in fields %}<td>{% set v = r.score.get(f) %}{% if v is none %}<span class="muted">—</span>{% elif v %}<span class="pill ok">right</span>{% else %}<span class="pill no">wrong</span>{% endif %}</td>{% endfor %}{% endif %}
+      {% else %}{% for f in fields %}<td>{% set v = r.score.get(f) %}{% if v is none %}<span class="muted">—</span>{% elif v %}<span class="pill ok">Right</span>{% else %}<span class="pill no">Wrong</span>{% endif %}</td>{% endfor %}{% endif %}
       <td>{% if r.get('got') %}{{ r.got.client }}: {% for l in r.got.lines %}{{ l.screen_code }} {{ l.start_date }}–{{ l.end_date }}{{ '; ' if not loop.last }}{% endfor %}{% endif %}</td>
       <td>{% if c %}{{ c.expected.get('client') }}: {% for l in c.expected.get('lines', []) %}{{ l.screen }} {{ l.start }}–{{ l.end }}{{ '; ' if not loop.last }}{% endfor %}{% endif %}</td></tr>
   {% endfor %}

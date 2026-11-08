@@ -5,6 +5,13 @@
   <div><h1>{{ tp('my_bookings') }}</h1><p class="muted">{{ client.name }}</p></div>
   <div class="actions"><a class="btn primary" href="{{ url_for('portal.new_request') }}">{{ tp('new_request') }}</a></div>
 </div>
+{% set ns = namespace(live=0, held=0, files=0) %}
+{% for b, step in current %}{% if b.status in ('live', 'scheduled') %}{% set ns.live = ns.live + 1 %}{% elif b.status == 'hold' %}{% set ns.held = ns.held + 1 %}{% elif b.status in ('confirmed', 'awaiting_creative', 'changes_requested') %}{% set ns.files = ns.files + 1 %}{% endif %}{% endfor %}
+<div class="bento">
+  <div class="tile tile-dark span-4"><div class="t">{{ tp('tile_live') }} {% if ns.live %}<span class="livedot" aria-hidden="true"></span>{% endif %}</div><div class="big">{{ ns.live }}</div><div class="sub muted">{{ tp('tile_live_sub') }}</div></div>
+  <div class="tile tile-peach span-4"><div class="t">{{ tp('tile_held') }}</div><div class="big">{{ ns.held }}</div><div class="sub muted">{{ tp('tile_held_sub') }}</div></div>
+  <div class="tile tile-lilac span-4"><div class="t">{{ tp('tile_files') }}</div><div class="big">{{ ns.files }}</div><div class="sub muted">{{ tp('tile_files_sub') }}</div></div>
+</div>
 <h2>{{ tp('current') }}</h2>
 <div class="card table-wrap">
   <table>

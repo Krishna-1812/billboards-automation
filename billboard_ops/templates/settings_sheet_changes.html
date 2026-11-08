@@ -9,7 +9,7 @@
 <div class="card table-wrap"><table class="small">
   <tr><th>Seen</th><th>Sheet tab</th><th>Row</th><th>Change</th><th>Row now</th><th></th></tr>
   {% for c in changes %}<tr><td style="white-space:nowrap">{{ c.detected_at|dt }}</td><td>{{ watches[c.watch_id].tab }}</td><td>{{ c.row_key }}</td>
-    <td><span class="pill {{ 'no' if c.change == 'removed' else 'partial' }}">{{ c.change }}</span></td>
+    <td><span class="pill {{ 'no' if c.change == 'removed' else 'partial' }}">{{ c.change|nice }}</span></td>
     <td>{{ (c.after or [])|join(' · ') }}</td>
     <td><form method="post">{{ m.csrf() }}<input type="hidden" name="change_id" value="{{ c.id }}"><button name="action" value="accept">Reviewed</button></form></td></tr>
   {% else %}<tr><td colspan="6" class="empty">No direct edits. The app and the sheets agree.</td></tr>{% endfor %}

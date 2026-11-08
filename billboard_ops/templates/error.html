@@ -1,4 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ code }} · Billboard Ops{% endblock %}
-{% block content %}<div class="card"><h1>{{ code }}</h1><p>{{ message }}</p><p><a href="/">Back to the dashboard</a></p></div>{% endblock %}
-{% block bare %}<div class="login-box card"><h1>{{ code }}</h1><p>{{ message }}</p><p>{% if user and user.role == 'client' %}<a href="/portal">Your portal</a>{% else %}<a href="/login">Sign in</a>{% endif %}</p></div>{% endblock %}
+{% block content %}<div class="card" style="max-width:560px;margin:8vh auto;text-align:center;padding:40px 32px;border-radius:30px">
+  <div style="font-size:72px;font-weight:800;letter-spacing:-0.05em;color:var(--accent)">{{ code }}</div><p style="font-size:17px;font-weight:600">{{ message }}</p>
+  <p style="margin-top:18px"><a class="btn primary" href="/">Back to the overview</a></p></div>{% endblock %}
+{% block bare %}<div class="auth"><div class="card" style="text-align:center">
+  <div class="brand" style="justify-content:center"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Billboard Ops</div>
+  <div style="font-size:64px;font-weight:800;letter-spacing:-0.05em;color:var(--accent)">{{ code }}</div><p style="font-weight:600">{{ message }}</p>
+  <p style="margin-top:16px">{% if user and user.role == 'client' %}<a class="btn primary" href="/portal">Your portal</a>{% else %}<a class="btn primary" href="/login">Sign in</a>{% endif %}</p></div></div>{% endblock %}

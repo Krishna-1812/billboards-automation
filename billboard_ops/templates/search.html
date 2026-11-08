@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Search · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><div class="eyebrow">Search</div><h1>{% if q %}“{{ q }}”{% else %}Find anything{% endif %}</h1>
+  <p class="muted">{% if q %}{{ total }} result{{ 's' if total != 1 }} across bookings, clients, screens and requests.{% else %}Search by booking code, campaign, client, screen or sender.{% endif %}</p></div></div>
+<form method="get" class="card" style="display:flex;gap:10px;align-items:center;margin-bottom:16px">
+  <input type="search" name="q" value="{{ q }}" aria-label="Search" placeholder="BK-2026-0012, Acme, SZR-01…" autofocus>
+  <button class="primary" type="submit">Search</button>
+</form>
+{% if q %}
+<div class="grid cols-2">
+  <section class="card"><h2 style="margin-top:0">Bookings</h2>
+    {% for b in res.bookings %}<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)">
+      <div><a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a> <span class="muted">{{ b.client.name }}{% if b.title %} · {{ b.title }}{% endif %}</span></div>{{ m.status(b.status) }}</div>
+    {% else %}<p class="muted">No bookings.</p>{% endfor %}</section>
+  <section class="card"><h2 style="margin-top:0">Clients</h2>
+    {% for c in res.clients %}<div style="padding:10px 0;border-bottom:1px solid var(--line)"><a href="{{ url_for('bookings.client_edit', client_id=c.id) }}">{{ c.name }}</a> <span class="muted small">{{ c.email }}</span></div>
+    {% else %}<p class="muted">No clients.</p>{% endfor %}</section>
+  <section class="card"><h2 style="margin-top:0">Screens</h2>
+    {% for sc in res.screens %}<div style="padding:10px 0;border-bottom:1px solid var(--line)"><a href="{{ url_for('screens.screen_detail', screen_id=sc.id) }}">{{ sc.code }}</a> <span class="muted">{{ sc.name }}{% if sc.area %} · {{ sc.area }}{% endif %}</span></div>
+    {% else %}<p class="muted">No screens.</p>{% endfor %}</section>
+  <section class="card"><h2 style="margin-top:0">Requests</h2>
+    {% for p in res.proposals %}<div style="padding:10px 0;border-bottom:1px solid var(--line)"><a href="{{ url_for('inbox.proposal_page', ref=p.ref) }}">{{ p.ref }}</a> <span class="muted">{{ p.subject or p.sender_name or p.sender }}</span></div>
+    {% else %}<p class="muted">No requests.</p>{% endfor %}</section>
+</div>
+{% endif %}
+{% endblock %}

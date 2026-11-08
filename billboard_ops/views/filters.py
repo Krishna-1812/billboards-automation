@@ -50,3 +50,4 @@ def register(app):
     app.jinja_env.filters.update(channel=lambda c: CHANNELS.get(c, c), date=fmt_date, dt=fmt_dt, heat=heat,
                                  pct=lambda v: f"{v:.0f}%", num=lambda v: f"{v:g}")
     app.jinja_env.globals.update(fmt_hours=fmt_hours, today=date.today, now=datetime.utcnow, timedelta=timedelta)
+    app.jinja_env.filters["nice"] = lambda v: str(v or "").replace("_", " ").capitalize()

@@ -22,11 +22,11 @@
       {% set f = today_fill.get(s.id) %}
       <tr>
         <td><a href="{{ url_for('screens.screen_detail', screen_id=s.id) }}">{{ s.code }}</a></td><td>{{ s.name }}</td><td>{{ s.area }}</td>
-        <td>{% if s.spec %}<a href="{{ url_for('screens.spec_edit', spec_id=s.spec_id) }}">{{ s.spec.name }}</a>{% else %}<span class="pill warning">none</span>{% endif %}</td>
+        <td>{% if s.spec %}<a href="{{ url_for('screens.spec_edit', spec_id=s.spec_id) }}">{{ s.spec.name }}</a>{% else %}<span class="pill warning">None</span>{% endif %}</td>
         <td class="small">{{ s.loop_seconds }}s, {{ s.slots_per_loop }} × {{ s.slot_seconds }}s</td>
         <td class="small">{{ fmt_hours(s.open_hour, s.close_hour) if not (s.open_hour == 0 and s.close_hour == 24) else '24 hours' }}</td>
         <td class="small">{% if f %}{% if f[3] %}closed{% else %}{{ f[1]|pct }}{% endif %}{% else %}—{% endif %}</td>
-        <td>{% if not s.active %}<span class="pill">inactive</span>{% endif %}</td>
+        <td>{% if not s.active %}<span class="pill">Inactive</span>{% endif %}</td>
       </tr>
     {% else %}<tr><td colspan="8" class="empty">No screens yet.</td></tr>{% endfor %}
   </table>

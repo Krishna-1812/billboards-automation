@@ -42,7 +42,7 @@
   {% if portal_users %}<div class="table-wrap"><table class="small">
     <tr><th>Email</th><th>Name</th><th>Language</th><th>Last signed in</th><th></th></tr>
     {% for u in portal_users %}<tr>
-      <td>{{ u.email }}{% if not u.active %} <span class="pill cancelled">no access</span>{% endif %}</td><td>{{ u.name }}</td><td>{{ 'Arabic' if u.language == 'ar' else 'English' }}</td>
+      <td>{{ u.email }}{% if not u.active %} <span class="pill cancelled">No access</span>{% endif %}</td><td>{{ u.name }}</td><td>{{ 'Arabic' if u.language == 'ar' else 'English' }}</td>
       <td>{{ u.last_login_at|dt if u.last_login_at else 'never' }}</td>
       <td>{% if can('portal_access') %}<form method="post" action="{{ url_for('portal.manage_access', client_id=c.id) }}" class="actions">{{ m.csrf() }}<input type="hidden" name="user_id" value="{{ u.id }}">
         {% if u.active %}<button name="action" value="send" type="submit">Email a sign-in link</button><button name="action" value="copy" type="submit">Copy a link</button><button class="danger" name="action" value="remove" type="submit">Remove access</button>

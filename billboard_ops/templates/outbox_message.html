@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m with context %}
-{% block title %}{{ msg.kind|replace('_', ' ')|capitalize }} · Billboard Ops{% endblock %}
+{% block title %}{{ msg.kind|nice }} · Billboard Ops{% endblock %}
 {% block content %}
 <div class="head">
-  <div><h1>{{ msg.kind|replace('_', ' ')|capitalize }} <span class="pill {{ 'ok' if msg.status == 'sent' else ('error' if msg.status == 'failed' else 'hold') }}">{{ msg.status }}</span></h1>
+  <div><h1>{{ msg.kind|nice }} <span class="pill {{ 'ok' if msg.status == 'sent' else ('error' if msg.status == 'failed' else 'hold') }}">{{ msg.status|nice }}</span></h1>
     <p class="muted">{% if msg.proposal %}For <a href="{{ url_for('inbox.proposal_page', ref=msg.proposal.ref) }}">{{ msg.proposal.ref }}</a>{% endif %}
       {% if booking %} · booking <a href="{{ url_for('bookings.booking_detail', code=booking.code) }}">{{ booking.code }}</a>{% endif %}
       {% if msg.approved_by %} · approved by {{ msg.approved_by }}{% endif %}{% if msg.sent_at %} · sent {{ msg.sent_at|dt }}{% endif %}</p></div>

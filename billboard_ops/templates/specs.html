@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Specs · Billboard Ops{% endblock %}
 {% block content %}
-<div class="head"><div><h1>{{ t('specs') }}</h1><p class="muted">What a file must be to play. Phase 3's automatic checks read every rule from here.</p></div>
+<div class="head"><div><h1>{{ t('specs') }}</h1><p class="muted">What a file must be to play. The automatic file checks read every rule from here.</p></div>
   <div class="actions">{% if can('edit_screens') %}<a class="btn primary" href="{{ url_for('screens.spec_edit') }}">{{ t('new') }}</a>{% endif %}</div></div>
 <div class="card table-wrap"><table>
   <tr><th>Spec</th><th>Size</th><th>Files</th><th>Ad lengths</th><th>Frame rate</th><th>Max size</th><th>Sound</th><th class="num">Screens</th></tr>

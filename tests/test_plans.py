@@ -222,7 +222,7 @@ def test_the_plan_page(app, s, people, inventory, login):
     b = booking(s, people, inventory)
     c = login(people["ops"])
     page = c.get(f"/bookings/{b.code}/plan").get_data(as_text=True)
-    assert "Morning peak" in page and "not started" in page and "At most 360 plays an hour" in page
+    assert "Morning peak" in page and "Not started" in page and "At most 360 plays an hour" in page
     r = c.post(f"/bookings/{b.code}/plan", data=_form(b, [30, 30, 60, 0], action="save"))
     assert r.status_code == 302
     s.expire_all()

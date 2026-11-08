@@ -7,7 +7,7 @@
   <table>
     <tr><th>Client</th><th>Contact</th><th>Email</th><th>WhatsApp</th><th>Language</th><th class="num">Bookings</th></tr>
     {% for c in items %}
-      <tr><td><a href="{{ url_for('bookings.client_edit', client_id=c.id) }}">{{ c.name }}</a></td><td>{{ c.contact_name }}</td>
+      <tr><td><a class="who-cell" href="{{ url_for('bookings.client_edit', client_id=c.id) }}"><span class="mono-av av{{ loop.index0 % 4 }}" aria-hidden="true">{{ c.name[:1]|upper }}</span>{{ c.name }}</a></td><td>{{ c.contact_name }}</td>
         <td>{{ c.email }}</td><td>{{ c.whatsapp }}</td><td>{{ 'Arabic' if c.language == 'ar' else 'English' }}</td>
         <td class="num">{{ counts.get(c.id, 0) }}</td></tr>
     {% else %}<tr><td colspan="6" class="empty">No clients yet.</td></tr>{% endfor %}

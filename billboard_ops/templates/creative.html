@@ -11,7 +11,7 @@
 {% endmacro %}
 {% block content %}
 <div class="head">
-  <div><h1>v{{ c.version }} · {{ c.filename }} <span class="pill {{ {'approved': 'ok', 'passed': 'ok', 'warnings': 'partial', 'failed': 'no', 'error': 'no', 'rejected': 'no'}.get(c.status, 'hold') }}">{{ c.status }}</span></h1>
+  <div><h1>v{{ c.version }} · {{ c.filename }} <span class="pill {{ {'approved': 'ok', 'passed': 'ok', 'warnings': 'partial', 'failed': 'no', 'error': 'no', 'rejected': 'no'}.get(c.status, 'hold') }}">{{ c.status|nice }}</span></h1>
     <p class="muted"><a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a> · {{ b.client.name }} · from {{ c.source }} {{ c.received_at|dt }}
       {% if c.probe %} · {{ c.probe.get('kind') }} {{ c.probe.get('width') }}x{{ c.probe.get('height') }}{% if c.probe.get('duration') %}, {{ '%.1f'|format(c.probe.duration) }}s{% endif %}, {{ (c.size / 1000000)|round(1) }} MB{% endif %}</p></div>
   <div class="actions"><a class="btn" href="{{ url_for('creatives.creative_file', cid=c.id, download=1) }}">Download</a></div>

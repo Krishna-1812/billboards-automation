@@ -9,7 +9,7 @@
     {% for n in items %}
       <tr {% if n.id > seen %}style="font-weight:600"{% endif %}>
         <td class="small muted" style="white-space:nowrap">{{ n.created_at|dt }}</td>
-        <td><span class="pill {{ n.kind }}">{{ n.kind }}</span> {{ n.text }}</td>
+        <td><span class="pill {{ n.kind }}">{{ n.kind|nice }}</span> {{ n.text }}</td>
         <td>{% if n.link %}<a href="{{ n.link }}">Open</a>{% endif %}</td>
       </tr>
     {% else %}

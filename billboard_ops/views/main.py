@@ -81,11 +81,16 @@ def dashboard():
     sheet_changes = s.scalars(select(SheetChange).where(SheetChange.resolved_at.is_(None))).all()
     activity = s.scalars(select(Activity).order_by(Activity.id.desc()).limit(10)).all()
     full, from_week = insights.dashboard_fills(s, screens, today)
+    weeks = insights.weekly_grid(s, screens, w0, 12, from_week)
+    from .. import lifecycle
+    local = lifecycle.local_now(s)
+    greeting = "good_morning" if local.hour < 12 else ("good_afternoon" if local.hour < 18 else "good_evening")
     return render_template("dashboard.html", screens=screens, top=insights.top_numbers(s, today, full),
-                           risks=insights.at_risk(s, today),
-                           weeks=insights.weekly_grid(s, screens, w0, 12, from_week),
+                           risks=insights.at_risk(s, today), weeks=weeks,
+                           chart=insights.trend_chart(weeks, w0), live=insights.live_now(s),
+                           starting=insights.starting_soon(s, today),
                            week0=w0, heat=insights.heat, this_month=insights.pipeline(s, m0, m1),
-                           last=insights.pipeline(s, l0, l1), month0=m0, last0=l0,
+                           last=insights.pipeline(s, l0, l1), month0=m0, last0=l0, greeting=greeting,
                            map_points=insights.screens_on_map(s, today, full), overrides=overrides,
                            sheet_changes=sheet_changes, activity=activity, problems=recent_problems(s, 5))
 
@@ -164,6 +169,38 @@ def weekly_summary():
         return redirect(url_for("main.weekly_summary"))
     subject, body = summary.compose(s, date.today())
     return render_template("summary.html", subject=subject, body=body, to=summary.recipients(s))
+
+
+@bp.route("/search")
+@login_required
+def search():
+    """One box for everything: bookings, clients, screens and requests."""
+    from sqlalchemy import func as f
+    from ..models import Client, Proposal
+    s = get_db()
+    q = (request.args.get("q") or "").strip()
+    res = {"bookings": [], "clients": [], "screens": [], "proposals": []}
+    if q:
+        like = f"%{q.lower()}%"
+        res["bookings"] = s.scalars(select(Booking).options(joinedload(Booking.client))
+                                    .join(Booking.client)
+                                    .where(or_(f.lower(Booking.code).like(like), f.lower(Booking.title).like(like),
+                                               f.lower(Client.name).like(like)))
+                                    .order_by(Booking.id.desc()).limit(25)).unique().all()
+        res["clients"] = s.scalars(select(Client).where(or_(f.lower(Client.name).like(like), f.lower(Client.email).like(like)))
+                                   .order_by(Client.name).limit(15)).all()
+        res["screens"] = s.scalars(select(Screen).where(or_(f.lower(Screen.code).like(like), f.lower(Screen.name).like(like),
+                                                          f.lower(Screen.area).like(like)))
+                                   .order_by(Screen.code).limit(15)).all()
+        res["proposals"] = s.scalars(select(Proposal).where(or_(f.lower(Proposal.ref).like(like),
+                                                              f.lower(Proposal.subject).like(like),
+                                                              f.lower(Proposal.sender).like(like),
+                                                              f.lower(Proposal.sender_name).like(like)))
+                                     .order_by(Proposal.id.desc()).limit(15)).all()
+        exact = [b for b in res["bookings"] if b.code.lower() == q.lower()]
+        if exact and sum(len(v) for v in res.values()) == 1:
+            return redirect(url_for("bookings.booking_detail", code=exact[0].code))
+    return render_template("search.html", q=q, res=res, total=sum(len(v) for v in res.values()))
 
 
 @bp.route("/help")

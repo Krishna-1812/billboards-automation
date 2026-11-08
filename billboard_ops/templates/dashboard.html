@@ -1,130 +1,202 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m with context %}
-{% block title %}Dashboard · Billboard Ops{% endblock %}
+{% block title %}Overview · Billboard Ops{% endblock %}
 {% block head %}{% if map_points %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>{% endif %}{% endblock %}
-{% macro exports(what) %}<span class="small export">
-  <a href="{{ url_for('main.dashboard', export=what, format='xlsx') }}">Excel</a> ·
-  <a href="{{ url_for('main.dashboard', export=what, format='csv') }}">CSV</a> ·
+{% macro exports(what) %}<span class="export">
+  <a href="{{ url_for('main.dashboard', export=what, format='xlsx') }}">Excel</a>
+  <a href="{{ url_for('main.dashboard', export=what, format='csv') }}">CSV</a>
   <a href="{{ url_for('main.dashboard', export=what, format='pdf') }}">PDF</a>
-  {% if can('insights') %} · <form method="post" action="{{ url_for('main.export_sheet') }}" class="inline">{{ m.csrf() }}<input type="hidden" name="what" value="{{ what }}"><button class="linkish" type="submit">Google Sheets</button></form>{% endif %}
+  {% if can('insights') %}<form method="post" action="{{ url_for('main.export_sheet') }}" class="inline">{{ m.csrf() }}<input type="hidden" name="what" value="{{ what }}"><button class="linkish" type="submit">Sheets</button></form>{% endif %}
 </span>{% endmacro %}
 {% block content %}
 <div class="head">
-  <div><h1>{{ t('dashboard') }}</h1><p class="muted">{{ today()|date }} · {{ top.screens }} screens</p></div>
+  <div><div class="eyebrow">{{ today().strftime('%A, %-d %B') }} · {{ top.screens }} screens</div>
+    <h1>{{ t(greeting) }}, {{ (user.name or 'there').split(' ')[0] }}</h1></div>
   <div class="actions">
-    <a class="btn primary" href="{{ url_for('bookings.availability') }}">{{ t('availability') }}</a>
-    {% if can('hold') %}<a class="btn" href="{{ url_for('bookings.booking_new') }}">{{ t('place_hold') }}</a>{% endif %}
-    {% if can('insights') %}<a class="btn" href="{{ url_for('main.performance') }}">Performance</a>
-      <a class="btn" href="{{ url_for('main.weekly_summary') }}">Weekly summary</a>{% endif %}
+    <a class="btn" href="{{ url_for('bookings.availability') }}">{{ t('availability') }}</a>
+    {% if can('hold') %}<a class="btn primary" href="{{ url_for('bookings.booking_new') }}">+ {{ t('place_hold') }}</a>{% endif %}
   </div>
 </div>
 
-<div class="grid cols-4">
-  <div class="card stat"><div class="num">{{ top.week|pct }}</div><div class="lbl">Loop time sold this week</div></div>
-  <div class="card stat"><div class="num">{{ top.month|pct }}</div><div class="lbl">Loop time sold in {{ month0.strftime('%B') }}</div></div>
-  <div class="card stat"><div class="num">{{ top.live }}</div><div class="lbl">Campaigns live now</div></div>
-  <div class="card stat"><div class="num">{{ top.starting }}</div><div class="lbl">Campaigns starting in the next 7 days</div></div>
-  <div class="card stat"><div class="num">{{ top.holds }}</div><div class="lbl">Open holds, {{ top.holds_expiring }} expire this week</div></div>
-  <div class="card stat"><div class="num">{{ top.files_waiting }}</div><div class="lbl"><a href="{{ url_for('creatives.creative_list') }}">Files waiting for a decision</a></div></div>
-  <div class="card stat"><div class="num">{{ top.files_failing }}</div><div class="lbl">Files that failed, waiting for the client</div></div>
-  <div class="card stat"><div class="num">${{ '%.2f'|format(top.spend) }}</div><div class="lbl">{% if can('costs') %}<a href="{{ url_for('inbox.costs') }}">Claude this month</a>{% else %}Claude this month{% endif %}</div></div>
-</div>
-<p class="small muted">Revenue appears here once pricing is set up.</p>
+<div class="bento">
+  <section class="card span-6 rows-2" aria-label="Loop time sold" style="display:flex;flex-direction:column;border-radius:30px;padding:24px 26px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <div class="eyebrow">Loop time sold this month · {{ month0.strftime('%B') }}</div>
+        <div style="display:flex;align-items:baseline;gap:12px;margin-top:4px;flex-wrap:wrap">
+          <span style="font-size:64px;font-weight:800;letter-spacing:-0.045em;line-height:1">{{ top.month|round|int }}%</span>
+          <span class="chip mint">This week {{ top.week|round|int }}%</span>
+        </div>
+      </div>
+      <span class="chip dark">Next 12 weeks</span>
+    </div>
+    {% if chart %}
+    <svg width="100%" height="150" viewBox="0 0 {{ chart.w }} {{ chart.h }}" preserveAspectRatio="none" role="img"
+         aria-label="Average share of loop time sold across the network, week by week; busiest week {{ chart.peak.label }} at {{ chart.peak.v }}%" style="margin-top:auto">
+      <path d="{{ chart.area }}" fill="#ECE8FF"></path>
+      <path d="{{ chart.line }}" fill="none" stroke="#5A49E6" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
+      {% for p in chart.dots %}<circle cx="{{ p.x }}" cy="{{ p.y }}" r="4" fill="#fff" stroke="#5A49E6" stroke-width="2.5" vector-effect="non-scaling-stroke"><title>Week of {{ p.label }}: {{ p.v }}%</title></circle>{% endfor %}
+    </svg>
+    <div style="display:grid;grid-template-columns:repeat({{ chart.dots|length }},minmax(0,1fr));font-size:11px;font-weight:700;color:var(--faint);margin-top:6px">
+      {% for p in chart.dots %}<span style="text-align:center">{{ p.label }}</span>{% endfor %}</div>
+    {% else %}<p class="muted" style="margin-top:auto">Add screens to see how full they are.</p>{% endif %}
+  </section>
 
-<div class="head" style="margin:24px 0 8px"><h2 style="margin:0">At risk</h2>{{ exports('risk') }}</div>
-<div class="card table-wrap">
-  <table>
-    <tr><th></th><th>Booking</th><th>Client</th><th>What</th><th>Next step is with</th></tr>
-    {% for r in risks[:25] %}
-    <tr><td><span class="pill {{ {3: 'no', 2: 'hold', 1: 'partial'}[r.severity] }}">{{ {3: 'urgent', 2: 'soon', 1: 'follow up'}[r.severity] }}</span></td>
-      <td><a href="{{ r.link }}">{{ r.code }}</a></td><td>{{ r.client }}</td><td>{{ r.text }}</td><td class="small">{{ r.owner }}</td></tr>
-    {% else %}<tr><td colspan="5" class="empty">Nothing at risk: every campaign starting this week is ready, no hold expires in the next 48 hours, and every client has answered.</td></tr>{% endfor %}
-  </table>
-  {% if risks|length > 25 %}<p class="small muted">And {{ risks|length - 25 }} more; download the list to see them all.</p>{% endif %}
+  {% set lv = live[0] if live else none %}
+  <section class="tile tile-dark span-3" aria-label="Live now" style="flex-direction:row;align-items:center;gap:14px">
+    {% if lv %}
+      <a class="thumb" href="{{ url_for('bookings.booking_detail', code=lv.b.code) }}" aria-label="Open {{ lv.b.code }}"
+         {% if lv.image %}style="background-image:url('{{ url_for('creatives.creative_file', cid=lv.file.id) }}')"{% endif %}>
+        {% if not lv.image %}<span style="font-size:10px;color:#FFE7A3">{{ lv.b.client.name|upper }}</span><span>{{ lv.b.title or lv.b.code }}</span>{% endif %}</a>
+      <div style="min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#7FE0BF"><span class="livedot"></span>Live now{% if live|length > 1 %} · {{ live|length }}{% endif %}</div>
+        <div style="font-size:18px;font-weight:800;margin-top:6px">{{ lv.b.client.name }}</div>
+        <div class="muted small" style="margin-top:2px">{{ lv.screens }} · until {{ lv.b.end_date.strftime('%-d %b') }}</div>
+      </div>
+    {% else %}
+      <div><div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#BDBBD6">Live now</div>
+        <div style="font-size:18px;font-weight:800;margin-top:6px">Nothing on air</div>
+        <div class="muted small">Campaigns appear here on their start date.</div></div>
+    {% endif %}
+  </section>
+
+  <a class="tile tile-lilac span-3" href="{{ url_for('bookings.booking_list', status='open') }}" aria-label="Campaigns starting this week">
+    <div class="t"><span>Starting this week</span><span aria-hidden="true">→</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end">
+      <span class="big" style="color:#24186E">{{ starting.count }}</span>
+      {% if starting.initials %}<div class="faces" aria-hidden="true">
+        {% for ini in starting.initials %}<span style="background:{{ ['#FFB394', '#7FE0BF'][loop.index0] }};color:{{ ['#5A1C06', '#0B4A32'][loop.index0] }}">{{ ini }}</span>{% endfor %}
+        {% if starting.more %}<span style="background:#fff;color:#24186E">+{{ starting.more }}</span>{% endif %}</div>{% endif %}
+    </div>
+    <div class="sub">{% if starting.not_ready %}{{ starting.not_ready }} still need files, a plan or loading{% else %}All ready to go{% endif %}</div>
+  </a>
+
+  <a class="tile tile-peach span-3" href="{{ url_for('bookings.booking_list', status='hold') }}" aria-label="Open holds">
+    <div class="t"><span>Open holds</span><span aria-hidden="true">→</span></div>
+    <div style="display:flex;align-items:baseline;gap:10px"><span class="big">{{ top.holds }}</span><span style="font-size:13px;font-weight:800;color:#8A2F12">{{ top.holds_expiring }} expire this week</span></div>
+    {% if top.holds %}<div class="ticks" aria-hidden="true">{% for i in range([top.holds, 24]|min) %}<i></i>{% endfor %}</div>{% endif %}
+  </a>
+
+  <a class="tile tile-mint span-3" href="{{ url_for('creatives.creative_list') }}" aria-label="Files waiting for a decision">
+    <div class="t"><span>Files waiting for a decision</span><span aria-hidden="true">→</span></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span aria-hidden="true" style="width:48px;height:48px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center">
+        {% if top.files_waiting %}<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#116B47" stroke-width="2.4"><rect x="3" y="5" width="18" height="12" rx="2"></rect><path d="m10 9 5 3-5 3z"></path></svg>
+        {% else %}<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#116B47" stroke-width="2.4"><path d="m5 12 5 5 9-10"></path></svg>{% endif %}</span>
+      <span class="big">{{ top.files_waiting }}</span>
+    </div>
+    <div class="sub">{% if top.files_failing %}{{ top.files_failing }} failed, waiting for the client{% elif top.files_waiting %}Watch them and approve{% else %}All caught up · none failing{% endif %}</div>
+  </a>
+
+  <section class="card span-8" aria-label="The next 12 weeks" style="border-radius:30px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <h2 style="margin:0">The next 12 weeks</h2>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <span class="legend"><span><span class="sw heat-0"></span>empty</span><span><span class="sw heat-2"></span>filling</span><span><span class="sw heat-3"></span>busy</span><span><span class="sw heat-4"></span>nearly full</span></span>
+        {{ exports('grid') }}</div>
+    </div>
+    {% if screens %}
+    <div class="table-wrap"><div class="heatgrid" style="grid-template-columns:70px repeat(12,minmax(42px,1fr))">
+      <div></div>
+      {% for i in range(12) %}<div class="h">{{ (week0 + timedelta(days=7 * i)).strftime('%-d %b') }}</div>{% endfor %}
+      {% for sc in screens %}
+        <a class="r" href="{{ url_for('screens.screen_detail', screen_id=sc.id) }}" style="color:var(--ink)">{{ sc.code }}</a>
+        {% for start, avg, peak, closed in weeks[sc.id] %}
+          <a class="c {{ 'heat-closed' if closed else 'heat-' ~ heat(avg) }}" href="{{ url_for('bookings.calendar_grid', start=start.isoformat()) }}"
+             title="{{ sc.code }}, week of {{ start|date }}: {{ avg|round|int }}% sold, busiest hour {{ peak|round|int }}%">{{ '' if closed or avg < 1 else avg|round|int ~ '%' }}</a>
+        {% endfor %}
+      {% endfor %}
+    </div></div>
+    {% else %}<p class="empty">No screens yet. {% if can('import') %}<a href="{{ url_for('imports.import_list') }}">Import them</a> or {% endif %}<a href="{{ url_for('screens.screen_edit') }}">add one</a>.</p>{% endif %}
+  </section>
+
+  <section class="card span-4" aria-label="Screens map" style="border-radius:30px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">This week on the map</h2>{{ exports('screens') }}</div>
+    {% if map_points %}<div id="map" style="height:250px;flex:1"></div>
+    {% set busiest = map_points|sort(attribute='pct', reverse=true)|first %}
+    <div class="small muted">Busiest this week: <strong style="color:var(--ink)">{{ busiest.code }} · {{ busiest.pct }}%</strong></div>
+    {% else %}<div class="empty" style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--panel-2);border-radius:18px">Add each screen's map pin to see them here.</div>{% endif %}
+  </section>
+
+  <section class="card span-8" aria-label="At risk" style="border-radius:30px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <h2 style="margin:0">At risk {% if risks %}<span class="count">{{ risks|length }}</span>{% endif %}</h2>{{ exports('risk') }}</div>
+    {% if risks %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+      {% for r in risks[:8] %}
+      <a class="risk" href="{{ r.link }}" style="color:var(--ink)">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <span class="pill {{ {3: 'no', 2: 'hold', 1: 'awaiting_creative'}[r.severity] }}">{{ {3: 'Urgent', 2: 'Soon', 1: 'Follow up'}[r.severity] }}</span>
+          <span class="small muted">{{ r.code }}</span></div>
+        <div style="font-size:15px;font-weight:800">{{ r.client }}</div>
+        <div class="small" style="color:#3E3D57;font-weight:500;line-height:1.45">{{ r.text }}</div>
+        <div class="who">Next: {{ r.owner }}</div>
+      </a>
+      {% endfor %}
+    </div>
+    {% if risks|length > 8 %}<p class="small muted">And {{ risks|length - 8 }} more; download the list to see them all.</p>{% endif %}
+    {% else %}<div class="empty" style="background:var(--ok-soft);color:var(--ok);border-radius:18px;font-weight:700">Nothing at risk. Every campaign starting this week is ready, and every client has answered.</div>{% endif %}
+  </section>
+
+  <section class="tile tile-dark span-4" aria-label="Pipeline" style="border-radius:30px;gap:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;color:#fff">Pipeline · {{ month0.strftime('%B') }}</h2><span class="small" style="color:#BDBBD6">vs {{ last0.strftime('%B') }}</span></div>
+    {% set maxv = [this_month.requests, this_month.holds, this_month.confirmed, this_month.started, 1]|max %}
+    {% for key, label, colour in [('requests', 'Requests', '#C9C1FF'), ('holds', 'Holds placed', '#FFB394'), ('confirmed', 'Confirmed', '#7FE0BF'), ('started', 'Campaigns started', '#FFFFFF')] %}
+    <div class="funnel"><span style="color:#BDBBD6;font-weight:600">{{ label }}</span>
+      <span class="track"><i style="width:{{ (100 * this_month[key] / maxv)|round|int }}%;background:{{ colour }}"></i></span>
+      <strong style="text-align:end" title="{{ last[key] }} in {{ last0.strftime('%B') }}">{{ this_month[key] }}</strong></div>
+    {% endfor %}
+    <div style="margin-top:auto;background:#24233D;border-radius:18px;padding:14px 16px;font-size:13px;line-height:1.5;color:#D9D7EC">
+      {% if this_month.holds %}{{ this_month.confirmed }} of {{ this_month.holds }} holds became bookings this month ({{ (100 * this_month.confirmed / this_month.holds)|round|int }}%).{% else %}No holds yet this month.{% endif %}
+      {{ last0.strftime('%B') }}: {{ last.requests }} requests, {{ last.holds }} holds, {{ last.confirmed }} confirmed.</div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="small" style="color:#BDBBD6">{{ exports('pipeline') }}</span>
+      {% if can('insights') %}<a class="small" href="{{ url_for('main.performance') }}">Performance →</a>{% endif %}</div>
+  </section>
 </div>
 
 {% if overrides or sheet_changes or problems %}
 <h2>Needs a decision</h2>
-<div class="card">
-  {% if overrides %}<p><span class="pill warning">Over capacity</span> {{ overrides|length }} booking(s) were allowed past a screen's capacity:
-    {% for b in overrides[:10] %}<a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a>{{ ", " if not loop.last }}{% endfor %}.</p>{% endif %}
-  {% if sheet_changes %}<p><span class="pill warning">Old sheet</span> {{ sheet_changes|length }} direct edit(s) to the old sheet need reviewing. <a href="{{ url_for('admin.sheet_changes') }}">Review</a></p>{% endif %}
-  {% if problems %}<p><span class="pill error">Sync</span> {{ problems|length }} recent background task(s) didn't finish, e.g. "{{ (problems[0].last_error or '').splitlines()[0][:120] }}".
-    {% if can('settings') %}<a href="{{ url_for('admin.connections') }}">See connections</a>{% endif %}</p>{% endif %}
+<div class="grid cols-2">
+  {% if overrides %}<div class="card"><span class="pill warning">Over capacity</span><p>{{ overrides|length }} booking(s) were allowed past a screen's capacity:
+    {% for b in overrides[:10] %}<a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a>{{ ", " if not loop.last }}{% endfor %}.</p></div>{% endif %}
+  {% if sheet_changes %}<div class="card"><span class="pill warning">Old sheet</span><p>{{ sheet_changes|length }} direct edit(s) to the old sheet need reviewing. <a href="{{ url_for('admin.sheet_changes') }}">Review them</a></p></div>{% endif %}
+  {% if problems %}<div class="card"><span class="pill error">Background tasks</span><p>{{ problems|length }} recent task(s) didn't finish, e.g. “{{ (problems[0].last_error or '').splitlines()[0][:120] }}”.
+    {% if can('settings') %}<a href="{{ url_for('admin.connections') }}">See connections</a>{% endif %}</p></div>{% endif %}
 </div>
 {% endif %}
-
-<div class="head" style="margin:24px 0 8px"><h2 style="margin:0">The next 12 weeks</h2>{{ exports('grid') }}</div>
-<div class="card table-wrap">
-  <table class="cal">
-    <tr><th></th>{% for i in range(12) %}{% set d = week0 + timedelta(days=7 * i) %}<th class="day" style="min-width:44px">{{ d.strftime('%d %b') }}</th>{% endfor %}</tr>
-    {% for sc in screens %}
-    <tr><th class="scr"><a href="{{ url_for('screens.screen_detail', screen_id=sc.id) }}">{{ sc.code }}</a></th>
-      {% for start, avg, peak, closed in weeks[sc.id] %}
-      <td><a class="{{ 'heat-closed' if closed else 'heat-' ~ heat(avg) }}" style="min-width:44px"
-             href="{{ url_for('bookings.calendar_grid', start=start.isoformat()) }}"
-             title="{{ sc.code }}, week of {{ start|date }}: {{ avg|round|int }}% of loop time sold, busiest hour {{ peak|round|int }}%">{{ '' if closed else avg|round|int ~ '%' }}</a></td>
-      {% endfor %}</tr>
-    {% else %}<tr><td class="empty">No screens yet.</td></tr>{% endfor %}
-  </table>
-  <div class="legend" style="margin-top:8px"><span><span class="sw heat-0"></span>under 1%</span><span><span class="sw heat-1"></span>1–25%</span>
-    <span><span class="sw heat-2"></span>25–50%</span><span><span class="sw heat-3"></span>50–85%</span><span><span class="sw heat-4"></span>85% or more</span>
-    <span><span class="sw heat-closed"></span>off all week</span><span>Pale cells are gaps worth selling.</span></div>
-</div>
-
-<div class="grid cols-2" style="margin-top:16px">
-  <div>
-    <div class="head" style="margin:0 0 8px"><h2 style="margin:0">Pipeline</h2>{{ exports('pipeline') }}</div>
-    <div class="card table-wrap">
-      <table>
-        <tr><th></th><th class="num">{{ month0.strftime('%B') }}</th><th class="num">{{ last0.strftime('%B') }}</th></tr>
-        {% for key, label in [('requests', 'Requests'), ('holds', 'Holds placed'), ('confirmed', 'Confirmed'), ('started', 'Campaigns started')] %}
-        <tr><td>{{ label }}</td><td class="num"><strong>{{ this_month[key] }}</strong></td><td class="num muted">{{ last[key] }}</td></tr>
-        {% endfor %}
-      </table>
-    </div>
-  </div>
-  <div>
-    <div class="head" style="margin:0 0 8px"><h2 style="margin:0">Screens</h2>{{ exports('screens') }}</div>
-    <div class="card" style="padding:0;overflow:hidden">
-      {% if map_points %}<div id="map" style="height:300px"></div>
-      {% else %}<p class="muted" style="padding:16px">Add each screen's map pin (latitude and longitude) to see them on a map.</p>{% endif %}
-    </div>
-  </div>
-</div>
 
 <h2>Recent activity</h2>
 <div class="card table-wrap">
   <table class="small">
     {% for a in activity %}
-      <tr><td class="muted" style="white-space:nowrap">{{ a.at|dt }}</td><td>{{ a.actor }}</td><td>{{ a.summary }}</td></tr>
+      <tr><td class="muted" style="white-space:nowrap;width:150px">{{ a.at|dt }}</td><td style="width:200px;font-weight:700">{{ a.actor }}</td><td>{{ a.summary }}</td></tr>
     {% else %}<tr><td class="empty">Nothing yet.</td></tr>{% endfor %}
   </table>
-  <p class="small"><a href="{{ url_for('admin.activity') }}">All activity</a></p>
+  <p class="small" style="padding:6px 14px"><a href="{{ url_for('admin.activity') }}">All activity →</a></p>
 </div>
 {% endblock %}
 {% block scripts %}{% if map_points %}
 <script>
   (function () {
     var points = {{ map_points|tojson }};
-    var css = getComputedStyle(document.documentElement);
-    var map = L.map('map', {scrollWheelZoom: false});
+    var colours = ['#B8B6CC', '#8F80FF', '#6F5FF0', '#5A49E6', '#FF7A52'];
+    var map = L.map('map', {scrollWheelZoom: false, zoomControl: false, attributionControl: true});
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {maxZoom: 18, attribution: '&copy; OpenStreetMap contributors'}).addTo(map);
+      {maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'}).addTo(map);
     var bounds = [];
     points.forEach(function (p) {
-      var colour = css.getPropertyValue('--heat-' + p.heat).trim() || '#888';
-      var mk = L.circleMarker([p.lat, p.lng], {radius: 10, color: '#333', weight: 1, fillColor: colour, fillOpacity: 0.95})
-        .addTo(map);
+      L.circleMarker([p.lat, p.lng], {radius: 14 + p.pct / 4, stroke: false, fillColor: colours[p.heat], fillOpacity: 0.18}).addTo(map);
+      var mk = L.circleMarker([p.lat, p.lng], {radius: 7, color: '#fff', weight: 2.5, fillColor: colours[p.heat], fillOpacity: 1}).addTo(map);
       var a = document.createElement('a');
-      a.href = '/screens/' + p.id; a.textContent = p.code + ' ' + p.name;
+      a.href = '/screens/' + p.id; a.textContent = p.code + ' · ' + p.name;
       var box = document.createElement('div'); box.appendChild(a);
-      box.appendChild(document.createTextNode(': ' + p.pct + '% of loop time sold this week'));
+      box.appendChild(document.createElement('br'));
+      box.appendChild(document.createTextNode(p.pct + '% of loop time sold this week'));
       mk.bindPopup(box);
       bounds.push([p.lat, p.lng]);
     });
-    if (bounds.length === 1) { map.setView(bounds[0], 13); } else { map.fitBounds(bounds, {padding: [24, 24]}); }
+    if (bounds.length === 1) { map.setView(bounds[0], 13); } else { map.fitBounds(bounds, {padding: [28, 28]}); }
   })();
 </script>{% endif %}{% endblock %}

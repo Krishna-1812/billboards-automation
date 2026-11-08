@@ -114,8 +114,9 @@ def test_dashboard_and_exports(app, s, people, small, login, google):
     b = confirmed(s, people, small, start=date.today() + timedelta(days=1))
     c = login(people["owner"])
     page = c.get("/").get_data(as_text=True)
-    for bit in ("Loop time sold this week", "At risk", "The next 12 weeks", "Pipeline", "Campaigns started",
-                b.code, "leaflet@1.9.4", '"code": "SZR-01"'):
+    for bit in ("Loop time sold this month", "This week", "Starting this week", "Open holds",
+                "Files waiting for a decision", "At risk", "The next 12 weeks", "Pipeline", "Campaigns started",
+                b.code, "leaflet@1.9.4", '"code": "SZR-01"', "Average share of loop time sold"):
         assert bit in page, bit
     for what in ("risk", "grid", "pipeline", "screens"):
         for fmt, ctype in (("csv", "text/csv"), ("xlsx", "spreadsheetml"), ("pdf", "application/pdf")):

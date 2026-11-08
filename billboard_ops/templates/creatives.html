@@ -10,19 +10,19 @@
 <div class="card table-wrap"><table>
   {% for c in waiting %}<tr><td><a href="{{ url_for('creatives.creative_page', cid=c.id) }}">v{{ c.version }} {{ c.filename }}</a></td>
     <td><a href="{{ url_for('bookings.booking_detail', code=c.booking.code) }}">{{ c.booking.code }}</a> {{ c.booking.client.name }}</td>
-    <td><span class="pill {{ 'ok' if c.status == 'passed' else 'partial' }}">{{ c.status }}</span></td><td class="small muted">{{ c.checked_at|dt }}</td></tr>{% endfor %}
+    <td><span class="pill {{ 'ok' if c.status == 'passed' else 'partial' }}">{{ c.status|nice }}</span></td><td class="small muted">{{ c.checked_at|dt }}</td></tr>{% endfor %}
 </table></div>
 {% endif %}
 <h2>Bookings</h2>
 <div class="card table-wrap"><table>
   <tr><th>Booking</th><th>Client</th><th>Starts</th><th>Files due</th><th>Screens</th><th>Status</th></tr>
   {% for r in rows %}{% set b = r.b %}
-    <tr><td><a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a>{% if r.risk %} <span class="pill error">at risk</span>{% endif %}</td>
+    <tr><td><a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a>{% if r.risk %} <span class="pill error">At risk</span>{% endif %}</td>
       <td>{{ b.client.name }}</td><td style="white-space:nowrap">{{ b.start_date|date }}</td>
-      <td style="white-space:nowrap">{{ b.creative_deadline|date if b.creative_deadline else 'not requested' }}</td>
+      <td style="white-space:nowrap">{% if b.creative_deadline %}{{ b.creative_deadline|date }}{% else %}<span class="muted">Not requested</span>{% endif %}</td>
       <td class="small">{% for x in r.cov %}<span class="pill {{ {'approved': 'ok', 'passed': 'ok', 'warnings': 'partial', 'failed': 'no', 'error': 'no', 'missing': ''}.get(x.state, 'hold') }}" title="{{ x.state }}">{{ x.screen.code }}</span> {% endfor %}</td>
       <td>{{ m.status(b.status) }}</td></tr>
   {% else %}<tr><td colspan="6" class="empty">No confirmed bookings are collecting files.</td></tr>{% endfor %}
 </table></div>
-<p class="legend small"><span class="pill">missing</span><span class="pill hold">checking</span><span class="pill no">failed</span><span class="pill partial">to look at</span><span class="pill ok">passed or approved</span></p>
+<p class="legend small"><span class="pill">Missing</span><span class="pill hold">Checking</span><span class="pill no">Failed</span><span class="pill partial">To look at</span><span class="pill ok">Passed or approved</span></p>
 {% endblock %}

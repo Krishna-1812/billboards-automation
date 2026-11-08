@@ -2,6 +2,7 @@
 {% block title %}Launch · Settings · Billboard Ops{% endblock %}
 {% block content %}
 <div class="head"><div><h1>{{ t('settings') }}</h1><p class="muted">Ready to launch? {{ summary.done }} of {{ summary.total }} done{% if summary.must_left %}; {{ summary.must_left|length }} must-haves left{% endif %}.</p></div></div>
+<div class="launchbar" role="img" aria-label="{{ summary.done }} of {{ summary.total }} done"><i style="width:{{ (100 * summary.done / (summary.total or 1))|round|int }}%"></i><span>{{ (100 * summary.done / (summary.total or 1))|round|int }}%</span></div>
 {% include "_settings_nav.html" %}
 {% for title, items in groups %}
 <h2>{{ title }}</h2>

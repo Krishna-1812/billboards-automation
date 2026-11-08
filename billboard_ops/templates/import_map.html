@@ -10,7 +10,7 @@
     <tr><th>In the app</th><th>Column in the sheet</th><th>First values</th></tr>
     {% for field, label, required, _ in fields %}
       {% set cur = run.mapping.get(field) %}
-      <tr><td>{{ label }}{% if required %} <span class="pill hold">needed</span>{% endif %}</td>
+      <tr><td>{{ label }}{% if required %} <span class="pill hold">Needed</span>{% endif %}</td>
         <td><select name="map_{{ field }}"><option value="">— not in the sheet —</option>
           {% for h in run.header %}<option value="{{ loop.index0 }}" {{ 'selected' if cur == loop.index0 }}>{{ h or ('Column ' ~ loop.index) }}</option>{% endfor %}</select></td>
         <td class="small muted">{% if cur is not none %}{% for r in sample %}{{ r[cur] if cur < r|length else '' }}{{ " · " if not loop.last }}{% endfor %}{% endif %}</td></tr>

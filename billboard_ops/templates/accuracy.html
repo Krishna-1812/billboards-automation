@@ -17,7 +17,7 @@
 <h2>Runs</h2>
 <div class="card table-wrap"><table>
   <tr><th>Run</th><th>When</th><th>Model</th><th>Cases</th>{% for f in fields %}<th class="num">{{ f|capitalize }}</th>{% endfor %}<th class="num">Cost</th></tr>
-  {% for r in runs %}<tr><td><a href="{{ url_for('inbox.accuracy_run_page', run_id=r.id) }}">#{{ r.id }}</a> <span class="pill {{ 'ok' if r.summary.get('passed') else '' }}">{{ r.status }}</span></td>
+  {% for r in runs %}<tr><td><a href="{{ url_for('inbox.accuracy_run_page', run_id=r.id) }}">#{{ r.id }}</a> <span class="pill {{ 'ok' if r.summary.get('passed') else '' }}">{{ r.status|nice }}</span></td>
     <td class="small">{{ r.started_at|dt }}</td><td class="small mono">{{ r.model }}</td><td>{{ r.summary.get('cases', '—') }}</td>
     {% for f in fields %}<td class="num">{{ (r.summary.get(f)|string ~ '%') if r.summary.get(f) is not none else '—' }}</td>{% endfor %}
     <td class="num">${{ '%.2f'|format(r.usd or 0) }}</td></tr>

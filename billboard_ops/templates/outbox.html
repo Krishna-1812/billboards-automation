@@ -7,16 +7,16 @@
   <tr><th>To</th><th>What</th><th>About</th><th>State</th><th>Drafted</th><th></th></tr>
   {% for msg in waiting %}
     <tr><td>{{ msg.recipient or '—' }}<div class="small muted">{{ msg.channel|channel }}</div></td>
-      <td>{{ msg.kind|replace('_', ' ')|capitalize }}<div class="small muted" dir="auto">{{ msg.subject[:60] }}</div></td>
+      <td>{{ msg.kind|nice }}<div class="small muted" dir="auto">{{ msg.subject[:60] }}</div></td>
       <td>{% if msg.proposal %}<a href="{{ url_for('inbox.proposal_page', ref=msg.proposal.ref) }}">{{ msg.proposal.ref }}</a>{% endif %}</td>
-      <td><span class="pill {{ 'error' if msg.status == 'failed' else 'hold' }}">{{ msg.status }}</span>{% if msg.error %}<div class="small" style="color:var(--bad)">{{ msg.error[:120] }}</div>{% endif %}</td>
+      <td><span class="pill {{ 'error' if msg.status == 'failed' else 'hold' }}">{{ msg.status|nice }}</span>{% if msg.error %}<div class="small" style="color:var(--bad)">{{ msg.error[:120] }}</div>{% endif %}</td>
       <td class="small muted">{{ msg.created_at|dt }}</td>
       <td><a class="btn" href="{{ url_for('inbox.outbox_message', message_id=msg.id) }}">Review</a></td></tr>
   {% else %}<tr><td colspan="6" class="empty">Nothing waiting.</td></tr>{% endfor %}
 </table></div>
 <h2>Sent recently</h2>
 <div class="card table-wrap"><table class="small">
-  {% for msg in sent %}<tr><td>{{ msg.sent_at|dt }}</td><td>{{ msg.recipient }}</td><td>{{ msg.kind|replace('_', ' ') }}</td>
+  {% for msg in sent %}<tr><td>{{ msg.sent_at|dt }}</td><td>{{ msg.recipient }}</td><td>{{ msg.kind|nice }}</td>
     <td dir="auto">{{ msg.subject[:70] }}</td><td>approved by {{ msg.approved_by }}</td><td><a href="{{ url_for('inbox.outbox_message', message_id=msg.id) }}">Open</a></td></tr>
   {% else %}<tr><td class="empty">Nothing sent yet.</td></tr>{% endfor %}
 </table></div>

@@ -40,7 +40,7 @@
 {% endmacro %}
 {% block content %}
 <div class="head">
-  <div><h1>{{ p.ref }} <span class="pill {{ {'needs_review': 'hold', 'held': 'ok', 'failed': 'error', 'declined': 'no', 'waiting_client': 'partial'}.get(p.status, '') }}">{{ p.status|replace('_', ' ') }}</span></h1>
+  <div><h1>{{ p.ref }} <span class="pill {{ {'needs_review': 'hold', 'held': 'ok', 'failed': 'error', 'declined': 'no', 'waiting_client': 'partial'}.get(p.status, '') }}">{{ p.status|nice }}</span></h1>
     <p class="muted">{{ p.channel|channel }} from {{ p.sender_name or '' }} {{ p.sender }}{% if p.subject %} · {{ p.subject }}{% endif %}
       · read {{ p.read_count }} time(s){% if cost %}, ${{ '%.3f'|format(cost) }}{% endif %}</p></div>
   <div class="actions">
@@ -56,8 +56,8 @@
     <h2 style="margin-top:0">Conversation</h2>
     {% for msg in p.messages if msg.status != 'discarded' %}
       <div class="msg {{ 'out' if msg.direction == 'out' else '' }}">
-        <div class="meta">{% if msg.direction == 'in' %}{{ msg.sender or 'Client' }}{% else %}To {{ msg.recipient or 'client' }} · {{ msg.kind|replace('_', ' ') }}
-          · <span class="pill {{ 'ok' if msg.status == 'sent' else ('error' if msg.status == 'failed' else 'hold') }}">{{ msg.status }}</span>{% endif %}
+        <div class="meta">{% if msg.direction == 'in' %}{{ msg.sender or 'Client' }}{% else %}To {{ msg.recipient or 'client' }} · {{ msg.kind|nice }}
+          · <span class="pill {{ 'ok' if msg.status == 'sent' else ('error' if msg.status == 'failed' else 'hold') }}">{{ msg.status|nice }}</span>{% endif %}
           · {{ msg.created_at|dt }} UTC</div>
         <div class="body" dir="auto">{{ msg.body }}</div>
         {% for a in msg.attachments %}<div class="small" style="margin-top:6px">📎 {% if a.data %}<a href="{{ url_for('inbox.attachment', att_id=a.id) }}" target="_blank" rel="noopener">{{ a.filename }}</a>{% else %}{{ a.filename }} <span class="muted">(not downloaded yet)</span>{% endif %} <span class="muted">{{ (a.size // 1024) }} KB</span></div>{% endfor %}

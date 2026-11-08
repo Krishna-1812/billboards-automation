@@ -3,7 +3,7 @@
 {% block head %}{% if run.status in ('queued', 'running') %}<meta http-equiv="refresh" content="8">{% endif %}{% endblock %}
 {% block content %}
 {% set sm = run.summary or {} %}
-<div class="head"><div><h1>Check test #{{ run.id }} <span class="pill {{ 'ok' if sm.get('passed') else '' }}">{{ run.status }}</span></h1>
+<div class="head"><div><h1>Check test #{{ run.id }} <span class="pill {{ 'ok' if sm.get('passed') else '' }}">{{ run.status|nice }}</span></h1>
   <p class="muted">Started by {{ run.started_by }} {{ run.started_at|dt }} · cost ${{ '%.2f'|format(run.usd or 0) }}</p></div></div>
 {% if sm %}<div class="grid cols-4">
   <div class="card stat"><div class="num">{{ (sm.measured|string ~ '%') if sm.get('measured') is not none else '—' }}</div><div class="lbl">Measured checks right (needs 100%)</div></div>
@@ -15,7 +15,7 @@
 <div class="card table-wrap"><table class="small">
   <tr><th>File</th><th>Check</th><th>Should</th><th>Did</th><th></th></tr>
   {% for r in run.results %}{% for row in r.rows %}<tr><td>{{ r.name if loop.first }}</td><td>{{ labels[row.key] }}</td><td>{{ row.want }}</td><td>{{ row.got or '—' }}</td>
-    <td><span class="pill {{ {'right': 'ok', 'missed': 'no', 'false alarm': 'partial'}.get(row.result, '') }}">{{ row.result }}</span></td></tr>{% endfor %}
+    <td><span class="pill {{ {'right': 'ok', 'missed': 'no', 'false alarm': 'partial'}.get(row.result, '') }}">{{ row.result|nice }}</span></td></tr>{% endfor %}
     {% if r.get('error') %}<tr><td>{{ r.name }}</td><td colspan="4" style="color:var(--bad)">{{ r.error }}</td></tr>{% endif %}{% endfor %}
 </table></div>
 {% endblock %}

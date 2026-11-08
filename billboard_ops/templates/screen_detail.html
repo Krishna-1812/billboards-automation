@@ -4,7 +4,7 @@
 {% macro hour_select(name, blank) %}<select name="{{ name }}"><option value="">{{ blank }}</option>{% for h in range(0, 25) %}<option value="{{ h }}">{{ '%02d:00'|format(h) }}</option>{% endfor %}</select>{% endmacro %}
 {% block content %}
 <div class="head">
-  <div><h1>{{ sc.code }} · {{ sc.name }} {% if not sc.active %}<span class="pill">inactive</span>{% endif %}</h1>
+  <div><h1>{{ sc.code }} · {{ sc.name }} {% if not sc.active %}<span class="pill">Inactive</span>{% endif %}</h1>
     <p class="muted">{{ sc.area }}{% if sc.address %} · {{ sc.address }}{% endif %}</p></div>
   <div class="actions">
     <a class="btn primary" href="{{ url_for('bookings.availability', screen_id=sc.id) }}">{{ t('availability') }}</a>

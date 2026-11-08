@@ -10,6 +10,12 @@ RTL = {"ar"}
 
 STRINGS = {
     "dashboard":        ("Dashboard", "لوحة المتابعة"),
+    "overview":         ("Overview", "نظرة عامة"),
+    "good_morning":     ("Good morning", "صباح الخير"),
+    "good_afternoon":   ("Good afternoon", "مساء الخير"),
+    "good_evening":     ("Good evening", "مساء الخير"),
+    "more":             ("More", "المزيد"),
+    "search_anything":  ("Search anything", "ابحث عن أي شيء"),
     "calendar":         ("Calendar", "التقويم"),
     "proposals":        ("Proposals", "الطلبات"),
     "outbox":           ("Outbox", "الرسائل الصادرة"),

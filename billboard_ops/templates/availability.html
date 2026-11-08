@@ -19,10 +19,10 @@
     <legend>Screens</legend>
     {% for area_name, group in screens|groupby('area') %}
       <div class="small muted" style="margin-top:6px">{{ area_name or 'No area' }}</div>
-      <div class="row">
+      <div class="picks">
       {% for s in group %}
-        <label class="check"><input type="checkbox" name="screen_id" value="{{ s.id }}" {{ 'checked' if s.id in chosen }}>
-          {{ s.code }} <span class="muted small">{{ s.name[:28] }}</span></label>
+        <label class="pick"><input type="checkbox" name="screen_id" value="{{ s.id }}" {{ 'checked' if s.id in chosen }}>
+          <strong>{{ s.code }}</strong> <span class="muted small">{{ s.name }}</span></label>
       {% endfor %}
       </div>
     {% else %}<p class="muted">No screens yet.</p>{% endfor %}

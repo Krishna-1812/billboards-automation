@@ -23,7 +23,7 @@
 <div class="card table-wrap"><table>
   <tr><th>#</th><th>What</th><th>From</th><th>Rows</th><th>Status</th><th>By</th><th>When</th></tr>
   {% for r in runs %}<tr><td><a href="{{ url_for('imports.import_preview', run_id=r.id) }}">{{ r.id }}</a></td><td>{{ kinds[r.kind] }}</td>
-    <td class="small">{{ r.source_label }}</td><td>{{ r.rows|length }}</td><td><span class="pill {{ 'ok' if r.status == 'committed' else '' }}">{{ r.status }}</span></td>
+    <td class="small">{{ r.source_label }}</td><td>{{ r.rows|length }}</td><td><span class="pill {{ 'ok' if r.status == 'committed' else '' }}">{{ r.status|nice }}</span></td>
     <td class="small">{{ r.created_by }}</td><td class="small">{{ r.created_at|dt }}</td></tr>
   {% else %}<tr><td colspan="7" class="empty">None yet.</td></tr>{% endfor %}
 </table></div>

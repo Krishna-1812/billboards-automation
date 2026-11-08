@@ -397,3 +397,54 @@ def screens_on_map(session, today, fills=None):
              "pct": round(per.get(s.id, 0.0)), "heat": heat(per.get(s.id, 0.0))}
             for s in screens if s.lat is not None and s.lng is not None]
 
+
+
+# ── For the dashboard's tiles ───────────────────────────────────────────────────
+
+def trend_chart(weeks, start, width=600, height=150):
+    """The network's average loop fill for each of the next 12 weeks, as SVG paths (line, area, dots)."""
+    n = max((len(v) for v in weeks.values()), default=0)
+    if not n:
+        return None
+    avg = []
+    for i in range(n):
+        vals = [row[i][1] for row in weeks.values() if not row[i][3]]
+        avg.append(sum(vals) / len(vals) if vals else 0.0)
+    top = max(10.0, max(avg) * 1.25)
+    pts = [{"x": round(24 + i * (width - 48) / max(1, n - 1)), "y": round(height - 12 - (v / top) * (height - 34)),
+            "v": round(v), "label": (start + timedelta(days=7 * i)).strftime("%-d %b")} for i, v in enumerate(avg)]
+    line = " ".join(("L" if i else "M") + f"{p['x']} {p['y']}" for i, p in enumerate(pts))
+    area = line + f" L{pts[-1]['x']} {height} L{pts[0]['x']} {height} Z"
+    peak = max(pts, key=lambda p: p["v"])
+    return {"line": line, "area": area, "dots": pts, "w": width, "h": height, "peak": peak}
+
+
+def live_now(session):
+    """Campaigns playing now, with the file that plays (for the Live now tile)."""
+    from .lifecycle import approved_files
+    out = []
+    for b in session.scalars(select(Booking).options(selectinload(Booking.lines).selectinload(BookingLine.screen),
+                                                     joinedload(Booking.client))
+                             .where(Booking.status == "live").order_by(Booking.live_at.desc())).unique().all():
+        files = approved_files(session, b.lines[0]) if b.lines else []
+        f = files[-1] if files else None
+        out.append({"b": b, "file": f, "image": bool(f and (f.content_type or "").startswith("image/")),
+                    "screens": ", ".join(l.screen.code for l in b.lines)})
+    return out
+
+
+def starting_soon(session, today, days=7):
+    from . import lifecycle
+    starting = select(BookingLine.booking_id).where(BookingLine.start_date >= today,
+                                                    BookingLine.start_date <= today + timedelta(days=days))
+    rows = session.scalars(select(Booking).options(selectinload(Booking.lines), joinedload(Booking.client))
+                           .where(Booking.status.in_(BOOKED), Booking.status != "live", Booking.id.in_(starting))
+                           ).unique().all()
+    rows = [b for b in rows if b.start_date and today <= b.start_date <= today + timedelta(days=days)]
+    not_ready = sum(1 for b in rows if not lifecycle.readiness(session, b)["ready"])
+    initials = []
+    for b in rows:
+        ini = "".join(w[0] for w in b.client.name.split()[:2]).upper()
+        if ini not in initials:
+            initials.append(ini)
+    return {"count": len(rows), "not_ready": not_ready, "initials": initials[:2], "more": max(0, len(initials) - 2)}

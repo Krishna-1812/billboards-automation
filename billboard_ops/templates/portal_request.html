@@ -7,7 +7,7 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <label>{{ tp('req_campaign') }}</label><input type="text" name="campaign" value="{{ form.get('campaign', '') }}">
   <label>{{ tp('available') }}</label>
-  <div class="grid cols-2" style="gap:4px">{% for s in screens %}<label class="check" style="margin:0"><input type="checkbox" name="screen_id" value="{{ s.id }}" {{ 'checked' if s.id|string in (form.getlist('screen_id') if form.getlist else []) }}> {{ s.name }}{% if s.area %} <span class="muted">· {{ s.area }}</span>{% endif %}</label>{% endfor %}</div>
+  <div class="picks">{% for s in screens %}<label class="pick"><input type="checkbox" name="screen_id" value="{{ s.id }}" {{ 'checked' if s.id|string in (form.getlist('screen_id') if form.getlist else []) }}> {{ s.name }}{% if s.area %} <span class="muted">· {{ s.area }}</span>{% endif %}</label>{% endfor %}</div>
   <label>{{ tp('req_screens') }}</label><input type="text" name="screens" value="{{ form.get('screens', '') }}">
   <div class="row">
     <div><label>{{ tp('req_start') }}</label><input type="date" name="start" value="{{ form.get('start', '') }}"></div>

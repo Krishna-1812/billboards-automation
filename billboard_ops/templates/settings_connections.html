@@ -9,29 +9,29 @@
   <div class="card">
     <h3 style="margin-top:0">Google (Sheets and Calendar)</h3>
     {% if connected %}
-      <p><span class="pill ok">connected</span> The app's Google account is <span class="mono">{{ sa_email }}</span>.</p>
+      <p><span class="pill ok">Connected</span> The app's Google account is <span class="mono">{{ sa_email }}</span>.</p>
       <p class="small">Share each sheet and each screen's calendar with that address ("Make changes to events" for calendars, "Editor" for the mirror sheet).</p>
       <form method="post">{{ m.csrf() }}
         <label>Test a sheet</label><input type="text" name="sheet" placeholder="Sheet link">
         <p class="actions"><button name="action" value="test_sheet">Test</button>
           {% if mirror %}<button name="action" value="mirror_now">Rewrite the mirror tab now</button>{% endif %}</p></form>
     {% else %}
-      <p><span class="pill no">not connected</span> Set <span class="mono">GOOGLE_SERVICE_ACCOUNT_JSON</span> on Railway (both services). Until then, imports work from uploaded .xlsx files and nothing is mirrored.</p>
+      <p><span class="pill no">Not connected</span> Set <span class="mono">GOOGLE_SERVICE_ACCOUNT_JSON</span> on Railway (both services). Until then, imports work from uploaded .xlsx files and nothing is mirrored.</p>
     {% endif %}
     {% if no_calendar %}<p class="small"><span class="pill warning">{{ no_calendar|length }}</span> active screen(s) have no calendar set:
       {% for s in no_calendar[:15] %}<a href="{{ url_for('screens.screen_edit', screen_id=s.id) }}">{{ s.code }}</a>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
   </div>
   <div class="card">
     <h3 style="margin-top:0">Reading proposals</h3>
-    <p>Claude: {% if cfg.ANTHROPIC_API_KEY_SET %}<span class="pill ok">connected</span> model <span class="mono">{{ cfg.PROPOSAL_MODEL }}</span>, effort {{ cfg.PROPOSAL_EFFORT }}{% else %}<span class="pill no">not connected</span> set <span class="mono">ANTHROPIC_API_KEY</span> on both services{% endif %}.</p>
-    <p>Proposals mailbox: {% if cfg.email_in %}<span class="pill ok">connected</span> {{ cfg.IMAP_USER }} on {{ cfg.IMAP_HOST }}, checked every minute{% else %}<span class="pill warning">not set up</span> <span class="mono">IMAP_HOST</span>, <span class="mono">IMAP_USER</span>, <span class="mono">IMAP_PASSWORD</span>{% endif %}.</p>
-    <p>WhatsApp: {% if cfg.whatsapp %}<span class="pill ok">connected</span>{% else %}<span class="pill warning">not set up</span> <span class="mono">WHATSAPP_TOKEN</span>, <span class="mono">WHATSAPP_PHONE_NUMBER_ID</span>, <span class="mono">WHATSAPP_APP_SECRET</span>, <span class="mono">WHATSAPP_VERIFY_TOKEN</span>{% endif %}.
+    <p>Claude: {% if cfg.ANTHROPIC_API_KEY_SET %}<span class="pill ok">Connected</span> model <span class="mono">{{ cfg.PROPOSAL_MODEL }}</span>, effort {{ cfg.PROPOSAL_EFFORT }}{% else %}<span class="pill no">Not connected</span> set <span class="mono">ANTHROPIC_API_KEY</span> on both services{% endif %}.</p>
+    <p>Proposals mailbox: {% if cfg.email_in %}<span class="pill ok">Connected</span> {{ cfg.IMAP_USER }} on {{ cfg.IMAP_HOST }}, checked every minute{% else %}<span class="pill warning">Not set up</span> <span class="mono">IMAP_HOST</span>, <span class="mono">IMAP_USER</span>, <span class="mono">IMAP_PASSWORD</span>{% endif %}.</p>
+    <p>WhatsApp: {% if cfg.whatsapp %}<span class="pill ok">Connected</span>{% else %}<span class="pill warning">Not set up</span> <span class="mono">WHATSAPP_TOKEN</span>, <span class="mono">WHATSAPP_PHONE_NUMBER_ID</span>, <span class="mono">WHATSAPP_APP_SECRET</span>, <span class="mono">WHATSAPP_VERIFY_TOKEN</span>{% endif %}.
       <br><span class="small">Webhook address for Meta: <span class="mono">{{ (cfg.APP_URL or request.host_url.rstrip('/')) }}/webhooks/whatsapp</span></span></p>
   </div>
   <div class="card">
     <h3 style="margin-top:0">Worker and email</h3>
-    <p>Worker: {% if heartbeat %}last seen {{ heartbeat[:16]|replace('T', ' ') }} UTC{% else %}<span class="pill no">not seen yet</span>{% endif %}; {{ queued }} task(s) waiting.</p>
-    <p>Email: {% if cfg.SMTP_HOST %}<span class="pill ok">set up</span> from {{ cfg.MAIL_FROM }}{% else %}<span class="pill warning">not set up</span> reminders show in the app only{% endif %}.</p>
+    <p>Worker: {% if heartbeat %}last seen {{ heartbeat[:16]|replace('T', ' ') }} UTC{% else %}<span class="pill no">Not seen yet</span>{% endif %}; {{ queued }} task(s) waiting.</p>
+    <p>Email: {% if cfg.SMTP_HOST %}<span class="pill ok">Set up</span> from {{ cfg.MAIL_FROM }}{% else %}<span class="pill warning">Not set up</span> reminders show in the app only{% endif %}.</p>
     <p>Error alerts go to: {{ cfg.ALERT_EMAILS|join(', ') or 'nobody yet (ALERT_EMAILS)' }}.</p>
   </div>
 </div>
@@ -39,7 +39,7 @@
 <div class="card table-wrap"><table class="small">
   <tr><th>Connection</th><th>State</th><th></th></tr>
   {% for name, label, state, detail in conns %}<tr><td>{{ label }}</td>
-    <td><span class="pill {{ {'ok': 'ok', 'failing': 'warning', 'down': 'no'}.get(state, '') }}">{{ state }}</span></td><td>{{ detail }}</td></tr>
+    <td><span class="pill {{ {'ok': 'ok', 'failing': 'warning', 'down': 'no'}.get(state, '') }}">{{ state|nice }}</span></td><td>{{ detail }}</td></tr>
   {% else %}<tr><td colspan="3" class="empty">Nothing has run yet.</td></tr>{% endfor %}
 </table>
 <p class="small muted">A connection down for 30 minutes alerts the owner (Notices → Problems with the app) and ALERT_EMAILS. For an outside uptime check, point it at <span class="mono">{{ (cfg.APP_URL or request.host_url.rstrip('/')) }}/health/full</span>: it answers 503 when the worker has stopped or a connection is down.</p></div>
@@ -48,8 +48,8 @@
 <div class="card">
   <p>Nightly backup to the Shared Drive's Backups folder:
     {% if last_backup and last_backup.ok %}<span class="pill ok">last one {{ last_backup.at[:16]|replace('T', ' ') }} UTC</span> {{ last_backup.file }}, {{ '{:,}'.format(last_backup.rows) }} records
-    {% elif last_backup %}<span class="pill warning">not made</span> {{ last_backup.error }}{% else %}<span class="pill warning">none yet</span>{% endif %}</p>
-  <p>Restore tested: {% if restore_tested %}<span class="pill ok">{{ restore_tested.at[:10] }}</span> from {{ restore_tested.file }} ({{ '{:,}'.format(restore_tested.rows) }} records){% else %}<span class="pill warning">not yet</span> (see the README: “Testing a restore”){% endif %}</p>
+    {% elif last_backup %}<span class="pill warning">Not made</span> {{ last_backup.error }}{% else %}<span class="pill warning">None yet</span>{% endif %}</p>
+  <p>Restore tested: {% if restore_tested %}<span class="pill ok">{{ restore_tested.at[:10] }}</span> from {{ restore_tested.file }} ({{ '{:,}'.format(restore_tested.rows) }} records){% else %}<span class="pill warning">Not yet</span> (see the README: “Testing a restore”){% endif %}</p>
   <form method="post" action="{{ url_for('admin.download_backup') }}" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">Download a backup now</button></form>
   <p class="small muted">Railway's own Postgres backups hold everything, files included; turn them on in the Postgres service. This backup is the portable copy, without the file contents kept in the database.</p>
 </div>
@@ -57,7 +57,7 @@
 <h2>Background tasks that didn't finish</h2>
 <div class="card table-wrap"><table class="small">
   <tr><th>When</th><th>Task</th><th>State</th><th>Why</th><th></th></tr>
-  {% for j in problems %}<tr><td style="white-space:nowrap">{{ j.finished_at|dt }}</td><td>{{ j.kind }}</td><td><span class="pill {{ 'error' if j.status == 'failed' else 'warning' }}">{{ j.status }}</span></td>
+  {% for j in problems %}<tr><td style="white-space:nowrap">{{ j.finished_at|dt }}</td><td>{{ j.kind }}</td><td><span class="pill {{ 'error' if j.status == 'failed' else 'warning' }}">{{ j.status|nice }}</span></td>
     <td>{{ (j.last_error or '').splitlines()[0][:200] }}</td>
     <td><form method="post">{{ m.csrf() }}<input type="hidden" name="job_id" value="{{ j.id }}"><button class="linkish" name="action" value="retry">Try again</button></form></td></tr>
   {% else %}<tr><td colspan="5" class="empty">None.</td></tr>{% endfor %}

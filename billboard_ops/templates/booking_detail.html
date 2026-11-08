@@ -19,6 +19,60 @@
   </div>
 </div>
 
+{% set stages = [('hold', 'Held'), ('confirmed', 'Confirmed'), ('creative_approved', 'Files approved'), ('plan_set', 'Plan set'), ('scheduled', 'Loaded'), ('live', 'Live'), ('completed', 'Finished')] %}
+{% set at = {'enquiry': -1, 'hold': 0, 'confirmed': 1, 'awaiting_creative': 1, 'checking': 1, 'changes_requested': 1, 'creative_approved': 2, 'plan_set': 3, 'scheduled': 4, 'live': 5, 'completed': 7}.get(b.status, -1) %}
+{% set stopped = b.status in ('cancelled', 'expired') %}
+<ol class="stepper {{ 'stopped' if stopped }}" aria-label="Where this booking is">
+  {% for key, label in stages %}
+    <li class="{{ 'done' if loop.index0 < at else ('now' if loop.index0 == at else '') }}" {% if loop.index0 == at %}aria-current="step"{% endif %}><i aria-hidden="true">{% if loop.index0 < at %}✓{% else %}{{ loop.index }}{% endif %}</i><span>{{ label }}</span></li>
+  {% endfor %}
+  {% if stopped %}<li class="stop" aria-current="step"><i aria-hidden="true">✕</i><span>{{ status_label(b.status) }}</span></li>{% endif %}
+</ol>
+
+{% set days = (b.end_date - b.start_date).days + 1 %}
+{% set ns = namespace(plays=0, approved=0, needed=0) %}
+{% if live %}{% for x in live.lines if x.plan %}{% set ns.plays = ns.plays + x.plan.total %}{% endfor %}{% endif %}
+{% if files.collecting %}{% for x in files.coverage %}{% set ns.needed = ns.needed + 1 %}{% if x.state == 'approved' %}{% set ns.approved = ns.approved + 1 %}{% endif %}{% endfor %}{% endif %}
+<div class="bento" style="margin-bottom:16px">
+  <div class="card tile span-3">
+    <div class="t">Screens <span class="chip">{{ b.lines|length }}</span></div>
+    <div class="big">{{ b.lines|length }}</div>
+    <div class="sub muted">{% for l in b.lines[:4] %}{{ l.screen.code }}{{ ', ' if not loop.last }}{% endfor %}{% if b.lines|length > 4 %} and {{ b.lines|length - 4 }} more{% endif %}</div>
+  </div>
+  <div class="tile tile-lilac span-3">
+    <div class="t">On air <span class="chip">{{ days }} day{{ 's' if days != 1 }}</span></div>
+    {% if ns.plays %}<div class="big">{{ '{:,.0f}'.format(ns.plays) }}</div>
+    <div class="sub muted">plays planned · {{ b.start_date|date }} – {{ b.end_date|date }}</div>
+    {% else %}<div class="big">{{ b.start_date.day }} {{ b.start_date.strftime('%b') }}</div>
+    <div class="sub muted">first day · runs to {{ b.end_date|date }}</div>{% endif %}
+  </div>
+  <div class="tile tile-mint span-3">
+    <div class="t">Files {% if ns.needed %}<span class="chip mint">{{ ns.approved }} of {{ ns.needed }}</span>{% endif %}</div>
+    {% if ns.needed %}<div class="big">{{ (100 * ns.approved / ns.needed)|round|int }}%</div>
+    <div class="sub muted">{% if ns.approved == ns.needed %}Every screen has an approved file{% else %}approved so far{% endif %}</div>
+    {% else %}<div class="big">—</div><div class="sub muted">{% if b.status == 'hold' %}Asked for once it's confirmed{% else %}Nothing to collect{% endif %}</div>{% endif %}
+  </div>
+  <div class="tile tile-dark span-3">
+    <div class="t">Next step <span class="livedot" aria-hidden="true"></span></div>
+    <div style="font-size:20px;font-weight:800;letter-spacing:-.02em;line-height:1.25">
+      {%- if b.status == 'hold' %}Confirm it before {{ b.hold_expires_at|date }}
+      {%- elif b.status in ('confirmed', 'awaiting_creative') %}{{ 'Wait for the client\'s files' if b.creative_requested_at else 'Ask the client for their files' }}
+      {%- elif b.status == 'checking' %}Check the files that came in
+      {%- elif b.status == 'changes_requested' %}The client is fixing their files
+      {%- elif b.status == 'creative_approved' %}Set the play plan
+      {%- elif b.status == 'plan_set' %}Load the files on the screens
+      {%- elif b.status == 'scheduled' %}Goes live on {{ b.start_date|date }}
+      {%- elif b.status == 'live' %}On air until {{ b.end_date|date }}
+      {%- elif b.status == 'completed' %}Finished. Share the proof of play
+      {%- elif stopped %}Nothing. Its screen time is free again
+      {%- else %}Turn it into a hold{% endif %}</div>
+    <div class="sub">{% if b.status == 'hold' %}<span class="muted">Or it lets go of its screen time</span>
+      {% elif files.collecting and b.status in ('confirmed', 'awaiting_creative', 'checking', 'changes_requested') %}<a href="#files">Go to the files</a>
+      {% elif live and b.status in ('creative_approved', 'plan_set') %}<a href="#ready">Go to getting ready</a>
+      {% elif live and b.status in ('live', 'completed') %}<a href="#proof">Go to proof of play</a>{% endif %}</div>
+  </div>
+</div>
+
 {% if b.status == 'hold' %}
 <div class="note">This hold expires on <strong>{{ b.hold_expires_at|dt }} UTC</strong>. Until then it keeps its screen time.
   {% if can('hold') %}
@@ -41,14 +95,14 @@
         <td>{{ fmt_hours(l.start_hour, l.end_hour) }}</td>
         <td>{{ m.frequency(l) }}</td>
         <td>{% for cl, r in checks if cl.id == l.id %}<span class="pill {{ r.status }}">{{ t(r.status) }}</span>{% if r.blocking %}<div class="small muted">with {{ r.blocking|join(', ') }}</div>{% endif %}{% else %}<span class="muted">—</span>{% endfor %}</td>
-        <td class="small">{% if l.calendar_event_id %}<span class="pill ok">mirrored</span>{% elif not l.screen.calendar_id %}<span class="muted">no calendar set</span>{% else %}<span class="muted">waiting</span>{% endif %}</td>
+        <td class="small">{% if l.calendar_event_id %}<span class="pill ok">Mirrored</span>{% elif not l.screen.calendar_id %}<span class="muted">no calendar set</span>{% else %}<span class="muted">waiting</span>{% endif %}</td>
       </tr>
     {% endfor %}
   </table>
 </div>
 
 {% if files.collecting %}
-<h2>Creative</h2>
+<h2 id="files">Creative</h2>
 <div class="card">
   <p class="small">{% if b.creative_requested_at %}Files requested {{ b.creative_requested_at|dt }}, due <strong>{{ files.deadline|date }}</strong>.{% else %}Files not requested yet.{% endif %}
     {% if files.upload_url %} Client's upload link: <span class="mono">{{ files.upload_url }}</span>{% endif %}
@@ -56,9 +110,9 @@
   <table class="small">
     <tr><th>Screen</th><th>Needs</th><th>File</th><th></th></tr>
     {% for x in files.coverage %}<tr><td>{{ x.screen.code }}</td>
-      <td>{% if x.spec %}{{ x.spec.width_px }}x{{ x.spec.height_px }}, {{ x.line.ad_seconds }}s{% else %}<span class="pill warning">no spec</span>{% endif %}</td>
+      <td>{% if x.spec %}{{ x.spec.width_px }}x{{ x.spec.height_px }}, {{ x.line.ad_seconds }}s{% else %}<span class="pill warning">No spec</span>{% endif %}</td>
       <td>{% if x.creative %}<a href="{{ url_for('creatives.creative_page', cid=x.creative.id) }}">v{{ x.creative.version }} {{ x.creative.filename }}</a>{% else %}—{% endif %}</td>
-      <td><span class="pill {{ {'approved': 'ok', 'passed': 'ok', 'warnings': 'partial', 'failed': 'no', 'error': 'no', 'missing': ''}.get(x.state, 'hold') }}">{{ x.state }}</span></td></tr>{% endfor %}
+      <td><span class="pill {{ {'approved': 'ok', 'passed': 'ok', 'warnings': 'partial', 'failed': 'no', 'error': 'no', 'missing': ''}.get(x.state, 'hold') }}">{{ x.state|nice }}</span></td></tr>{% endfor %}
   </table>
   <div class="actions" style="margin-top:10px">
     {% if (can('approve_creative') or can('confirm')) and not b.creative_requested_at and b.status in ('confirmed', 'awaiting_creative', 'checking', 'changes_requested') %}<form method="post" action="{{ url_for('creatives.request_files', code=b.code) }}" class="inline">{{ m.csrf() }}<button class="primary">Request the files</button></form>{% endif %}
@@ -83,7 +137,7 @@
     {% for x in live.lines %}{% set l = x.line %}
     <tr><td>{{ l.screen.code }}</td>
       <td>{% for c, name in x.files %}<div><a href="{{ url_for('creatives.creative_page', cid=c.id) }}" class="mono">{{ name }}</a></div>{% else %}<span class="muted">no approved file yet</span>{% endfor %}</td>
-      <td>{% if l.exclusive %}Whole screen{% elif x.plan %}{{ x.plan.per_day|round|int }} plays a day · {{ '{:,.0f}'.format(x.plan.total) }} in total{% if not x.plan.fits %} <span class="pill no">overfills</span>{% endif %}{% endif %}</td>
+      <td>{% if l.exclusive %}Whole screen{% elif x.plan %}{{ x.plan.per_day|round|int }} plays a day · {{ '{:,.0f}'.format(x.plan.total) }} in total{% if not x.plan.fits %} <span class="pill no">Overfills</span>{% endif %}{% endif %}</td>
       <td>{% if l.loaded_at %}<span class="pill ok">Loaded</span> <span class="muted">{{ l.loaded_by }}, {{ l.loaded_at|dt }}</span>
             {% if can('load') %}<form method="post" action="{{ url_for('live.mark_loaded', code=b.code, line_id=l.id) }}" class="inline">{{ m.csrf() }}<input type="hidden" name="loaded" value="0"><button class="linkish" type="submit">undo</button></form>{% endif %}
           {% elif can('load') and b.status not in ('completed', 'cancelled', 'expired') %}<form method="post" action="{{ url_for('live.mark_loaded', code=b.code, line_id=l.id) }}" class="inline">{{ m.csrf() }}<input type="hidden" name="loaded" value="1"><button type="submit" {{ 'disabled' if not (x.files and b.plan_status == 'confirmed') }} title="Tick once the file is loaded on the screen with this plan">Mark loaded</button></form>
@@ -123,10 +177,10 @@
   </form>{% endif %}
 </div>
 {% endif %}
-{% if proposal %}<p class="small">From proposal <a href="{{ url_for('inbox.proposal_page', ref=proposal.ref) }}">{{ proposal.ref }}</a> ({{ proposal.channel }}{% if proposal.auto_held %}, held by the agent{% endif %}).</p>{% endif %}
+{% if proposal %}<p class="small muted" style="margin-top:18px">From proposal <a href="{{ url_for('inbox.proposal_page', ref=proposal.ref) }}">{{ proposal.ref }}</a> ({{ proposal.channel }}{% if proposal.auto_held %}, held by the agent{% endif %}).</p>{% endif %}
 {% if docs %}<h2>Documents</h2><div class="card">{% for d in docs %}<p><a href="{{ url_for('inbox.booking_document', code=b.code, doc_id=d.id) }}">{{ d.filename }}</a> <span class="small muted">uploaded by {{ d.uploaded_by }}, {{ d.uploaded_at|dt }}</span></p>{% endfor %}</div>{% endif %}
 {% if messages %}<h2>Messages to the client</h2><div class="card table-wrap"><table class="small">
-  {% for msg in messages %}<tr><td>{{ msg.kind|replace('_', ' ') }}</td><td><span class="pill {{ 'ok' if msg.status == 'sent' else ('error' if msg.status == 'failed' else 'hold') }}">{{ msg.status }}</span></td>
+  {% for msg in messages %}<tr><td>{{ msg.kind|nice }}</td><td><span class="pill {{ 'ok' if msg.status == 'sent' else ('error' if msg.status == 'failed' else 'hold') }}">{{ msg.status|nice }}</span></td>
     <td>{{ msg.subject }}</td><td><a href="{{ url_for('inbox.outbox_message', message_id=msg.id) }}">Open</a></td></tr>{% endfor %}</table></div>{% endif %}
 
 {% if b.notes %}<h2>Notes</h2><div class="card"><p style="white-space:pre-wrap">{{ b.notes }}</p></div>{% endif %}

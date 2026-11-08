@@ -175,7 +175,7 @@ def test_arabic_flips_the_layout(app, people, login):
     c = login(people["sales"])
     c.post("/language", data=form(next="/"))
     page = c.get("/").get_data(as_text=True)
-    assert 'dir="rtl"' in page and "لوحة المتابعة" in page
+    assert 'dir="rtl"' in page and "نظرة عامة" in page
 
 
 def test_health_reports_the_worker(app, s):
