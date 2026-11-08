@@ -25,7 +25,7 @@ from .models import OPEN_PROPOSAL, Attachment, Booking, Client, Message, Proposa
 logger = logging.getLogger(__name__)
 
 THREAD_DAYS = {"email": 30, "whatsapp": 3}
-READ_DELAY = {"whatsapp": 30, "email": 5, "manual": 0, "portal": 0}   # WhatsApp: wait for the rest of a burst
+READ_DELAY = {"whatsapp": 30, "email": 5, "manual": 0, "portal": 0, "web": 0}   # WhatsApp: wait for the rest of a burst
 
 
 class AgentActor:
@@ -321,7 +321,7 @@ def _recipient(session, p):
     """Where a reply to this proposal goes: back the way it came; for pasted requests, the client's email."""
     if p.channel in ("email", "whatsapp") and p.sender:
         return p.channel, p.sender
-    if p.channel == "portal" and "@" in (p.sender or ""):
+    if p.channel in ("portal", "web") and "@" in (p.sender or ""):
         return "email", p.sender
     contact = ((p.draft or {}).get("contact") or {}).get("email") or ""
     client = p.client

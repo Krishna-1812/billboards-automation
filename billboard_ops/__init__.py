@@ -56,9 +56,9 @@ def create_app(config=None):
     from .channels import email_in  # noqa: F401
 
     from .views import admin, auth, bookings, creatives as creative_views, imports, inbox, live, main, portal, \
-        quotes, screens, webhooks
+        public, quotes, screens, webhooks
     for bp in (auth.bp, main.bp, bookings.bp, screens.bp, imports.bp, admin.bp, inbox.bp, webhooks.bp,
-               creative_views.bp, live.bp, portal.bp, quotes.bp):
+               creative_views.bp, live.bp, portal.bp, quotes.bp, public.bp):
         app.register_blueprint(bp)
 
     app.teardown_appcontext(close_db)

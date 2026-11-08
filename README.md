@@ -361,6 +361,21 @@ The flow from a request to a confirmed booking:
 Proposals past their "valid until" date expire on their own. The overview's pipeline counts proposals sent, and
 what confirmed bookings are worth.
 
+## The front page, becoming a client, and signing in
+
+Visitors who aren't signed in land on **/welcome**, the company's public page (English and Arabic): what the company
+does, how a screen's loop is sold (an interactive ring), the screens with their size and hours (never prices or
+bookings), the four steps from brief to billboard, and the client portal. Settings → General → Front page sets the
+paragraph about the company, the contact email and phone, and whether the screens are listed.
+
+- **Become a client** (/signup): name, company, email, dates, areas, budget. It arrives in Requests like an email
+  (channel "Website sign-up"), the team gets an alert, and replies go back by email. Make the proposal from it as
+  usual, then give the new client portal access from their client page. Bots that fill the hidden field are thanked
+  and nothing is kept; one connection can send 6 sign-ups in 10 minutes.
+- **Sign in** (/login): two doors. Clients get an emailed one-time link (the portal sign-in); the team signs in with
+  Google. Someone sent to sign in from a team page sees the team door first.
+- Signing out goes back to the front page. While sign-in is off, the front page offers "Open the app" instead.
+
 ## Layout
 
 | Path | What it is |

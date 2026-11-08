@@ -41,6 +41,11 @@ DEFAULTS = {
     "quote_valid_days": 7,                # how long a proposal stays open
     "max_discount_pct": 10,               # Sales can send up to this discount; above it, a Manager sends it
     "po_required": True,                  # confirming needs the PO (a Manager can confirm without, with a reason)
+    # The public front page (/welcome)
+    "public_about": "",                   # a paragraph about the company; empty = the standard words
+    "public_email": "",                   # shown in the footer
+    "public_phone": "",
+    "public_show_screens": True,          # list the screens (name, area, size, hours; never prices)
 }
 
 

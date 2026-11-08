@@ -34,6 +34,18 @@
     <label>Content rules <span class="hint">one per line; Claude checks every ad against them</span></label>
     <textarea name="content_rules" placeholder="No alcohol or tobacco&#10;No gambling&#10;Modest clothing">{{ st.content_rules }}</textarea>
   </fieldset>
+  <fieldset><legend>Front page</legend>
+    <p class="small muted">The public page visitors see before they sign in: <a href="{{ url_for('public.welcome') }}" target="_blank" rel="noopener">open it</a>.
+      It never shows prices or bookings.</p>
+    <label>About the company <span class="hint">a short paragraph; leave empty for the standard words</span></label>
+    <textarea name="public_about" maxlength="1200">{{ st.public_about }}</textarea>
+    <div class="row">
+      <div><label>Contact email <span class="hint">shown at the bottom of the page</span></label><input type="email" name="public_email" value="{{ st.public_email }}"></div>
+      <div><label>Contact phone</label><input type="text" name="public_phone" value="{{ st.public_phone }}"></div>
+    </div>
+    <label class="check"><input type="checkbox" name="public_show_screens" value="1" {{ 'checked' if st.public_show_screens }}>
+      List our screens on the page (name, area, size and hours)</label>
+  </fieldset>
   <fieldset><legend>Mirror sheet</legend>
     <p class="small muted">The app keeps one tab of this Google Sheet up to date with every booking, so the team's sheet views keep working.
       Share the sheet with the app's Google account as an editor.</p>

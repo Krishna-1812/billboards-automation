@@ -43,7 +43,7 @@ def heat(pct, closed=False):
     return "heat-4"
 
 
-CHANNELS = {"email": "Email", "whatsapp": "WhatsApp", "manual": "Pasted in", "portal": "Client portal"}
+CHANNELS = {"email": "Email", "whatsapp": "WhatsApp", "manual": "Pasted in", "portal": "Client portal", "web": "Website sign-up"}
 
 
 def register(app):

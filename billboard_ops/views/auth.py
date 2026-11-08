@@ -58,7 +58,9 @@ def login():
     if current_user() is not None:
         return redirect(url_for("main.dashboard"))
     cfg = current_app.config["APP"]
-    return render_template("login.html", google_client_id=cfg.GOOGLE_CLIENT_ID, dev_login=cfg.DEV_LOGIN)
+    # Clients are the usual visitors; someone sent here from a team page, or who asked for it, sees the team door.
+    door = "team" if request.args.get("door") == "team" or session.get("next_url") else "client"
+    return render_template("login.html", google_client_id=cfg.GOOGLE_CLIENT_ID, dev_login=cfg.DEV_LOGIN, door=door)
 
 
 @bp.route("/auth/google", methods=["POST"])
@@ -91,7 +93,7 @@ def dev_sign_in():
     user = find_or_bootstrap(s, f_str("email"))
     if user is None:
         flash("That address doesn't have access.", "error")
-        return redirect(url_for("auth.login"))
+        return redirect(url_for("auth.login", door="team"))
     _sign_in(s, user)
     return redirect(_next())
 
@@ -106,5 +108,5 @@ def _next():
 @bp.route("/logout", methods=["POST"])
 def logout():
     session.clear()
-    return redirect(url_for("auth.login"))
+    return redirect(url_for("public.welcome"))
 

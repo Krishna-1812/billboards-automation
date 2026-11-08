@@ -40,7 +40,7 @@ def test_dev_sign_in_lets_in_known_people_and_bootstraps_owners(app, s, people):
     with c.session_transaction() as sess:
         tok = sess["csrf"]
     r = c.post("/auth/dev", data={"csrf_token": tok, "email": "stranger@example.com"})
-    assert r.headers["Location"].endswith("/login")
+    assert r.headers["Location"].endswith("/login?door=team")
     r = c.post("/auth/dev", data={"csrf_token": tok, "email": "Owner@Example.com"})
     assert r.status_code == 302 and c.get("/").status_code == 200
     owner = s.scalars(select(User).where(User.email == "owner@example.com")).one()

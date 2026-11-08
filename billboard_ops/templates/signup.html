@@ -1,0 +1,96 @@
+{% extends "public_base.html" %}
+{% import "_public.html" as p with context %}
+{% block title %}{{ tw('su_title') }} · {{ company }}{% endblock %}
+{% block body %}
+<div class="split">
+  <main class="main" id="main">
+    <div class="top">
+      <a class="pbrand" href="{{ url_for('public.welcome') }}"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>{{ company }}</a>
+      <a class="langbtn" href="{{ request.path }}?lang={{ 'en' if plang == 'ar' else 'ar' }}">{{ tw('other_lang') }}</a>
+    </div>
+    <div class="body">
+    {% if done %}
+      <h1>{{ tw('su_done_title', name=done.name) }}</h1>
+      <p class="intro">{{ tw('su_done_body', ref=done.ref or '', email=done.email) }}</p>
+      <div class="kicker">{{ tw('su_done_next') }}</div>
+      <ol class="done-steps">
+        {% for title, body in tw('how') %}
+        <li class="{{ 'now' if loop.first }}"><div><b>{{ title }}</b><span>{{ body }}</span></div></li>
+        {% endfor %}
+      </ol>
+      <a class="btn dark" href="{{ url_for('public.welcome') }}"><span class="arrow" aria-hidden="true" style="transform:scaleX(-1)">→</span> {{ tw('su_back') }}</a>
+    {% else %}
+      <h1>{{ tw('su_title') }}</h1>
+      <p class="intro">{{ tw('su_intro') }}</p>
+      {% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
+      <form method="post" action="{{ url_for('public.signup') }}" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+        <fieldset>
+          <legend>{{ tw('su_you') }}</legend>
+          <div class="fields">
+            <div class="field"><label for="f-name">{{ tw('su_name') }}</label><input id="f-name" name="name" required autocomplete="name" value="{{ form.name or '' }}"></div>
+            <div class="field"><label for="f-company">{{ tw('su_company') }}</label><input id="f-company" name="company" required autocomplete="organization" value="{{ form.company or '' }}" data-src="company" maxlength="80"></div>
+            <div class="field"><label for="f-email">{{ tw('su_email') }}</label><input id="f-email" type="email" name="email" required autocomplete="email" dir="ltr" value="{{ form.email or '' }}"></div>
+            <div class="field"><label for="f-phone">{{ tw('su_phone') }} <span class="opt">· {{ tw('su_optional') }}</span></label><input id="f-phone" type="tel" name="phone" autocomplete="tel" dir="ltr" value="{{ form.phone or '' }}"></div>
+            <div class="field full"><label id="l-kind">{{ tw('su_kind') }}</label>
+              <div class="seg2" role="radiogroup" aria-labelledby="l-kind">
+                <input type="radio" name="kind" id="k-brand" value="brand" {{ 'checked' if form.kind != 'agency' }}><label for="k-brand">{{ tw('su_kind_brand') }}</label>
+                <input type="radio" name="kind" id="k-agency" value="agency" {{ 'checked' if form.kind == 'agency' }}><label for="k-agency">{{ tw('su_kind_agency') }}</label>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>{{ tw('su_campaign') }}</legend>
+          <div class="fields">
+            <div class="field"><label for="f-start">{{ tw('su_start') }}</label><input id="f-start" type="date" name="start" value="{{ form.start or '' }}" data-src="start"></div>
+            <div class="field"><label for="f-end">{{ tw('su_end') }}</label><input id="f-end" type="date" name="end" value="{{ form.end or '' }}" data-src="end"></div>
+            <div class="field"><label for="f-where">{{ tw('su_where') }}</label><input id="f-where" name="where" placeholder="{{ tw('su_where_ph') }}" value="{{ form.where or '' }}"></div>
+            <div class="field"><label for="f-budget">{{ tw('su_budget') }} <span class="opt">· {{ app_currency() if app_currency is defined else 'AED' }}</span></label>
+              <select id="f-budget" name="budget">{% for b in tw('su_budget_opts') %}<option {{ 'selected' if form.budget == b }}>{{ b }}</option>{% endfor %}</select></div>
+            <div class="field full"><label for="f-notes">{{ tw('su_notes') }}</label><textarea id="f-notes" name="notes" placeholder="{{ tw('su_notes_ph') }}" maxlength="2000">{{ form.notes or '' }}</textarea></div>
+          </div>
+        </fieldset>
+        <button class="btn glow block" type="submit">{{ tw('su_send') }} <span class="arrow" aria-hidden="true">→</span></button>
+        <p class="note">{{ tw('su_privacy') }}</p>
+      </form>
+      <p class="alt">{{ tw('su_have') }} <a href="{{ url_for('auth.login') }}">{{ tw('sign_in') }}</a></p>
+    {% endif %}
+    </div>
+  </main>
+  <aside class="side">
+    <div class="stars" data-stars="50" aria-hidden="true" style="position:absolute;inset:0;z-index:-2"></div>
+    <div>
+      <div class="eyebrow"><span class="live" aria-hidden="true"></span>{{ tw('su_preview') }}</div>
+      <h2 style="margin-top:14px">{{ tw('hero_1') }} {{ tw('hero_2') }} <span class="neon">{{ tw('hero_3') }}</span></h2>
+    </div>
+    {{ p.board(slots=12, slot_ms=3200, live=true) }}
+    {{ p.skyline(11) }}
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // The billboard shows the brand as it's typed, and the campaign dates.
+  const lang = document.documentElement.lang, brand = {{ tw('su_your_brand')|tojson }}, onAir = {{ tw('su_on_air')|tojson }};
+  const done = {{ (done.name if done else '')|tojson }};
+  const co = document.querySelector('[data-src=company]'), a = document.querySelector('[data-src=start]'), b = document.querySelector('[data-src=end]');
+  const fmt = v => { try { return new Date(v + 'T00:00:00').toLocaleDateString(lang === 'ar' ? 'ar-AE' : 'en-GB', {day: 'numeric', month: 'short'}); } catch (e) { return v; } };
+  function paint() {
+    const name = done || (co && co.value.trim()) || brand;
+    let when = onAir;
+    if (a && a.value) when = fmt(a.value) + (b && b.value ? ' – ' + fmt(b.value) : '');
+    document.querySelectorAll('[data-live=company]').forEach(el => {
+      el.textContent = name;
+      el.style.fontSize = name.length > 22 ? 'clamp(20px,2.4vw,34px)' : (name.length > 12 ? 'clamp(24px,3vw,44px)' : '');
+    });
+    document.querySelectorAll('[data-live=when]').forEach(el => el.textContent = when);
+  }
+  [co, a, b].forEach(el => el && el.addEventListener('input', paint));
+  paint();
+})();
+</script>
+{% endblock %}

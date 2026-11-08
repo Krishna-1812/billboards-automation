@@ -195,7 +195,8 @@ def test_guessing_is_slowed_down(app, s):
     assert set(codes[:60]) == {404} and codes[60] == 429
 
 
-PUBLIC = {"static", "main.health", "main.health_full", "auth.login", "portal.login", "webhooks.whatsapp_verify"}
+PUBLIC = {"static", "main.health", "main.health_full", "auth.login", "portal.login", "webhooks.whatsapp_verify",
+          "public.welcome", "public.signup", "public.signup_done"}
 
 
 def test_every_page_needs_sign_in(app, s, people, small):
@@ -208,7 +209,7 @@ def test_every_page_needs_sign_in(app, s, people, small):
             continue
         r = c.get(rule.rule)
         loc = r.headers.get("Location", "")
-        assert r.status_code in (302, 401, 403, 404) and (r.status_code != 302 or loc.endswith(("/login", "/portal/login"))), \
+        assert r.status_code in (302, 401, 403, 404) and (r.status_code != 302 or loc.endswith(("/login", "/portal/login", "/welcome"))), \
             (rule.rule, r.status_code, loc)
         seen += 1
     assert seen > 30

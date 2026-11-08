@@ -44,6 +44,11 @@ def general():
                                                                                .replace("/folders/", "/d/")))
                 settings.put(s, "content_rules", request.form.get("content_rules", "").strip())
             settings.put(s, "remind_clients", request.form.get("remind_clients") == "1")
+            if "public_about" in request.form:            # the Front page section was on the form
+                settings.put(s, "public_about", request.form.get("public_about", "").strip()[:1200])
+                settings.put(s, "public_email", f_str("public_email")[:200])
+                settings.put(s, "public_phone", f_str("public_phone")[:60])
+                settings.put(s, "public_show_screens", request.form.get("public_show_screens") == "1")
             after = settings.all_settings(s)
             log(s, current_user().email, "changed", "settings", "general", "General settings changed",
                 {k: [before[k], after[k]] for k in after if before[k] != after[k]})

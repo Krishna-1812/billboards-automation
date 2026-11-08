@@ -13,6 +13,7 @@ from flask import render_template, request
 # endpoint: (requests, per seconds, which methods count)
 LIMITS = {
     "portal.login": (10, 600, ("POST",)),
+    "public.signup": (6, 600, ("POST",)),
     "portal.link": (30, 600, ("GET", "POST")),
     "auth.google_sign_in": (20, 600, ("POST",)),
     "auth.dev_sign_in": (20, 600, ("POST",)),

@@ -31,6 +31,8 @@ def login_required(fn):
     def wrapper(*a, **kw):
         u = current_user()
         if u is None:
+            if request.path == "/":
+                return redirect(url_for("public.welcome"))     # a visitor: the front page, not a sign-in form
             session["next_url"] = request.full_path if request.method == "GET" else None
             return redirect(url_for("auth.login"))
         if u.role == "client":
