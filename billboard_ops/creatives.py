@@ -29,7 +29,7 @@ from .activity import log, notify
 from .bookings import actor_of
 from .google_client import folder_url
 from .jobs import enqueue, handler
-from .models import (CREATIVE_STAGES, Booking, BookingLine, Creative, CreativeFrame, Message, utcnow)
+from .models import (CREATIVE_STAGES, FILE_STAGES, Booking, BookingLine, Creative, CreativeFrame, Message, utcnow)
 from .permissions import require
 
 log_ = logging.getLogger(__name__)
@@ -84,12 +84,20 @@ def coverage(session, booking):
     files = session.scalars(select(Creative).where(Creative.booking_id == booking.id)
                             .order_by(Creative.version.desc())).all()
     rank = {"approved": 0, "passed": 1, "warnings": 2, "checking": 3, "received": 3, "failed": 4, "error": 5}
+    need_client = settings.get(session, "client_approves_final")
     out = []
     for l in booking.lines:
         mine = [c for c in files if l.id in (c.line_ids or []) and c.status in rank]
         best = min(mine, key=lambda c: (rank[c.status], -c.version)) if mine else None
         latest = mine[0] if mine else None
         state = "missing" if best is None else ("approved" if best.status == "approved" else latest.status)
+        if state == "approved" and need_client and best.client_approved_at is None:
+            # Phase 4: the owner asked clients to approve the final preview too.
+            ok = [c for c in mine if c.status == "approved" and c.client_approved_at is not None]
+            if ok:
+                best = max(ok, key=lambda c: c.version)
+            else:
+                state = "waiting_client"
         out.append({"line": l, "screen": l.screen, "spec": l.screen.spec, "creative": best if state == "approved"
                     else latest, "state": state})
     return out
@@ -145,10 +153,16 @@ def request_files(session, booking, actor="agent", today=None):
     m = drafts.new_draft(session, kind="creative_request", channel=who["channel"], recipient=who["to"],
                          subject=subject, body=body, language=who["lang"], proposal=who["proposal"], booking=booking,
                          in_reply_to=who["reply"])
-    log(session, actor, "requested_files", "booking", booking.code,
-        f"Files requested, due {booking.creative_deadline:%d %b %Y}; the message is waiting in the Outbox")
-    notify(session, f"The file request for {booking.code} is ready to approve in the Outbox.", kind="info",
-           link="/outbox")
+    session.flush()
+    from .automation import send_if_automatic
+    if send_if_automatic(session, m, "auto_send_client"):
+        log(session, actor, "requested_files", "booking", booking.code,
+            f"Files requested, due {booking.creative_deadline:%d %b %Y}; sent to the client automatically")
+    else:
+        log(session, actor, "requested_files", "booking", booking.code,
+            f"Files requested, due {booking.creative_deadline:%d %b %Y}; the message is waiting in the Outbox")
+        notify(session, f"The file request for {booking.code} is ready to approve in the Outbox.", kind="info",
+               link="/outbox", topic="files")
     sync.queue_booking(session, booking)
     return m
 
@@ -164,7 +178,7 @@ def _request_job(session, payload):
 
 def add_file(session, booking, *, filename, content_type="", data=None, path=None, source="upload",
              drive_file_id="", message=None, actor="client", line_ids=None):
-    if booking.status not in CREATIVE_STAGES + ("creative_approved",):
+    if booking.status not in FILE_STAGES:
         raise CreativeError(f"{booking.code} isn't collecting files ({booking.status}).")
     version = (session.scalar(select(func.max(Creative.version)).where(Creative.booking_id == booking.id)) or 0) + 1
     c = Creative(booking=booking, version=version, filename=(filename or "file")[:300],
@@ -198,7 +212,7 @@ def booking_for_reply(session, channel, sender, reply_ids, has_media):
                             .order_by(Message.id.desc())).first()
         if m is not None:
             b = session.get(Booking, m.booking_id)
-            if b is not None and b.status in CREATIVE_STAGES + ("creative_approved",):
+            if b is not None and b.status in FILE_STAGES:
                 return b
     if not has_media or not sender:
         return None
@@ -357,21 +371,35 @@ def _after_check(session, c, checks):
     if fails:
         b.status = "changes_requested"
         m = draft_feedback(session, c, fails)
-        technical_only = all(x["group"] == "technical" for x in fails)
-        if technical_only and settings.get(session, "auto_send_technical") and m.recipient:
+        technical = any(x["group"] == "technical" for x in fails)
+        content = any(x["group"] != "technical" for x in fails)
+        allowed = (not technical or settings.get(session, "auto_send_technical")) and \
+                  (not content or settings.get(session, "auto_send_content"))
+        if allowed and m.recipient and m.channel != "manual":
             from . import outbox
             from .intake import AGENT
+            session.flush()
             outbox.approve(session, AGENT, m)
-            note = " Feedback on these measured faults was sent to the client automatically."
+            log(session, "agent", "sent_automatically", "message", m.id,
+                f"Feedback on v{c.version} sent to {m.recipient} automatically")
+            note = " Feedback was sent to the client automatically."
         else:
             note = " Feedback for the client is waiting in the Outbox."
-        notify(session, c.team_summary + progress + note, kind="warning", link=f"/creatives/{c.id}")
+        notify(session, c.team_summary + progress + note, kind="warning", link=f"/creatives/{c.id}", topic="files")
     else:
         # Feedback about an earlier version that hasn't gone out yet is out of date now.
         for old in session.scalars(select(Message).where(Message.booking_id == b.id, Message.status == "draft",
                                                          Message.kind == "creative_feedback")):
             old.status = "discarded"
-        notify(session, c.team_summary + progress + " Watch it and approve it.", kind="info", link=f"/creatives/{c.id}")
+        log(session, "agent", "checked", "booking", b.code, c.team_summary + progress)
+        if c.status == "passed" and settings.get(session, "auto_approve_passed"):
+            approve(session, None, c, automatic=True)
+            notify(session, c.team_summary + progress + " The agent approved it.", kind="info",
+                   link=f"/creatives/{c.id}", topic="files")
+        else:
+            notify(session, c.team_summary + progress + " Watch it and approve it.", kind="info",
+                   link=f"/creatives/{c.id}", topic="files")
+        return
     log(session, "agent", "checked", "booking", b.code, c.team_summary + progress)
 
 
@@ -393,8 +421,11 @@ def draft_feedback(session, c, fails, note=""):
 
 # ── Deciding ────────────────────────────────────────────────────────────────────
 
-def approve(session, user, c, note=""):
-    if c.status in ("failed", "error"):
+def approve(session, user, c, note="", automatic=False):
+    if automatic:
+        if c.status != "passed":
+            raise CreativeError("The agent only approves files that pass every check.")
+    elif c.status in ("failed", "error"):
         require(user, "override")
         if not note.strip():
             raise CreativeError("This file failed checks: say why it's approved anyway.")
@@ -402,20 +433,61 @@ def approve(session, user, c, note=""):
         require(user, "approve_creative")
     if c.status not in ("passed", "warnings", "failed", "error"):
         raise CreativeError(f"Version {c.version} is {c.status}; only a checked file can be approved.")
-    c.status, c.decided_by, c.decided_at, c.decision_note = "approved", actor_of(user), utcnow(), note.strip()
+    who = "agent" if automatic else actor_of(user)
+    c.status, c.decided_by, c.decided_at, c.decision_note = "approved", who, utcnow(), note.strip()
     for other in session.scalars(select(Creative).where(Creative.booking_id == c.booking_id, Creative.id != c.id,
                                                         Creative.status == "approved")):
         if set(other.line_ids or []) <= set(c.line_ids or []):
             other.status = "superseded"
     session.flush()
     b = c.booking
-    log(session, actor_of(user), "approved_file", "booking", b.code,
-        f"v{c.version} {c.filename} approved" + (f": {note.strip()}" if note.strip() else ""))
-    if all(x["state"] == "approved" for x in coverage(session, b)):
+    log(session, who, "approved_file", "booking", b.code,
+        f"v{c.version} {c.filename} approved" + (" automatically" if automatic else "")
+        + (f": {note.strip()}" if note.strip() else ""))
+    if settings.get(session, "client_approves_final") and c.client_approved_at is None:
+        from . import client_messages
+        client_messages.preview_review(session, c)
+        notify(session, f"{b.code}: v{c.version} is approved; the client is asked to approve the final preview.",
+               kind="info", link=f"/creatives/{c.id}", topic="files")
+    _after_decision(session, b, who)
+    return c
+
+
+def _after_decision(session, b, who):
+    """Every screen has an approved file: the booking moves on (and on through the Phase 4 stages)."""
+    if b.status in CREATIVE_STAGES and all(x["state"] == "approved" for x in coverage(session, b)):
         b.status = "creative_approved"
-        log(session, actor_of(user), "creative_approved", "booking", b.code, "Every screen has an approved file")
-        notify(session, f"{b.code}: every screen has an approved file.", kind="info", link=f"/bookings/{b.code}")
+        log(session, who, "creative_approved", "booking", b.code, "Every screen has an approved file")
+        notify(session, f"{b.code}: every screen has an approved file.", kind="info", link=f"/bookings/{b.code}",
+               topic="files")
         sync.queue_booking(session, b)
+    from . import lifecycle
+    lifecycle.advance(session, b, actor=who)
+
+
+def client_decide(session, user, c, approve_it, note=""):
+    """The client approves the final preview in the portal, or asks for changes (Phase 4)."""
+    from .notices import alert
+    b = c.booking
+    if c.status != "approved" or c.client_approved_at is not None:
+        raise CreativeError("This file isn't waiting for your approval.")
+    if approve_it:
+        c.client_approved_at = utcnow()
+        log(session, user.email, "client_approved_file", "booking", b.code, f"The client approved v{c.version}")
+        alert(session, "client", f"{b.client.name} approved the final preview of v{c.version} for {b.code}.",
+              link=f"/creatives/{c.id}")
+        _after_decision(session, b, user.email)
+    else:
+        if not (note or "").strip():
+            raise CreativeError("Tell us what you'd like changed.")
+        c.status, c.client_note = "rejected", note.strip()[:2000]
+        c.decided_by, c.decided_at, c.decision_note = user.email, utcnow(), f"Client: {note.strip()}"[:2000]
+        if b.status in CREATIVE_STAGES + ("creative_approved",):
+            b.status = "changes_requested"
+        log(session, user.email, "client_changes_file", "booking", b.code,
+            f"The client asked for changes to v{c.version}: {note.strip()}"[:500])
+        alert(session, "client", f"{b.client.name} asked for changes to v{c.version} for {b.code}: {note.strip()}",
+              link=f"/creatives/{c.id}", kind="warning")
     return c
 
 
@@ -468,12 +540,15 @@ def tick(session, today=None):
             who = client_contact(session, b)
             subject, body = drafts.creative_reminder(who["lang"], who["name"], settings.get(session, "company_name"),
                                                      b, b.creative_deadline)
-            drafts.new_draft(session, kind="creative_reminder", channel=who["channel"], recipient=who["to"],
-                             subject=subject, body=body, language=who["lang"], proposal=who["proposal"], booking=b,
-                             in_reply_to=who["reply"])
+            m = drafts.new_draft(session, kind="creative_reminder", channel=who["channel"], recipient=who["to"],
+                                 subject=subject, body=body, language=who["lang"], proposal=who["proposal"],
+                                 booking=b, in_reply_to=who["reply"])
             b.creative_reminded_at = utcnow()
-            notify(session, f"{b.code}: files are due {b.creative_deadline:%d %b}. A reminder to the client is "
-                            "waiting in the Outbox.", kind="reminder", link="/outbox")
+            session.flush()
+            from .automation import send_if_automatic
+            if not send_if_automatic(session, m, "auto_send_client"):
+                notify(session, f"{b.code}: files are due {b.creative_deadline:%d %b}. A reminder to the client is "
+                                "waiting in the Outbox.", kind="reminder", link="/outbox", topic="files")
         at_risk = working_days_before(b.start_date, lead, weekend_days(session)) <= today
         if at_risk and b.creative_alerted_on != today and b.start_date >= today:
             b.creative_alerted_on = today
@@ -497,7 +572,7 @@ def poll_drive(session, payload=None):
         return 0
     found = 0
     for b in session.scalars(select(Booking).where(Booking.drive_folder_id != "",
-                                                   Booking.status.in_(CREATIVE_STAGES + ("creative_approved",)))):
+                                                   Booking.status.in_(FILE_STAGES))):
         known = {fid for (fid,) in session.execute(select(Creative.drive_file_id)
                                                    .where(Creative.booking_id == b.id, Creative.drive_file_id != ""))}
         for f in g.drive_list(b.drive_folder_id):

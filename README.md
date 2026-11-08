@@ -2,8 +2,12 @@
 
 Bookings, creative checks and the owner's dashboard for a network of digital screens. It is a standalone app
 with its own Railway project, its own Postgres database and its own logins. The build plan has five phases. This
-repository holds **Phase 1: screens, specs and the booking calendar** and **Phase 2: proposal
-intake** and **Phase 3: creative collection and automatic checks**.
+repository holds:
+
+- **Phase 1:** screens, specs and the booking calendar;
+- **Phase 2:** proposal intake;
+- **Phase 3:** creative collection and automatic checks;
+- **Phase 4:** the play plan, the client portal and going live.
 
 ## What Phase 1 does
 
@@ -149,8 +153,8 @@ intake** and **Phase 3: creative collection and automatic checks**.
     - the version history, and what changed since the last version ("2 of 2 earlier problems fixed").
 - **Feedback.** The team gets a one-line technical summary, for example "fails 2 of 18 checks: ad length: 12.0s,
   needs 10s; sound …". The client gets the same points in plain words, in their language, each with how to fix
-  it. That message is a draft for approval. It can go out automatically when every fault is a measured one
-  (Settings → General); content findings always need a person.
+  it. That message is a draft for approval. It can go out automatically when the owner switches that step to
+  automatic (Settings → Automation): measured faults and content findings are separate switches.
 - **Deciding.** Ops (or a Manager, or the owner) approves a file that passed. Approving a file that failed needs
   a Manager and a reason. Rejecting a file sends the note to the client. When every booked screen has an approved
   file, the booking moves to **Creative approved**.
@@ -161,6 +165,67 @@ intake** and **Phase 3: creative collection and automatic checks**.
   alarms. The bar is every measured check right every time, and no language-rule breach missed.
 - **Storage.** Files go to the booking's Drive folder when Drive is set up, otherwise into the database (up to
   150 MB). Railway's build installs ffmpeg (`railpack.json`).
+
+## What Phase 4 does
+
+From a confirmed booking to the end of the campaign, for the team and for the client.
+
+- **The play plan** (a booking → Play plan). How often the ad plays on each screen, by part of the day, weekday
+  and date. On confirmation, the agent drafts it. Claude reads the conversation for agreed terms such as "double
+  in the evening peak", "weekends only" or "nothing on National Day". Without Claude, or when nothing was said,
+  every day part plays the booked frequency.
+    - The team edits a grid of day parts per screen, with weekdays and dates with special terms. The page shows
+      plays a day, plays in total and how full the busiest hour of the loop gets with everyone else's bookings.
+    - A plan that would overfill a loop is refused, listing the hours and the bookings it shares them with. A
+      Manager can confirm it anyway with a reason, which is logged.
+    - Only a **confirmed** plan changes what a screen's loop is reserved for. Editing a draft never takes loop time
+      from another booking. Changing a booking's screens, dates or frequency sends the plan back to draft.
+    - Day parts are set in Settings → Automation, as `Morning peak = 6-10 | ذروة الصباح` (the Arabic name is
+      what clients see in Arabic).
+- **Ready to load.** For each screen, day and hour, a **playlist** shows which approved file plays and how often
+  (Playlists, or a booking → Playlist). It exports as Excel, CSV or PDF.
+    - A booking's approved files download as a ZIP, one folder per screen, renamed the way the screen software
+      expects (the pattern is in Settings → Automation).
+    - With Drive set up, approved files are also copied into a **Ready to load** folder in the Shared Drive.
+    - Ops ticks **Loaded** for each screen. If a newer file is approved, or the plan changes, after a screen was
+      loaded, the tick is cleared and the team is told the screen needs loading again.
+- **The stages.** A booking moves on as its files are approved, its plan is confirmed and its screens are loaded:
+  Creative approved → Play plan set → Scheduled → **Live** on the start date → Completed.
+    - The day before the start, and on the day, a booking that isn't ready raises an alert in the app and by email,
+      saying exactly what's missing.
+    - On the start date the client gets a "your campaign is live" message.
+    - A set number of days before the end (7 by default), the client gets a renewal offer and Sales gets a reminder.
+    - After the end, the client gets a wrap-up, with their proof of play if any was added.
+- **Proof of play** (a booking → Proof of play). Ops adds photos and videos of the screen, or the screen software's
+  play report as CSV or Excel. A report is counted against the plan, for example "1,040 plays counted against
+  1,080 planned". The app finds the screen, date, plays and file columns itself, and only counts this booking's
+  files when the report names them. Each item can be shown to the client or kept internal.
+- **The client portal** (`/portal`). Clients sign in with a one-time link sent to their email; the link works
+  once, for 30 minutes, and only its hash is stored. The team gives access on the client's page, can email a link,
+  or copy one (valid for 24 hours) to send by WhatsApp. In the portal, a client:
+    - sees each booking's status and next step in plain words, in English or Arabic (right to left);
+    - accepts a hold, optionally attaching the signed proposal or PO;
+    - uploads files and sees the check result in plain words within minutes;
+    - approves the play plan and the final preview of their ad, or asks for changes, when the owner turns that on;
+    - sees shared proof of play and past campaigns;
+    - sends a new request, which lands in the Proposals inbox and is read by the agent like any other.
+  A client only ever sees their own company's records: every other page and file link answers "not found", and a
+  client is never let into the team's pages. Automated tests try these on every portal page and file link.
+- **Notices.** Each person chooses, by topic, what they see in the app and what they also get by email (Notices →
+  Choose what I get). By default, "not ready to start" goes by email to the owner, Managers and Ops, renewals to
+  Sales, and client actions to the owner, Managers and Sales.
+- **Automation** (Settings → Automation). For each step, the owner chooses "ask a person first" or "do it
+  automatically":
+    - holds;
+    - routine client messages;
+    - technical feedback;
+    - content feedback;
+    - final approval of files that pass every check;
+    - play plans the agent drafted with high confidence.
+
+  Everything starts as "ask first", and everything the agent does on its own is logged under "agent".
+- **Preferred channel.** A client can be set to hear from the team by email or WhatsApp, whatever way they first
+  wrote.
 
 ## Layout
 
@@ -182,6 +247,11 @@ intake** and **Phase 3: creative collection and automatic checks**.
 | `billboard_ops/evaluate.py` | The accuracy test |
 | `billboard_ops/creatives.py` | Phase 3: requesting, receiving, checking, feedback, approval, reminders, Drive polling |
 | `billboard_ops/creative_checks.py`, `creative_store.py`, `creative_eval.py` | The checks themselves; where files are kept; the check test set |
+| `billboard_ops/plans.py` | Phase 4: play plans, day parts, the overfill check, Claude's draft, confirming |
+| `billboard_ops/lifecycle.py` | Phase 4: readiness, loading, the stages, going live, the day-before alert, renewals, wrap-ups |
+| `billboard_ops/loading.py`, `proof.py` | Playlists and their exports, the ZIP and Ready to load folder; proof of play and play reports |
+| `billboard_ops/client_messages.py`, `notices.py`, `automation.py` | Stage messages to clients; notices by topic and by email; the automation switches |
+| `billboard_ops/views/portal.py`, `portal_text.py` | The client portal and its English and Arabic words |
 | `billboard_ops/views/`, `templates/`, `static/` | The pages |
 | `migrations/` | Alembic migrations, which Railway runs before each deploy |
 | `tests/` | The test suite. It runs on SQLite, and on Postgres when `TEST_DATABASE_URL` is set |
@@ -265,7 +335,7 @@ both built from the root of this repo.
    | `LOGIN_REQUIRED` | no | Sign-in is **off for now**: everyone who opens the app acts as the owner, and every page says so. It comes back on by itself once `GOOGLE_CLIENT_ID` is set, or with `LOGIN_REQUIRED=1`. `LOGIN_REQUIRED=0` keeps it off |
    | `OWNER_EMAILS` | yes | The owner's email address. Owners add everyone else in Settings → People. |
    | `GOOGLE_SERVICE_ACCOUNT_JSON` | for Sheets and Calendar | The whole JSON key of a Google service account (see below) |
-   | `APP_URL` | recommended | For example `https://ops.clientdomain.com`, for links in calendar events and emails |
+   | `APP_URL` | recommended | For example `https://ops.clientdomain.com`, for links in calendar events, emails and portal sign-in links |
    | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | for email | Without these, reminders show only in the app |
    | `ALERT_EMAILS` | recommended | Who gets an email when something breaks |
    | `ANTHROPIC_API_KEY` | for Phase 2 | Claude reads the proposals. Without it, proposals arrive and the team fills them in by hand. |
@@ -294,7 +364,8 @@ both built from the root of this repo.
 1. In Google Cloud, also enable the **Google Drive API** for the service account's project.
 2. In Google Drive, create a **Shared Drive** (for example "Billboard creatives"). Add the service account's email
    as a **Content manager**. Service accounts have no storage of their own, so files must live in a Shared Drive.
-3. Make a folder in it, and paste the folder's link in **Settings → General → Creative**.
+3. Make a folder in it, and paste the folder's link in **Settings → General → Creative**. The booking folders and
+   the **Ready to load** folder are made inside it.
 
 ### Connecting Google Sheets and Calendar
 
@@ -337,3 +408,14 @@ both built from the root of this repo.
   language-rule breach is missed.
 - [ ] Re-checks, reminders and start-date alerts work end to end on a real booking.
 - [ ] The cost of each check is recorded against its booking (Admin → Costs).
+
+## Phase 4 checklist ("done when")
+
+- [ ] A full booking runs from proposal to Completed on a real screen, with every step in its history.
+- [ ] Play plans can't overfill a loop, and the playlists open correctly in the screen team's tools (Excel, CSV,
+  PDF).
+- [ ] A test client signs in, sends a request, uploads a file, sees the check result and approves, in Arabic and in
+  English.
+- [ ] One client can never see another client's data (the portal tests cover every page and file link).
+- [ ] The day-before readiness alert catches a booking that is deliberately left unready.
+- [ ] SMTP is set up, so sign-in links and alerts actually go out by email.

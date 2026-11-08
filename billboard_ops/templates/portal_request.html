@@ -1,0 +1,21 @@
+{% extends "portal_base.html" %}
+{% block title %}{{ tp('new_request') }} · {{ tp('portal') }}{% endblock %}
+{% block content %}
+<h1>{{ tp('new_request') }}</h1>
+<p class="muted">{{ tp('req_intro') }}</p>
+<form method="post" enctype="multipart/form-data" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>{{ tp('req_campaign') }}</label><input type="text" name="campaign" value="{{ form.get('campaign', '') }}">
+  <label>{{ tp('available') }}</label>
+  <div class="grid cols-2" style="gap:4px">{% for s in screens %}<label class="check" style="margin:0"><input type="checkbox" name="screen_id" value="{{ s.id }}" {{ 'checked' if s.id|string in (form.getlist('screen_id') if form.getlist else []) }}> {{ s.name }}{% if s.area %} <span class="muted">· {{ s.area }}</span>{% endif %}</label>{% endfor %}</div>
+  <label>{{ tp('req_screens') }}</label><input type="text" name="screens" value="{{ form.get('screens', '') }}">
+  <div class="row">
+    <div><label>{{ tp('req_start') }}</label><input type="date" name="start" value="{{ form.get('start', '') }}"></div>
+    <div><label>{{ tp('req_end') }}</label><input type="date" name="end" value="{{ form.get('end', '') }}"></div>
+  </div>
+  <label>{{ tp('req_freq') }} <span class="hint">{{ tp('req_freq_hint') }}</span></label><input type="text" name="frequency" value="{{ form.get('frequency', '') }}">
+  <label>{{ tp('req_notes') }}</label><textarea name="notes">{{ form.get('notes', '') }}</textarea>
+  <label>{{ tp('req_files') }}</label><input type="file" name="files" multiple>
+  <p><button class="primary" type="submit">{{ tp('req_send') }}</button></p>
+</form>
+{% endblock %}

@@ -149,3 +149,25 @@ details summary { cursor: pointer; }
 .tabs a.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .evidence { font-size: 12px; color: var(--muted); font-style: italic; }
 textarea.big { min-height: 260px; font-family: inherit; }
+
+/* ── Phase 4: the client portal ─────────────────────────────────────────────── */
+.portal-top { background: var(--panel); border-bottom: 1px solid var(--line); }
+.portal-top .in { max-width: 980px; margin: 0 auto; padding: 12px 20px; display: flex; gap: 16px; align-items: center;
+  justify-content: space-between; flex-wrap: wrap; }
+.portal-top nav { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.portal-top nav a { padding: 6px 10px; border-radius: 6px; color: var(--ink); }
+.portal-top nav a.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.portal-main { max-width: 980px; margin: 0 auto; padding: 24px 20px 48px; }
+.steps { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.next { background: var(--accent-soft); border-radius: var(--radius); padding: 10px 14px; font-weight: 600; }
+.file-row { display: grid; grid-template-columns: minmax(0, 320px) 1fr; gap: 16px; padding: 12px 0;
+  border-bottom: 1px solid var(--line); }
+.file-row:last-child { border-bottom: 0; }
+.file-row video, .file-row img { width: 100%; max-height: 220px; object-fit: contain; background: #111; border-radius: 6px; }
+.proof-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.proof-grid img, .proof-grid video { width: 100%; height: 130px; object-fit: cover; border-radius: 6px; background: #111; }
+@media (max-width: 640px) { .file-row { grid-template-columns: 1fr; } }
+
+.pill.awaiting_creative, .pill.checking, .pill.creative_approved, .pill.plan_set, .pill.scheduled { background: var(--accent-soft); color: var(--accent); }
+.pill.changes_requested { background: var(--warn-soft); color: var(--warn); }
+button:disabled, button:disabled:hover { opacity: .5; cursor: not-allowed; border-color: var(--line-strong); }

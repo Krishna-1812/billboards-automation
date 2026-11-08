@@ -34,6 +34,8 @@ class User(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # Phase 4: which notices this person gets, in the app and by email ({topic: {"app": bool, "email": bool}}).
+    notify_prefs: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
 
 class Client(Base):
@@ -45,6 +47,8 @@ class Client(Base):
     phone: Mapped[str] = mapped_column(String(40), default="")
     whatsapp: Mapped[str] = mapped_column(String(40), default="")
     language: Mapped[str] = mapped_column(String(2), default="en")
+    # How the client prefers to hear from us: email | whatsapp, or empty for "the way they wrote to us".
+    preferred_channel: Mapped[str] = mapped_column(String(20), default="", server_default="")
     notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
@@ -157,6 +161,8 @@ BOOKED = ("confirmed", "awaiting_creative", "checking", "changes_requested", "cr
           "scheduled", "live")
 # Waiting for, or checking, the client's files (Phase 3).
 CREATIVE_STAGES = ("confirmed", "awaiting_creative", "checking", "changes_requested")
+# Stages in which a client can still send a file (a new version replaces the approved one once it's approved).
+FILE_STAGES = CREATIVE_STAGES + ("creative_approved", "plan_set", "scheduled", "live")
 
 
 class Booking(Base):
@@ -186,10 +192,26 @@ class Booking(Base):
     creative_requested_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     creative_reminded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     creative_alerted_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    # Phase 4: the play plan, getting ready, going live and ending.
+    plan_status: Mapped[str] = mapped_column(String(20), default="none", server_default="none")
+    # none | draft | waiting_client | confirmed
+    plan_note: Mapped[str] = mapped_column(Text, default="", server_default="")
+    plan_confidence: Mapped[str] = mapped_column(String(10), default="", server_default="")
+    plan_override_reason: Mapped[str] = mapped_column(String(500), default="", server_default="")
+    plan_confirmed_by: Mapped[str] = mapped_column(String(254), default="", server_default="")
+    plan_confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    plan_client_approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    plan_client_note: Mapped[str] = mapped_column(Text, default="", server_default="")
+    client_accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    ready_alerted_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    live_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    renewal_prompted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    wrapped_up_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    load_folder_id: Mapped[str] = mapped_column(String(200), default="", server_default="")
 
     client: Mapped[Client] = relationship()
     lines: Mapped[list["BookingLine"]] = relationship(back_populates="booking", cascade="all, delete-orphan",
-                                                      order_by="BookingLine.start_date")
+                                                      order_by="[BookingLine.start_date, BookingLine.id]")
 
     __table_args__ = (Index("ix_bookings_source_ref", "source_ref"),)
 
@@ -217,6 +239,13 @@ class BookingLine(Base):
     plays_per_hour: Mapped[float] = mapped_column(Float, default=30.0)
     exclusive: Mapped[bool] = mapped_column(Boolean, default=False)    # the whole screen
     calendar_event_id: Mapped[str] = mapped_column(String(300), default="")
+    # Phase 4: the play plan for this screen (see plans.py), and loading it onto the screen.
+    plan: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)            # being worked on
+    confirmed_plan: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # what the loop is reserved for
+    loaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    loaded_by: Mapped[str] = mapped_column(String(254), default="", server_default="")
+    loaded_signature: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    load_files: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)   # copies in the Ready to load folder
 
     booking: Mapped[Booking] = relationship(back_populates="lines")
     screen: Mapped[Screen] = relationship()
@@ -291,6 +320,7 @@ class Notification(Base):
     kind: Mapped[str] = mapped_column(String(40))
     text: Mapped[str] = mapped_column(String(500))
     link: Mapped[str] = mapped_column(String(300), default="")
+    topic: Mapped[str] = mapped_column(String(30), default="", server_default="")   # see notices.TOPICS
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
     read_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
@@ -506,6 +536,9 @@ class Creative(Base):
     decided_by: Mapped[str] = mapped_column(String(254), default="")
     decided_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     decision_note: Mapped[str] = mapped_column(Text, default="")
+    # Phase 4: the client's own approval of the final preview (when the owner asks for it).
+    client_approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    client_note: Mapped[str] = mapped_column(Text, default="", server_default="")
 
     booking: Mapped[Booking] = relationship()
     frames: Mapped[list["CreativeFrame"]] = relationship(order_by="CreativeFrame.at_seconds",
@@ -552,3 +585,49 @@ class CreativeRun(Base):
     results: Mapped[list] = mapped_column(JSON, default=list)
     summary: Mapped[dict] = mapped_column(JSON, default=dict)
     usd: Mapped[float] = mapped_column(Float, default=0.0)
+
+
+# ── Phase 4: proof of play and the client portal ────────────────────────────────
+
+class Proof(Base):
+    """Proof that a campaign played: a photo or video of the screen, or a play report from the screen software."""
+    __tablename__ = "proofs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    booking_id: Mapped[int] = mapped_column(ForeignKey("bookings.id", ondelete="CASCADE"))
+    line_id: Mapped[Optional[int]] = mapped_column(ForeignKey("booking_lines.id", ondelete="SET NULL"),
+                                                   nullable=True)
+    kind: Mapped[str] = mapped_column(String(10), default="photo")      # photo | video | report
+    filename: Mapped[str] = mapped_column(String(300), default="")
+    content_type: Mapped[str] = mapped_column(String(120), default="")
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    drive_file_id: Mapped[str] = mapped_column(String(200), default="")
+    data: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
+    taken_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    summary: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)   # a play report, counted
+    shared: Mapped[bool] = mapped_column(Boolean, default=True)            # shown to the client
+    uploaded_by: Mapped[str] = mapped_column(String(254), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    booking: Mapped[Booking] = relationship()
+    line: Mapped[Optional[BookingLine]] = relationship()
+
+    __table_args__ = (Index("ix_proofs_booking", "booking_id"),)
+
+    @property
+    def received_at(self):
+        return self.created_at
+
+
+class LoginLink(Base):
+    """A one-time sign-in link for a client. Only a hash of the token is kept."""
+    __tablename__ = "login_links"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(254), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    user: Mapped[User] = relationship()

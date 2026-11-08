@@ -34,7 +34,7 @@ def login_required(fn):
             session["next_url"] = request.full_path if request.method == "GET" else None
             return redirect(url_for("auth.login"))
         if u.role == "client":
-            return redirect(url_for("auth.portal_soon"))
+            return redirect(url_for("portal.home"))
         return fn(*a, **kw)
     return wrapper
 

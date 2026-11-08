@@ -321,6 +321,8 @@ def _recipient(session, p):
     """Where a reply to this proposal goes: back the way it came; for pasted requests, the client's email."""
     if p.channel in ("email", "whatsapp") and p.sender:
         return p.channel, p.sender
+    if p.channel == "portal" and "@" in (p.sender or ""):
+        return "email", p.sender
     contact = ((p.draft or {}).get("contact") or {}).get("email") or ""
     client = p.client
     if contact or (client and client.email):
@@ -461,11 +463,20 @@ def client_contact(session, booking):
     """How to reach a booking's client: back through the proposal it came from, else the client's email.
     Returns dict(channel, to, lang, name, reply, proposal), or None when there's no way to reach them."""
     p = session.scalars(select(Proposal).where(Proposal.booking_id == booking.id)).first()
+    c = booking.client
     if p is not None:
         channel, to = _recipient(session, p)
-        return {"channel": channel, "to": to, "lang": _lang(p), "name": _name(p), "reply": _last_inbound_id(p),
-                "proposal": p}
-    c = booking.client
+        out = {"channel": channel, "to": to, "lang": _lang(p), "name": _name(p), "reply": _last_inbound_id(p),
+               "proposal": p}
+        # The client said how they'd rather hear from us (Phase 4): that wins over the way the request came in.
+        pref = (c.preferred_channel if c else "") or ""
+        target = {"email": c.email, "whatsapp": c.whatsapp}.get(pref, "") if c else ""
+        if target and pref != channel:
+            out.update(channel=pref, to=target, reply="")
+        return out
+    if c and c.preferred_channel == "whatsapp" and c.whatsapp:
+        return {"channel": "whatsapp", "to": c.whatsapp, "lang": c.language if c.language in ("en", "ar") else "en",
+                "name": c.contact_name, "reply": "", "proposal": None}
     if c and (c.email or c.whatsapp):
         return {"channel": "email" if c.email else "whatsapp", "to": c.email or c.whatsapp,
                 "lang": c.language if c.language in ("en", "ar") else "en", "name": c.contact_name, "reply": "",

@@ -196,6 +196,9 @@ def update(session, user, booking, lines, title=None, notes=None, override_reaso
                         f"{override_reason.strip()}", kind="warning", link=f"/bookings/{booking.code}")
     session.flush()
     after = {"title": booking.title, "notes": booking.notes, "lines": _line_summary(booking)}
+    if after["lines"] != before["lines"]:
+        from .plans import reset_for_edit
+        reset_for_edit(booking)         # screens, dates or frequency changed: the play plan is confirmed again
     log(session, actor_of(user), "updated", "booking", booking.code, "Booking changed", diff(before, after))
     sync.queue_booking(session, booking, removed)
     return booking
@@ -220,6 +223,8 @@ def confirm(session, user, booking, now=None, document=None):
     from .jobs import enqueue
     session.flush()
     enqueue(session, "creative_request", {"booking_id": booking.id}, dedupe_key=f"creative_request:{booking.id}")
+    # Phase 4: the agent drafts the play plan from the conversation.
+    enqueue(session, "draft_plan", {"booking_id": booking.id}, dedupe_key=f"draft_plan:{booking.id}")
     return booking
 
 
@@ -287,7 +292,11 @@ def remind_holds(session, now=None):
         to = sorted(set(_team_emails(session) + ([b.created_by] if "@" in (b.created_by or "") else [])))
         queue_email(session, to, f"Hold {b.code} expires soon", text)
         from .intake import hold_reminder_drafts
-        if hold_reminder_drafts(session, b) is not None:
+        m = hold_reminder_drafts(session, b)
+        from .automation import send_if_automatic
+        if m is not None and send_if_automatic(session, m, "auto_send_client"):
+            pass
+        elif m is not None:
             notify(session, f"A reminder to {b.client.name} about hold {b.code} is waiting for approval in the "
                             "Outbox.", kind="reminder", link="/outbox")
     return due

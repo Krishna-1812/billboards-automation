@@ -319,8 +319,9 @@ def booking_detail(code):
     proposal = s.scalars(select(Proposal).where(Proposal.booking_id == b.id)).first()
     messages = s.scalars(select(Message).where(Message.booking_id == b.id).order_by(Message.id)).all()
     from .creatives import booking_panel
+    from .live import booking_panel as live_panel
     return render_template("booking_detail.html", b=b, checks=checks, history=history, docs=docs,
-                           proposal=proposal, messages=messages, files=booking_panel(s, b))
+                           proposal=proposal, messages=messages, files=booking_panel(s, b), live=live_panel(s, b))
 
 
 @bp.route("/bookings/<code>/edit", methods=["GET", "POST"])
@@ -419,6 +420,8 @@ def client_edit(client_id=None):
                 setattr(c, f, f_str(f))
             if c.language not in ("en", "ar"):
                 c.language = "en"
+            c.preferred_channel = f_str("preferred_channel") if f_str("preferred_channel") in ("email", "whatsapp") \
+                else ""
             if not c.id:
                 s.add(c)
             s.flush()
@@ -429,4 +432,5 @@ def client_edit(client_id=None):
     if c.id:
         history = s.scalars(select(Booking).options(joinedload(Booking.lines))
                             .where(Booking.client_id == c.id).order_by(Booking.id.desc())).unique().all()
-    return render_template("client_form.html", c=c, history=history)
+    from .portal import access_panel
+    return render_template("client_form.html", c=c, history=history, portal_users=access_panel(s, c) if c.id else [])

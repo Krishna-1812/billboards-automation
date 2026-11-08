@@ -1,0 +1,34 @@
+{% extends "portal_base.html" %}
+{% block title %}{{ tp('my_bookings') }} · {{ tp('portal') }}{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>{{ tp('my_bookings') }}</h1><p class="muted">{{ client.name }}</p></div>
+  <div class="actions"><a class="btn primary" href="{{ url_for('portal.new_request') }}">{{ tp('new_request') }}</a></div>
+</div>
+<h2>{{ tp('current') }}</h2>
+<div class="card table-wrap">
+  <table>
+    <tr><th>{{ tp('booking') }}</th><th>{{ tp('dates') }}</th><th>{{ tp('screens') }}</th><th>{{ tp('status') }}</th><th>{{ tp('next_step') }}</th></tr>
+    {% for b, step in current %}
+    <tr><td><a href="{{ url_for('portal.booking', code=b.code) }}">{{ b.code }}</a>{% if b.title %}<div class="small muted">{{ b.title }}</div>{% endif %}</td>
+      <td style="white-space:nowrap">{{ b.start_date|date }} – {{ b.end_date|date }}</td>
+      <td>{{ b.lines|map(attribute='screen.name')|join(', ') }}</td>
+      <td><span class="pill {{ b.status }}">{{ tp('st_' ~ b.status) }}</span></td>
+      <td>{{ step }}</td></tr>
+    {% else %}<tr><td colspan="5" class="empty">{{ tp('none_current') }}</td></tr>{% endfor %}
+  </table>
+</div>
+{% if past %}
+<h2>{{ tp('past') }}</h2>
+<div class="card table-wrap">
+  <table class="small">
+    {% for b in past %}
+    <tr><td><a href="{{ url_for('portal.booking', code=b.code) }}">{{ b.code }}</a></td>
+      <td>{{ b.start_date|date if b.start_date else '' }} – {{ b.end_date|date if b.end_date else '' }}</td>
+      <td>{{ b.lines|map(attribute='screen.name')|join(', ') }}</td>
+      <td><span class="pill {{ b.status }}">{{ tp('st_' ~ b.status) }}</span></td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

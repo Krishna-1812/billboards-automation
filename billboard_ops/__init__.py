@@ -33,6 +33,10 @@ def create_app(config=None):
         Base.metadata.create_all(db.engine())
 
     app = Flask(__name__)
+    # Railway (like most hosts) serves the app behind one proxy that ends HTTPS: trust its X-Forwarded-Proto and
+    # Host headers, so links the app builds (sign-in links, upload links) start with https:// and the right host.
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config.update(
         APP=cfg, SECRET_KEY=cfg.SECRET_KEY, TESTING=cfg.TESTING,
         SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
@@ -42,12 +46,13 @@ def create_app(config=None):
     )
 
     # Every job handler registers itself on import.
-    from . import creative_eval, creatives, evaluate, intake, mail, outbox, sync  # noqa: F401
+    from . import creative_eval, creatives, evaluate, intake, loading, mail, outbox, plans, sync  # noqa: F401
     from .channels import email_in  # noqa: F401
 
-    from .views import admin, auth, bookings, creatives as creative_views, imports, inbox, main, screens, webhooks
+    from .views import admin, auth, bookings, creatives as creative_views, imports, inbox, live, main, portal, \
+        screens, webhooks
     for bp in (auth.bp, main.bp, bookings.bp, screens.bp, imports.bp, admin.bp, inbox.bp, webhooks.bp,
-               creative_views.bp):
+               creative_views.bp, live.bp, portal.bp):
         app.register_blueprint(bp)
 
     app.teardown_appcontext(close_db)

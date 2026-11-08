@@ -265,3 +265,99 @@ def creative_reminder(lang, name, company, booking, deadline):
     def body(lg):
         return t("files_rem", lg, code=booking.code, date=_d(deadline, lg), start=_d(booking.start_date, lg))
     return _subject("subj_files_rem", lang, code=booking.code), _compose(lang, name, company, body)
+
+
+# ── Phase 4: the play plan, going live and ending ───────────────────────────────
+
+T.update({
+    "every_day":     ("every day", "كل يوم"),
+    "no_plays":      ("not playing", "لا يُعرض"),
+    "per_hour":      ("/h", " في الساعة"),
+    "wd0": ("Mon", "الاثنين"), "wd1": ("Tue", "الثلاثاء"), "wd2": ("Wed", "الأربعاء"), "wd3": ("Thu", "الخميس"),
+    "wd4": ("Fri", "الجمعة"), "wd5": ("Sat", "السبت"), "wd6": ("Sun", "الأحد"),
+    "plan_exception": ("{start} to {end}: {n} plays an hour", "من {start} إلى {end}: {n} مرة عرض في الساعة"),
+    "subj_plan":     ("Play plan for {code}", "خطة العرض للحجز {code}"),
+    "plan_intro":    ("Here is the play plan for your booking {code}:", "إليكم خطة العرض لحجزكم {code}:"),
+    "plan_row":      ("{screen}: {plan}. About {per_day} plays a day.", "{screen}: {plan}. حوالي {per_day} مرة عرض يومياً."),
+    "plan_total":    ("In total, about {total} plays.", "المجموع حوالي {total} مرة عرض."),
+    "plan_approve":  ("Please approve it, or ask for changes, in your portal: {url}",
+                      "يرجى الموافقة عليها أو طلب التعديلات عبر بوابتكم: {url}"),
+    "plan_reply":    ("Please reply to approve it, or to ask for changes.", "يرجى الرد للموافقة عليها أو لطلب التعديلات."),
+    "subj_preview":  ("Your ad for {code} is ready for your approval", "إعلانكم للحجز {code} جاهز لموافقتكم"),
+    "preview":       ("Your file {file} has passed our checks. Please watch the final preview and approve it in your "
+                      "portal: {url}", "اجتاز ملفكم {file} الفحوصات. يرجى مشاهدة المعاينة النهائية والموافقة عليها عبر "
+                      "بوابتكم: {url}"),
+    "subj_live":     ("Your campaign {code} is live", "حملتكم {code} قيد العرض الآن"),
+    "live":          ("Your campaign {code} started today on {screens}. It runs until {end}.",
+                      "بدأت حملتكم {code} اليوم على {screens}، وتستمر حتى {end}."),
+    "follow":        ("You can follow it in your portal: {url}", "يمكنكم متابعتها عبر بوابتكم: {url}"),
+    "subj_renew":    ("Your campaign {code} ends on {end}", "حملتكم {code} تنتهي في {end}"),
+    "renew":         ("Your campaign {code} on {screens} ends on {end}. Would you like to extend it, or book your next "
+                      "campaign? Reply to this message and we'll check what's free.",
+                      "تنتهي حملتكم {code} على {screens} في {end}. هل ترغبون في تمديدها أو حجز حملتكم القادمة؟ يرجى "
+                      "الرد على هذه الرسالة وسنتحقق من التوفر."),
+    "subj_wrap":     ("Your campaign {code} has ended", "انتهت حملتكم {code}"),
+    "wrap":          ("Your campaign {code} ended on {end}. Thank you for advertising with us.",
+                      "انتهت حملتكم {code} في {end}. شكراً لإعلانكم معنا."),
+    "wrap_proof":    ("Photos, videos and play reports showing it played are in your portal: {url}",
+                      "الصور ومقاطع الفيديو وتقارير العرض التي تثبت عرض الحملة متاحة عبر بوابتكم: {url}"),
+    "subj_link":     ("Your sign-in link", "رابط تسجيل الدخول"),
+    "link":          ("Use this link to sign in to your {company} portal. It works once, for {minutes} minutes:\n{url}\n\n"
+                      "If you didn't ask for it, you can ignore this email.",
+                      "استخدموا هذا الرابط لتسجيل الدخول إلى بوابة {company}. يعمل مرة واحدة خلال {minutes} دقيقة:\n{url}\n\n"
+                      "إذا لم تطلبوا هذا الرابط، يمكنكم تجاهل هذه الرسالة."),
+})
+
+
+def plan_review(lang, name, company, booking, rows, portal_url):
+    from .plans import describe
+
+    def body(lg):
+        out = [t("plan_intro", lg, code=booking.code)]
+        for r in rows:
+            l = r["line"]
+            what = t("whole", lg) if l.exclusive else describe(r["plan"], lg)
+            out.append("- " + t("plan_row", lg, screen=f"{l.screen.name} ({l.screen.code})", plan=what,
+                                  per_day=f"{r['per_day']:,.0f}"))
+        out += ["", t("plan_total", lg, total=f"{sum(r['total'] for r in rows):,.0f}"), "",
+                t("plan_approve", lg, url=portal_url) if portal_url else t("plan_reply", lg)]
+        return "\n".join(out)
+    return _subject("subj_plan", lang, code=booking.code), _compose(lang, name, company, body)
+
+
+def preview_review(lang, name, company, booking, filename, portal_url):
+    def body(lg):
+        return t("preview", lg, file=filename, url=portal_url)
+    return _subject("subj_preview", lang, code=booking.code), _compose(lang, name, company, body)
+
+
+def live_notice(lang, name, company, booking, portal_url):
+    def body(lg):
+        screens = ", ".join(l.screen.name for l in booking.lines)
+        out = [t("live", lg, code=booking.code, screens=screens, end=_d(booking.end_date, lg))]
+        if portal_url:
+            out += ["", t("follow", lg, url=portal_url)]
+        return "\n".join(out)
+    return _subject("subj_live", lang, code=booking.code), _compose(lang, name, company, body)
+
+
+def renewal(lang, name, company, booking):
+    def body(lg):
+        screens = ", ".join(l.screen.name for l in booking.lines)
+        return t("renew", lg, code=booking.code, screens=screens, end=_d(booking.end_date, lg))
+    return _subject("subj_renew", lang, code=booking.code, end=_d(booking.end_date, lang if lang != "mixed" else "en")), \
+        _compose(lang, name, company, body)
+
+
+def wrap_up(lang, name, company, booking, has_proof, portal_url):
+    def body(lg):
+        out = [t("wrap", lg, code=booking.code, end=_d(booking.end_date, lg))]
+        if has_proof and portal_url:
+            out += ["", t("wrap_proof", lg, url=portal_url)]
+        return "\n".join(out)
+    return _subject("subj_wrap", lang, code=booking.code), _compose(lang, name, company, body)
+
+
+def sign_in_link(lang, company, url, minutes):
+    lg = lang if lang in ("en", "ar") else "en"
+    return t("subj_link", lg), t("link", lg, company=company, url=url, minutes=minutes)

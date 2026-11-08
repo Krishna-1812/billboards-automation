@@ -12,7 +12,7 @@ from .. import creative_store, creatives, settings
 from ..activity import log
 from ..google_client import folder_url
 from ..jobs import enqueue
-from ..models import (CREATIVE_STAGES, Booking, BookingLine, Creative, CreativeCase, CreativeFrame, CreativeRun,
+from ..models import (CREATIVE_STAGES, FILE_STAGES, Booking, BookingLine, Creative, CreativeCase, CreativeFrame, CreativeRun,
                       Spec)
 from ..permissions import Forbidden, can
 from ..web import current_user, done, f_int, f_str, get_db, login_required, needs
@@ -187,7 +187,7 @@ def team_upload(code):
 
 def _by_token(s, token):
     b = s.scalars(select(Booking).where(Booking.upload_token == token)).first() if token and len(token) > 20 else None
-    if b is None or b.status not in CREATIVE_STAGES + ("creative_approved",):
+    if b is None or b.status not in FILE_STAGES:
         abort(404)
     return b
 
@@ -279,4 +279,4 @@ def booking_panel(s, b):
             "upload_url": url_for("creatives.client_upload", token=b.upload_token, _external=True)
             if b.upload_token else "",
             "drive_url": folder_url(b.drive_folder_id), "deadline": b.creative_deadline,
-            "collecting": b.status in CREATIVE_STAGES + ("creative_approved",)}
+            "collecting": b.status in FILE_STAGES}

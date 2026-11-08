@@ -39,9 +39,13 @@ def _seen_key(user):
 
 
 def notices_for(s, user, limit=50):
-    return s.scalars(select(Notification).where(or_(Notification.user_email == "",
-                                                    Notification.user_email == user.email))
-                     .order_by(Notification.id.desc()).limit(limit)).all()
+    """The notices this person sees: everyone's and their own, less the topics they switched off."""
+    from ..notices import hidden_topics
+    q = select(Notification).where(or_(Notification.user_email == "", Notification.user_email == user.email))
+    hidden = hidden_topics(user)
+    if hidden:
+        q = q.where(Notification.topic.not_in(hidden))
+    return s.scalars(q.order_by(Notification.id.desc()).limit(limit)).all()
 
 
 def unread_count(s, user):
@@ -102,6 +106,25 @@ def notices():
         settings.put(s, _seen_key(u), items[0].id)
         s.commit()
     return render_template("notices.html", items=items, seen=seen)
+
+
+@bp.route("/notices/settings", methods=["GET", "POST"])
+@login_required
+def notice_settings():
+    """Each person chooses which notices they see in the app and get by email."""
+    from ..activity import log
+    from ..notices import TOPICS, pref
+    s = get_db()
+    u = current_user()
+    if request.method == "POST":
+        u.notify_prefs = {t: {"app": request.form.get(f"app_{t}") == "1", "email": request.form.get(f"email_{t}") == "1"}
+                          for t in TOPICS}
+        log(s, u.email, "changed", "user", u.email, "Notice settings changed")
+        s.commit()
+        from flask import flash
+        flash("Saved.", "ok")
+        return redirect(url_for("main.notice_settings"))
+    return render_template("notice_settings.html", topics=TOPICS, pref=lambda t: pref(u, t))
 
 
 @bp.route("/language", methods=["POST"])

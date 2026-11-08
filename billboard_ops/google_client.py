@@ -102,6 +102,11 @@ class DriveMixin:
         return self._drive_api().files().create(body={"name": filename, "parents": [folder_id]}, media_body=media,
                                                 fields="id", supportsAllDrives=True).execute()["id"]
 
+    def drive_copy(self, file_id, folder_id, name):
+        """A copy of a Drive file in another folder, under a new name (the Ready to load folder, Phase 4)."""
+        return self._drive_api().files().copy(fileId=file_id, body={"name": name, "parents": [folder_id]},
+                                              fields="id", supportsAllDrives=True).execute()["id"]
+
 
 def folder_url(folder_id):
     return f"https://drive.google.com/drive/folders/{folder_id}" if folder_id else ""

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Play plan {{ b.code }} · Billboard Ops{% endblock %}
+{% block content %}
+{% set editable = can('edit_plan') and b.status not in ('hold', 'enquiry', 'cancelled', 'expired', 'completed') %}
+<div class="head">
+  <div>
+    <h1>Play plan · <a href="{{ url_for('bookings.booking_detail', code=b.code) }}">{{ b.code }}</a>
+      <span class="pill {{ {'confirmed': 'ok', 'waiting_client': 'hold', 'draft': 'partial'}.get(b.plan_status, '') }}">{{ {'none': 'not started', 'draft': 'draft', 'waiting_client': 'waiting for the client', 'confirmed': 'confirmed'}[b.plan_status] }}</span></h1>
+    <p class="muted">{{ b.client.name }}{% if b.title %} · {{ b.title }}{% endif %} · {{ b.start_date|date }} – {{ b.end_date|date }}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('live.playlists', booking=b.code, **{'from': b.start_date.isoformat(), 'days': 7}) }}">Playlist</a>
+    {% if editable %}<form method="post" class="inline">{{ m.csrf() }}<input type="hidden" name="action" value="draft">
+      <button type="submit" title="The agent reads the conversation again and drafts a new plan">Redraft with the agent</button></form>{% endif %}
+  </div>
+</div>
+
+{% if b.status in ('hold', 'enquiry') %}<div class="note">The play plan is made once the booking is confirmed.</div>{% endif %}
+{% if b.plan_note %}<div class="note"><strong>The agent{% if b.plan_confidence %} ({{ b.plan_confidence }} confidence){% endif %}:</strong> {{ b.plan_note }}</div>{% endif %}
+{% if b.plan_client_note %}<div class="flash warning" style="margin-top:12px"><strong>The client asked for changes:</strong> {{ b.plan_client_note }}</div>{% endif %}
+{% if b.plan_status == 'waiting_client' %}<div class="flash warning" style="margin-top:12px">Confirmed by {{ b.plan_confirmed_by }} and waiting for the client to approve it in the portal. Editing it takes it back to draft.</div>{% endif %}
+{% if b.plan_status == 'confirmed' %}<div class="flash ok" style="margin-top:12px">Confirmed by {{ b.plan_confirmed_by }} on {{ b.plan_confirmed_at|dt }}{% if b.plan_client_approved_at %}, approved by the client on {{ b.plan_client_approved_at|dt }}{% endif %}. Each screen's loop is reserved for this plan.{% if b.plan_override_reason %} Confirmed past capacity: {{ b.plan_override_reason }}{% endif %}</div>{% endif %}
+
+<form method="post" id="plan-form">
+  {{ m.csrf() }}
+  {% for r in rows %}{% set l = r.line %}
+  <div class="card" style="margin-top:16px">
+    <div class="head" style="margin-bottom:8px">
+      <div><h2 style="margin:0">{{ l.screen.code }} <span class="muted" style="font-weight:400">{{ l.screen.name }}</span></h2>
+        <p class="small muted">{{ l.start_date|date }} – {{ l.end_date|date }} · {{ fmt_hours(l.start_hour, l.end_hour) }} · booked {{ m.frequency(l) }}</p></div>
+      {% if not l.exclusive %}<div class="actions small">
+        <span class="pill {{ 'ok' if r.fits else 'no' }}">{{ 'Fits the loop' if r.fits else 'Overfills the loop' }}</span>
+      </div>{% endif %}
+    </div>
+    {% if l.exclusive %}
+      <p>The whole screen is booked for these hours, so there's nothing to spread.</p>
+    {% else %}
+    {% set plan = r.plan %}
+    <div class="table-wrap"><table class="small">
+      <tr><th>Day part</th><th>Hours</th><th class="num">Plays an hour</th></tr>
+      {% for p in parts %}{% set val = (plan.parts|selectattr('name', 'equalto', p.name)|map(attribute='plays')|first) if plan.parts else l.plays_per_hour %}{% if val is none %}{% set val = plan.hours[p['from']|string] %}{% endif %}
+      <tr><td>{{ label(p.name) }}{% if label(p.name, 'ar') != label(p.name) %} <span class="muted small" dir="rtl">{{ label(p.name, 'ar') }}</span>{% endif %}</td><td class="muted">{{ '%02d:00'|format(p['from']) }} – {{ '%02d:00'|format(p['to'] % 24) }}</td>
+        <td class="num"><input type="number" name="p_{{ l.id }}_{{ loop.index0 }}" value="{{ (val if val is not none else 0)|num }}" min="0" max="{{ max_plays(l) }}" step="1" style="width:90px;display:inline-block" {{ 'disabled' if not editable }}></td></tr>
+      {% endfor %}
+    </table></div>
+    <p class="small muted">At most {{ max_plays(l) }} plays an hour for a {{ l.ad_seconds }}-second ad on this screen.{% if plan.evidence %} From the conversation: “{{ plan.evidence }}”{% endif %}</p>
+    <label>Plays on</label>
+    <div class="actions">{% for d in range(7) %}<label class="check" style="margin:0"><input type="checkbox" name="wd_{{ l.id }}" value="{{ d }}" {{ 'checked' if d in plan.weekdays }} {{ 'disabled' if not editable }}> {{ weekdays[d] }}</label>{% endfor %}</div>
+    <details style="margin-top:10px" {{ 'open' if plan.exceptions }}><summary class="small"><strong>Dates with special terms</strong> ({{ plan.exceptions|length }})</summary>
+      <table class="small">
+        <tr><th>From</th><th>To</th><th class="num">Plays an hour</th><th>Why</th></tr>
+        {% for e in plan.exceptions + [{}, {}] %}
+        <tr><td><input type="date" name="ex_{{ l.id }}_from" value="{{ e.get('from', '') }}" min="{{ l.start_date.isoformat() }}" max="{{ l.end_date.isoformat() }}" {{ 'disabled' if not editable }}></td>
+          <td><input type="date" name="ex_{{ l.id }}_to" value="{{ e.get('to', '') }}" min="{{ l.start_date.isoformat() }}" max="{{ l.end_date.isoformat() }}" {{ 'disabled' if not editable }}></td>
+          <td class="num"><input type="number" name="ex_{{ l.id }}_plays" value="{{ e.get('plays', 0)|num if e else '' }}" min="0" max="{{ max_plays(l) }}" style="width:90px;display:inline-block" {{ 'disabled' if not editable }}></td>
+          <td><input type="text" name="ex_{{ l.id }}_note" value="{{ e.get('note', '') }}" placeholder="e.g. National Day: no plays" {{ 'disabled' if not editable }}></td></tr>
+        {% endfor %}
+      </table>
+      <p class="small muted">0 plays means it doesn't play on those dates. Special dates win over the weekdays above.</p>
+    </details>
+    <div class="grid cols-4" style="margin-top:12px">
+      <div class="stat"><div class="num">{{ r.per_day|round|int }}</div><div class="lbl">plays a day (average over {{ r.days }} day{{ 's' if r.days != 1 }})</div></div>
+      <div class="stat"><div class="num">{{ '{:,.0f}'.format(r.total) }}</div><div class="lbl">plays in total</div></div>
+      <div class="stat"><div class="num">{{ r.peak_pct|round|int }}%</div><div class="lbl">fullest hour of the loop, with everyone else's bookings</div></div>
+    </div>
+    {% if not r.fits %}
+      <div class="flash error" style="margin-top:12px">{{ r.over_count }} hour{{ 's' if r.over_count != 1 }} would go over the loop. Lower the plays in those hours.
+        <table class="small" style="margin-top:6px;background:transparent"><tr><th>Day</th><th>Hour</th><th class="num">Loop</th><th>Sharing it with</th></tr>
+        {% for o in r.over %}<tr><td>{{ o.date|date }}</td><td>{{ '%02d:00'|format(o.hour) }}</td><td class="num">{{ o.pct }}%</td><td>{% for c in o.with %}<a href="{{ url_for('bookings.booking_detail', code=c) }}">{{ c }}</a>{{ ', ' if not loop.last }}{% endfor %}</td></tr>{% endfor %}
+        </table></div>
+    {% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {% if editable %}
+  <div class="card" style="margin-top:16px">
+    {% if not fits and can('override') %}
+      <label>Confirm past capacity <span class="hint">(Managers only: say why, and it's logged)</span></label>
+      <input type="text" name="override_reason" placeholder="e.g. the owner agreed to reduce our own content that week">
+    {% endif %}
+    <div class="actions" style="margin-top:10px">
+      <button type="submit" name="action" value="save">Save and check</button>
+      {% if can('confirm_plan') %}<button class="primary" type="submit" name="action" value="confirm">Confirm the plan</button>{% endif %}
+    </div>
+    <p class="small muted" style="margin-top:8px">Confirming reserves each screen's loop for this plan{% if settings_client_approves %} and sends it to the client to approve{% endif %}. Until then the loop stays reserved at the booked frequency.</p>
+  </div>
+  {% endif %}
+</form>
+{% endblock %}

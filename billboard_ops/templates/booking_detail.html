@@ -61,12 +61,66 @@
       <td><span class="pill {{ {'approved': 'ok', 'passed': 'ok', 'warnings': 'partial', 'failed': 'no', 'error': 'no', 'missing': ''}.get(x.state, 'hold') }}">{{ x.state }}</span></td></tr>{% endfor %}
   </table>
   <div class="actions" style="margin-top:10px">
-    {% if (can('approve_creative') or can('confirm')) and not b.creative_requested_at %}<form method="post" action="{{ url_for('creatives.request_files', code=b.code) }}" class="inline">{{ m.csrf() }}<button class="primary">Request the files</button></form>{% endif %}
+    {% if (can('approve_creative') or can('confirm')) and not b.creative_requested_at and b.status in ('confirmed', 'awaiting_creative', 'checking', 'changes_requested') %}<form method="post" action="{{ url_for('creatives.request_files', code=b.code) }}" class="inline">{{ m.csrf() }}<button class="primary">Request the files</button></form>{% endif %}
     {% if can('approve_creative') or can('hold') %}<form method="post" enctype="multipart/form-data" action="{{ url_for('creatives.team_upload', code=b.code) }}" class="actions">{{ m.csrf() }}
       <input type="file" name="files" multiple accept="video/*,image/*" style="width:auto"><button>Add files</button></form>{% endif %}
   </div>
   {% if files.files|length > files.coverage|length %}<details style="margin-top:8px"><summary class="small">All versions ({{ files.files|length }})</summary><table class="small">
     {% for c in files.files %}<tr><td><a href="{{ url_for('creatives.creative_page', cid=c.id) }}">v{{ c.version }}</a></td><td>{{ c.filename }}</td><td>{{ c.status }}</td><td class="muted">{{ c.received_at|dt }}</td></tr>{% endfor %}</table></details>{% endif %}
+</div>
+{% endif %}
+{% if live %}
+<h2 id="ready">Getting ready to play</h2>
+<div class="card">
+  <div class="actions" style="margin-bottom:10px">
+    {% for key, label in [('files', 'Files approved'), ('plan', 'Play plan confirmed'), ('loaded', 'Loaded on the screens')] %}
+      <span class="pill {{ 'ok' if live.ready[key] else 'hold' }}">{{ '✓' if live.ready[key] else '…' }} {{ label }}</span>{% endfor %}
+    {% if b.status == 'live' %}<span class="pill live">Live since {{ b.live_at|dt }}</span>{% endif %}
+  </div>
+  {% if live.ready.missing and b.status not in ('completed',) %}<p class="small muted">Still needs: {{ live.ready.missing|join('; ') }}.</p>{% endif %}
+  <div class="table-wrap"><table class="small">
+    <tr><th>Screen</th><th>File to load</th><th>Play plan</th><th>Loaded</th></tr>
+    {% for x in live.lines %}{% set l = x.line %}
+    <tr><td>{{ l.screen.code }}</td>
+      <td>{% for c, name in x.files %}<div><a href="{{ url_for('creatives.creative_page', cid=c.id) }}" class="mono">{{ name }}</a></div>{% else %}<span class="muted">no approved file yet</span>{% endfor %}</td>
+      <td>{% if l.exclusive %}Whole screen{% elif x.plan %}{{ x.plan.per_day|round|int }} plays a day · {{ '{:,.0f}'.format(x.plan.total) }} in total{% if not x.plan.fits %} <span class="pill no">overfills</span>{% endif %}{% endif %}</td>
+      <td>{% if l.loaded_at %}<span class="pill ok">Loaded</span> <span class="muted">{{ l.loaded_by }}, {{ l.loaded_at|dt }}</span>
+            {% if can('load') %}<form method="post" action="{{ url_for('live.mark_loaded', code=b.code, line_id=l.id) }}" class="inline">{{ m.csrf() }}<input type="hidden" name="loaded" value="0"><button class="linkish" type="submit">undo</button></form>{% endif %}
+          {% elif can('load') and b.status not in ('completed', 'cancelled', 'expired') %}<form method="post" action="{{ url_for('live.mark_loaded', code=b.code, line_id=l.id) }}" class="inline">{{ m.csrf() }}<input type="hidden" name="loaded" value="1"><button type="submit" {{ 'disabled' if not (x.files and b.plan_status == 'confirmed') }} title="Tick once the file is loaded on the screen with this plan">Mark loaded</button></form>
+          {% else %}<span class="muted">not yet</span>{% endif %}</td></tr>
+    {% endfor %}
+  </table></div>
+  <div class="actions" style="margin-top:10px">
+    <a class="btn {{ 'primary' if b.plan_status in ('none', 'draft') }}" href="{{ url_for('live.plan_page', code=b.code) }}">Play plan ({{ {'none': 'not started', 'draft': 'draft', 'waiting_client': 'with the client', 'confirmed': 'confirmed'}[b.plan_status] }})</a>
+    <a class="btn" href="{{ url_for('live.playlists', booking=b.code, **{'from': b.start_date.isoformat(), 'days': 7}) }}">Playlist</a>
+    <a class="btn" href="{{ url_for('live.load_zip', code=b.code) }}">Download files to load (ZIP)</a>
+    {% if live.load_folder %}<a class="btn" href="{{ live.load_folder }}" target="_blank" rel="noopener">Ready to load folder</a>{% endif %}
+  </div>
+</div>
+
+<h2 id="proof">Proof of play</h2>
+<div class="card">
+  {% if live.proofs %}<div class="table-wrap"><table class="small">
+    <tr><th>What</th><th>Screen</th><th>Taken</th><th>Notes</th><th>Client sees it</th><th></th></tr>
+    {% for p in live.proofs %}
+    <tr><td><a href="{{ url_for('live.proof_file', proof_id=p.id) }}" target="_blank">{{ {'photo': 'Photo', 'video': 'Video', 'report': 'Play report'}[p.kind] }}: {{ p.filename }}</a>
+          {% if p.summary %}<div class="muted">{{ '{:,.0f}'.format(p.summary.played) }} plays counted against {{ '{:,.0f}'.format(p.summary.planned) }} planned ({{ p.summary.matched }} of {{ p.summary.rows }} rows matched).{% if p.summary.warning %} {{ p.summary.warning }}{% endif %}</div>{% endif %}</td>
+      <td>{{ p.line.screen.code if p.line else 'all' }}</td><td>{{ p.taken_on|date if p.taken_on else '' }}</td><td>{{ p.note }}</td>
+      <td>{{ 'yes' if p.shared else 'no' }}</td>
+      <td>{% if can('load') %}<form method="post" action="{{ url_for('live.proof_action', proof_id=p.id, action='share') }}" class="inline">{{ m.csrf() }}<button class="linkish" type="submit">{{ 'hide' if p.shared else 'share' }}</button></form> ·
+        <form method="post" action="{{ url_for('live.proof_action', proof_id=p.id, action='delete') }}" class="inline">{{ m.csrf() }}<button class="linkish danger" type="submit">remove</button></form>{% endif %}</td></tr>
+    {% endfor %}</table></div>{% else %}<p class="muted small">No proof yet. Add a photo or video of the screen, or the screen software's play report.</p>{% endif %}
+  {% if can('load') %}
+  <form method="post" enctype="multipart/form-data" action="{{ url_for('live.add_proof', code=b.code) }}" style="margin-top:10px">
+    {{ m.csrf() }}
+    <div class="row">
+      <div><label>Files</label><input type="file" name="files" multiple accept="image/*,video/*,.csv,.xlsx"></div>
+      <div><label>Screen</label><select name="line_id"><option value="">All screens</option>{% for l in b.lines %}<option value="{{ l.id }}">{{ l.screen.code }}</option>{% endfor %}</select></div>
+      <div><label>Taken on</label><input type="date" name="taken_on"></div>
+      <div><label>Note</label><input type="text" name="note"></div>
+    </div>
+    <div class="actions" style="margin-top:10px"><label class="check" style="margin:0"><input type="checkbox" name="shared" value="1" checked> Show it to the client</label><button type="submit">Add proof</button></div>
+  </form>{% endif %}
 </div>
 {% endif %}
 {% if proposal %}<p class="small">From proposal <a href="{{ url_for('inbox.proposal_page', ref=proposal.ref) }}">{{ proposal.ref }}</a> ({{ proposal.channel }}{% if proposal.auto_held %}, held by the agent{% endif %}).</p>{% endif %}

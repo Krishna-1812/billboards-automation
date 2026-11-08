@@ -1,0 +1,16 @@
+{% extends "portal_base.html" %}
+{% block title %}{{ tp('sign_in') }} · {{ tp('portal') }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:420px;margin:8vh auto">
+  <h1>{{ tp('sign_in') }}</h1>
+  {% if sent %}<div class="flash ok">{{ tp('link_sent') }}</div>
+  {% else %}
+  <p class="muted">{{ tp('sign_in_intro') }}</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>{{ tp('email') }}</label><input type="email" name="email" required autocomplete="email" dir="ltr">
+    <p><button class="primary" type="submit">{{ tp('send_link') }}</button></p>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -12,6 +12,10 @@ CAN = {
     "override":         ("owner", "manager"),                   # book past a screen's capacity, with a reason
     "edit_screens":     ("owner", "manager", "ops"),
     "approve_creative": ("owner", "manager", "ops"),                # approve, reject, re-check a client's file
+    "edit_plan":        ("owner", "manager", "sales", "ops"),     # Phase 4: draft and edit play plans
+    "confirm_plan":     ("owner", "manager", "ops"),
+    "load":             ("owner", "manager", "ops"),               # tick "Loaded", add proof of play
+    "portal_access":    ("owner", "manager", "sales"),            # give clients portal access, send sign-in links
     "edit_clients":     ("owner", "manager", "sales"),
     "import":           ("owner", "manager"),
     "review_sheet":     ("owner", "manager"),

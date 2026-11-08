@@ -1,4 +1,4 @@
-"""Demo data for showing Phase 1: `python -m billboard_ops.demo`.
+"""Demo data for showing the app: `python -m billboard_ops.demo`.
 
 Only runs on an empty database (no screens yet), so it can never mix with the client's real records.
 """
@@ -51,6 +51,7 @@ def seed(s, owner_email="owner@example.com"):
                    end_date=today + timedelta(days=10), reason="LED panel maintenance"))
     s.add(HoursOverride(screen_id=None, start_date=today + timedelta(days=40), end_date=today + timedelta(days=69),
                         open_hour=8, close_hour=2, reason="Holiday month: late hours"))
+    seed_campaigns(s, owner, screens, clients, today)
     rnd = random.Random(7)
     for _ in range(36):
         sc = rnd.choice(screens)
@@ -117,13 +118,75 @@ def seed_proposals(s, screens, today):
             intake._draft_clarify(s, p)
 
 
+def _picture(text, size=(1920, 1080), colour=(18, 94, 160)):
+    import io
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", size, colour)
+    d = ImageDraw.Draw(img)
+    d.rectangle([size[0] * 0.08, size[1] * 0.3, size[0] * 0.92, size[1] * 0.7], outline="white", width=12)
+    d.text((size[0] * 0.12, size[1] * 0.45), text, fill="white")
+    buf = io.BytesIO()
+    img.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def seed_campaigns(s, owner, screens, clients, today):
+    """Phase 4: a campaign that is live with proof, one starting tomorrow that isn't ready, one whose play plan
+    waits for the client, and a portal login for Acme Foods (sara@acme.example)."""
+    from . import creatives, lifecycle, plans
+    from .models import Creative, Proof
+    acme, gulf, noor = clients[0], clients[1], clients[2]
+    acme.email, acme.contact_name = "ads@acme.example", "Sara"
+    s.add(User(email="sara@acme.example", name="Sara", role="client", client_id=acme.id))
+
+    def book(client, scr, start, days, pph, title):
+        b = svc.create(s, owner, client, [svc.LineIn(x.id, start, start + timedelta(days=days - 1), ad_seconds=10,
+                                                     plays_per_hour=pph) for x in scr], title=title)
+        svc.confirm(s, owner, b)
+        s.flush()
+        return b
+
+    def approve_file(b, name):
+        c = Creative(booking=b, version=1, filename=name, content_type="image/png", source="portal",
+                     data=_picture(f"{b.client.name}: {b.title}"), line_ids=[l.id for l in b.lines], status="passed",
+                     results={"targets": [], "content": [], "verdict": "passed"},
+                     team_summary=f"v1 {name} for {b.code}: passes every check.")
+        c.size = len(c.data)
+        s.add(c)
+        s.flush()
+        creatives.approve(s, owner, c)
+        return c
+
+    live = book(acme, screens[:2], today - timedelta(days=3), 21, 30, "Spring menu")
+    approve_file(live, "acme-spring.png")
+    parts = plans.dayparts(s)
+    plan = plans.build(parts, {"Morning peak": 30, "Daytime": 20, "Evening peak": 60, "Night": 10})
+    plans.save(s, owner, live, {l.id: plan for l in live.lines})
+    plans.confirm(s, owner, live)
+    for l in live.lines:
+        lifecycle.mark_loaded(s, owner, live, l)
+    s.add(Proof(booking_id=live.id, line_id=live.lines[0].id, kind="photo", filename="szr01-evening.png",
+                content_type="image/png", data=_picture("SZR-01 at 20:10", colour=(30, 30, 30)), taken_on=today,
+                note="Evening peak", uploaded_by=owner.email))
+    soon = book(gulf, [screens[2]], today + timedelta(days=1), 14, 30, "SUV launch")
+    approve_file(soon, "gulf-suv.png")
+    plans.draft(s, soon)
+    waiting = book(noor, [screens[7]], today + timedelta(days=12), 14, 30, "Ramadan")
+    plans.draft(s, waiting)
+    from . import settings
+    settings.put(s, "client_approves_plan", True)
+    plans.confirm(s, owner, waiting)
+    settings.put(s, "client_approves_plan", False)
+    lifecycle.tick(s, on=today)
+
+
 def main():
     cfg = Config()
     runtime.init(cfg)
     db.init_engine(cfg.DATABASE_URL)
     if cfg.DATABASE_URL.startswith("sqlite"):
         Base.metadata.create_all(db.engine())
-    from . import evaluate, intake, mail, outbox, sync  # noqa: F401 - job handlers
+    from . import evaluate, intake, loading, mail, outbox, plans, sync  # noqa: F401 - job handlers
     with db.session_scope() as s:
         n = seed(s, (cfg.OWNER_EMAILS or ["owner@example.com"])[0])
     print(f"Loaded {n} demo screens with bookings.")

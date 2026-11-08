@@ -53,6 +53,7 @@ class Use:
     plays_per_hour: float = 30
     exclusive: bool = False
     client: str = ""
+    plan: Optional[dict] = None       # a confirmed play plan: plays per hour vary by hour, weekday and date
 
 
 @dataclass
@@ -75,6 +76,29 @@ def demand(item, rules):
     """Seconds of each hour this booking or request takes."""
     if item.exclusive:
         return rules.capacity
+    return float(item.ad_seconds) * float(item.plays_per_hour)
+
+
+def plan_plays(plan, day, hour):
+    """Plays in one hour under a play plan. `day` is the broadcast day, `hour` the clock hour.
+    Dates with special terms come first, then the weekdays the ad runs on, then the plays for that hour."""
+    iso = day.isoformat()
+    for ex in plan.get("exceptions") or []:
+        if str(ex.get("from", "")) <= iso <= str(ex.get("to", "")):
+            return float(ex.get("plays") or 0)
+    days = plan.get("weekdays")
+    if days is not None and day.weekday() not in days:
+        return 0.0
+    return float((plan.get("hours") or {}).get(str(hour), 0) or 0)
+
+
+def slot_demand(item, rules, day, slot):
+    """Seconds a booking or request takes in one (date, hour) slot of a broadcast day."""
+    if item.exclusive:
+        return rules.capacity
+    plan = getattr(item, "plan", None)
+    if plan:
+        return float(item.ad_seconds) * plan_plays(plan, day, slot[1])
     return float(item.ad_seconds) * float(item.plays_per_hour)
 
 
@@ -143,9 +167,11 @@ def usage(rules, uses, start, end):
     who = defaultdict(list)
     lo, hi = start - timedelta(days=1), end
     for u in uses:
-        need = demand(u, rules)
         for day in days_between(max(u.start_date, lo), min(u.end_date, hi)):
             for slot in playing_slots(rules, u, day):
+                need = slot_demand(u, rules, day, slot)
+                if need <= 0:
+                    continue
                 used[slot] += need
                 who[slot].append(u)
     return used, who
@@ -312,7 +338,7 @@ def use_from_line(l):
     return Use(booking_id=b.id, booking_code=b.code, status=b.status, start_date=l.start_date,
                end_date=l.end_date, start_hour=l.start_hour, end_hour=l.end_hour, ad_seconds=l.ad_seconds,
                plays_per_hour=l.plays_per_hour, exclusive=l.exclusive,
-               client=b.client.name if b.client else "")
+               client=b.client.name if b.client else "", plan=l.confirmed_plan or None)
 
 
 def check_screen(session, screen, req, exclude_booking_id=None, today=None, alternatives=True):

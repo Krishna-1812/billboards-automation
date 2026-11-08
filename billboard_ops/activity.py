@@ -30,6 +30,7 @@ def log(session, actor, action, entity_type, entity_id="", summary="", changes=N
                          entity_id=str(entity_id or ""), summary=summary[:500], changes=changes or None))
 
 
-def notify(session, text, kind="info", link="", user_email=""):
-    """An in-app notice. An empty user_email shows it to the whole team."""
-    session.add(Notification(user_email=user_email, kind=kind, text=text[:500], link=link))
+def notify(session, text, kind="info", link="", user_email="", topic=""):
+    """An in-app notice. An empty user_email shows it to the whole team. `topic` lets people switch it off
+    (see notices.py)."""
+    session.add(Notification(user_email=user_email, kind=kind, text=text[:500], link=link[:300], topic=topic))

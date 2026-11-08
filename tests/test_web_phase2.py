@@ -187,9 +187,15 @@ def test_save_a_case_and_run_the_test(app, s, people, inventory, fake_ai, login)
 
 
 def test_auto_hold_setting(app, s, people, login):
+    """The switch lives on Settings → Automation (Phase 4); saving General settings leaves it alone."""
+    from billboard_ops.settings import DEFAULTS
     c = login(people["owner"])
-    c.post("/settings", data=form(hold_days="3", hold_reminder_hours="24", auto_hold="1", remind_clients="1"))
+    c.post("/settings/automation", data=form(auto_hold="auto", dayparts=DEFAULTS["dayparts"],
+                                             load_filename=DEFAULTS["load_filename"], renewal_days="7"))
     s.expire_all()
     assert settings.get(s, "auto_hold") is True
-    page = c.get("/settings").get_data(as_text=True)
+    c.post("/settings", data=form(hold_days="3", hold_reminder_hours="24", remind_clients="1"))
+    s.expire_all()
+    assert settings.get(s, "auto_hold") is True
+    page = c.get("/settings/automation").get_data(as_text=True)
     assert "hasn&#39;t been run yet" in page and "a person places them" in page

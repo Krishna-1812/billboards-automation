@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Notices · Billboard Ops{% endblock %}
 {% block content %}
-<div class="head"><div><h1>{{ t('notifications') }}</h1><p class="muted">Reminders, warnings and anything the team should know.</p></div></div>
+<div class="head"><div><h1>{{ t('notifications') }}</h1><p class="muted">Reminders, warnings and anything the team should know.</p></div>
+  <div class="actions"><a class="btn" href="{{ url_for('main.notice_settings') }}">Choose what I get</a></div></div>
 <div class="card table-wrap">
   <table>
     <tr><th>When</th><th>Notice</th><th></th></tr>

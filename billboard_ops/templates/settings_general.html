@@ -18,10 +18,7 @@
     <div><label>Time zone for new screens</label><input type="text" name="default_timezone" value="{{ st.default_timezone }}"></div>
   </div>
   <fieldset><legend>The agent</legend>
-    <label class="check"><input type="checkbox" name="auto_hold" value="1" {{ 'checked' if st.auto_hold }}>
-      Place holds on its own when a request is complete, certain and fits</label>
-    <p class="small {{ '' if gate.passed else 'flash warning' }}">{{ gate.why }}{% if not gate.passed %} Until it passes, the agent prepares holds and a person places them, whatever this switch says.{% endif %}
-      Confirming a booking and every message to a client always need a person.</p>
+    <p class="small muted">What the agent may do on its own is set in <a href="{{ url_for('admin.automation') }}">Settings → Automation</a>.</p>
     <label class="check"><input type="checkbox" name="remind_clients" value="1" {{ 'checked' if st.remind_clients }}>
       Draft a reminder to the client before their hold expires (sent once a person approves it)</label>
   </fieldset>
@@ -36,9 +33,6 @@
     <input type="text" name="drive_parent_folder_id" value="{{ st.drive_parent_folder_id }}">
     <label>Content rules <span class="hint">one per line; Claude checks every ad against them</span></label>
     <textarea name="content_rules" placeholder="No alcohol or tobacco&#10;No gambling&#10;Modest clothing">{{ st.content_rules }}</textarea>
-    <label class="check"><input type="checkbox" name="auto_send_technical" value="1" {{ 'checked' if st.auto_send_technical }}>
-      Send feedback on measured faults (wrong length, size, format, sound…) without waiting for a person</label>
-    <p class="small muted">Content findings, and approving a file, always need a person.</p>
   </fieldset>
   <fieldset><legend>Mirror sheet</legend>
     <p class="small muted">The app keeps one tab of this Google Sheet up to date with every booking, so the team's sheet views keep working.

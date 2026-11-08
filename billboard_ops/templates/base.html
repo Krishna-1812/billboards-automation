@@ -9,7 +9,7 @@
   {% block head %}{% endblock %}
 </head>
 <body>
-{% if user %}
+{% if user and user.role != 'client' %}
 <div class="shell">
   <aside class="side">
     <div class="brand">Billboard Ops</div>
@@ -22,6 +22,7 @@
       <a href="{{ url_for('bookings.availability') }}" class="{{ 'on' if ep == 'bookings.availability' }}">{{ t('availability') }}</a>
       <a href="{{ url_for('bookings.booking_list', status='open') }}" class="{{ 'on' if ep.startswith('bookings.booking') }}">{{ t('bookings') }}</a>
       <a href="{{ url_for('creatives.creative_list') }}" class="{{ 'on' if ep.startswith('creatives.') }}">{{ t('creative') }}</a>
+      <a href="{{ url_for('live.playlists') }}" class="{{ 'on' if ep == 'live.playlists' }}">{{ t('playlists') }}</a>
       <a href="{{ url_for('bookings.client_list') }}" class="{{ 'on' if ep.startswith('bookings.client') }}">{{ t('clients') }}</a>
       <div class="group">Inventory</div>
       <a href="{{ url_for('screens.screen_list') }}" class="{{ 'on' if ep.startswith('screens.screen') }}">{{ t('screens') }}</a>

@@ -1,0 +1,116 @@
+{% extends "portal_base.html" %}
+{% block title %}{{ b.code }} · {{ tp('portal') }}{% endblock %}
+{% block content %}
+<p class="small"><a href="{{ url_for('portal.home') }}">{{ '→' if plang == 'ar' else '←' }} {{ tp('back') }}</a></p>
+<div class="head">
+  <div><h1>{{ b.code }} <span class="pill {{ b.status }}">{{ tp('st_' ~ b.status) }}</span></h1>
+    <p class="muted">{% if b.title %}{{ b.title }} · {% endif %}{{ fmt(b.start_date) }} {{ tp('to') }} {{ fmt(b.end_date) }}</p></div>
+</div>
+<div class="next">{{ tp('next_step') }}: {{ next }}</div>
+
+<h2>{{ tp('screens') }}</h2>
+<div class="card table-wrap"><table class="small">
+  {% for l in b.lines %}<tr><td><strong>{{ l.screen.name }}</strong> <span class="muted">{{ l.screen.code }}</span>{% if l.screen.area %}<div class="muted">{{ l.screen.area }}</div>{% endif %}</td>
+    <td style="white-space:nowrap">{{ fmt(l.start_date) }} {{ tp('to') }} {{ fmt(l.end_date) }}</td></tr>{% endfor %}
+</table></div>
+
+{% if b.status == 'hold' %}
+<h2>{{ tp('accept_hold') }}</h2>
+<div class="card">
+  {% if b.hold_expires_at %}<p>{{ tp('hold_until', date=fmt(b.hold_expires_at)) }}</p>{% endif %}
+  {% if b.client_accepted_at %}<div class="flash ok">{{ tp('accepted_on', date=fmt(b.client_accepted_at)) }}</div>
+  {% else %}
+  <form method="post" enctype="multipart/form-data" action="{{ url_for('portal.accept', code=b.code) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>{{ tp('accept_doc') }}</label><input type="file" name="document">
+    <p><button class="primary" type="submit">{{ tp('accept_hold') }}</button></p>
+  </form>{% endif %}
+</div>
+{% endif %}
+
+{% if plan_rows %}
+<h2 id="plan">{{ tp('play_plan') }}</h2>
+<div class="card">
+  {% if b.plan_status == 'waiting_client' %}<p><strong>{{ tp('plan_waiting') }}</strong></p>
+  {% elif b.plan_status == 'confirmed' %}<p class="muted">{{ tp('plan_ok') }}</p>
+  {% else %}<p class="muted">{{ tp('plan_draft') }}</p>{% endif %}
+  {% if b.plan_status in ('waiting_client', 'confirmed') %}
+  <table class="small">
+    {% for r in plan_rows %}<tr><td><strong>{{ r.line.screen.name }}</strong></td>
+      <td>{% if r.line.exclusive %}{{ tp('whole_screen') }}{% else %}{{ describe(r.plan, lang) }}{% endif %}</td>
+      <td style="white-space:nowrap">{{ tp('plays_day', n='{:,.0f}'.format(r.per_day)) }}<div class="muted">{{ tp('plays_total', n='{:,.0f}'.format(r.total)) }}</div></td></tr>{% endfor %}
+  </table>
+  {% endif %}
+  {% if b.plan_status == 'waiting_client' %}
+  <div class="actions" style="margin-top:12px">
+    <form method="post" action="{{ url_for('portal.plan_decision', code=b.code) }}" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="decision" value="approve">
+      <button class="primary" type="submit">{{ tp('approve') }}</button></form>
+  </div>
+  <details style="margin-top:8px"><summary>{{ tp('ask_changes') }}</summary>
+    <form method="post" action="{{ url_for('portal.plan_decision', code=b.code) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="decision" value="changes">
+      <label>{{ tp('what_change') }}</label><textarea name="note" required></textarea>
+      <p><button type="submit">{{ tp('send') }}</button></p></form></details>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if b.status not in ('hold', 'expired', 'cancelled') %}
+<h2 id="files">{{ tp('your_files') }}</h2>
+<div class="card">
+  {% for f in files %}{% set c = f.c %}
+  <div class="file-row">
+    <div>{% if f.playable %}{% if (c.content_type or '').startswith('video') or c.filename.lower().endswith(('.mp4', '.mov', '.webm', '.m4v')) %}
+        <video controls preload="metadata" src="{{ url_for('portal.file', cid=c.id) }}"></video>
+      {% else %}<img src="{{ url_for('portal.file', cid=c.id) }}" alt="{{ c.filename }}">{% endif %}{% endif %}</div>
+    <div>
+      <div><strong>v{{ c.version }}</strong> {{ c.filename }}</div>
+      {% if f.screens %}<div class="small muted">{{ tp('for_screens', screens=f.screens) }}</div>{% endif %}
+      <p><span class="pill {{ {'f_passed': 'ok', 'f_approved': 'ok', 'f_warnings': 'partial', 'f_waiting': 'hold', 'f_failed': 'no', 'f_rejected': 'no', 'f_error': 'no'}.get(f.state, '') }}">{{ tp(f.state) }}</span></p>
+      {% if f.fixes %}<ul class="small">{% for x in f.fixes %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+      {% if c.client_note %}<p class="small muted">“{{ c.client_note }}”</p>{% endif %}
+      {% if f.waiting %}
+        <div class="actions"><form method="post" action="{{ url_for('portal.file_decision', cid=c.id) }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="decision" value="approve">
+          <button class="primary" type="submit">{{ tp('approve') }}</button></form></div>
+        <details style="margin-top:6px"><summary class="small">{{ tp('ask_changes') }}</summary>
+          <form method="post" action="{{ url_for('portal.file_decision', cid=c.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="decision" value="changes">
+            <textarea name="note" required placeholder="{{ tp('what_change') }}"></textarea>
+            <p><button type="submit">{{ tp('send') }}</button></p></form></details>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}<p class="muted">{{ tp('no_files') }}</p>{% endfor %}
+  {% if can_upload %}
+  <form method="post" enctype="multipart/form-data" action="{{ url_for('portal.upload', code=b.code) }}" style="margin-top:12px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <details {{ 'open' if not files }}><summary class="small"><strong>{{ tp('needs') }}</strong></summary>
+      <ul class="small">{% for tg in targets if tg.spec %}<li>{{ tg.lines|map(attribute='screen.name')|join(', ') }}: {{ tg.spec.width_px }}x{{ tg.spec.height_px }}, {{ tg.ad_seconds }} {{ tp('seconds') }}, {{ tg.spec.file_types|upper }}{% if not tg.spec.audio_allowed %}, {{ tp('no_sound') }}{% endif %}</li>{% endfor %}</ul>
+      <p class="small">{{ tp('lang_rule') }}</p></details>
+    <label>{{ tp('choose_files') }}</label>
+    <div class="actions"><input type="file" name="files" multiple accept="video/*,image/*" required style="width:auto">
+      <button class="primary" type="submit">{{ tp('upload') }}</button></div>
+  </form>{% endif %}
+</div>
+{% endif %}
+
+{% if b.status in ('live', 'completed') or proofs %}
+<h2 id="proof">{{ tp('proof') }}</h2>
+<div class="card">
+  {% if proofs %}
+  <div class="proof-grid">
+    {% for p in proofs %}
+    <div>{% if p.kind == 'photo' %}<a href="{{ url_for('portal.proof_file', proof_id=p.id) }}" target="_blank"><img src="{{ url_for('portal.proof_file', proof_id=p.id) }}" alt="{{ p.filename }}"></a>
+      {% elif p.kind == 'video' %}<video controls preload="metadata" src="{{ url_for('portal.proof_file', proof_id=p.id) }}"></video>
+      {% else %}<a href="{{ url_for('portal.proof_file', proof_id=p.id) }}">{{ tp('report') }}: {{ p.filename }}</a>
+        {% if p.summary %}<div class="small">{{ tp('report_line', played='{:,.0f}'.format(p.summary.played), planned='{:,.0f}'.format(p.summary.planned)) }}</div>{% endif %}{% endif %}
+      <div class="small muted">{{ tp(p.kind) }}{% if p.line %} · {{ p.line.screen.name }}{% endif %}{% if p.taken_on %} · {{ fmt(p.taken_on) }}{% endif %}</div>
+      {% if p.note %}<div class="small">{{ p.note }}</div>{% endif %}</div>
+    {% endfor %}
+  </div>
+  {% else %}<p class="muted">{{ tp('no_proof') }}</p>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

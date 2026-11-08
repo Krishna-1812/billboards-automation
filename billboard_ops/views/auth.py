@@ -2,7 +2,7 @@
 
 The team signs in with Google: the browser gets a signed ID token from Google, and we check its signature against
 our client ID. Only people an owner has added (Settings → People), plus the first owners named in OWNER_EMAILS,
-are let in. Clients get their own sign-in, by an emailed link, when the portal opens in Phase 4.
+are let in. Clients sign in to their portal with a one-time emailed link instead (views/portal.py).
 """
 
 import logging
@@ -108,7 +108,3 @@ def logout():
     session.clear()
     return redirect(url_for("auth.login"))
 
-
-@bp.route("/portal")
-def portal_soon():
-    return render_template("portal_soon.html")

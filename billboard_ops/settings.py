@@ -20,6 +20,17 @@ DEFAULTS = {
     "freeze_max_s": 5.0,                  # a still stretch longer than this is flagged
     "content_rules": "",                  # one rule per line, checked by Claude
     "auto_send_technical": False,         # send feedback on measured faults without waiting for a person
+    # Phase 4: play plans, going live, the portal and automation
+    "dayparts": ("Morning peak = 6-10 | ذروة الصباح\nDaytime = 10-16 | النهار\nEvening peak = 16-22 | ذروة المساء\n"
+                 "Night = 22-6 | الليل"),
+    "client_approves_plan": False,        # the client approves the play plan in the portal
+    "client_approves_final": False,       # the client approves the final preview of their ad in the portal
+    "renewal_days": 7,                    # days before the end date to offer a renewal
+    "load_filename": "{screen}_{booking}_{start}_{end}_v{version}{ext}",   # names in the Ready to load folder
+    "auto_send_client": False,            # routine client messages (file requests, reminders, live, renewal...)
+    "auto_send_content": False,           # feedback that includes Claude's content findings
+    "auto_approve_passed": False,         # approve a file that passes every check with nothing to look at
+    "auto_confirm_plan": False,           # confirm a play plan the agent drafted with confidence, when it fits
 }
 
 

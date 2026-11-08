@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Automation · Settings · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>{{ t('settings') }}</h1><p class="muted">What the agent may do on its own, what clients approve, and how plans and loading work.</p></div></div>
+{% include "_settings_nav.html" %}
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card">
+    <h2 style="margin-top:0">What the agent does on its own</h2>
+    <p class="small muted">Every step starts as “ask a person first”. Switch a step to automatic once you trust it. Whatever the agent does on its own is still written to the activity log, under “agent”.</p>
+    <div class="table-wrap"><table>
+      <tr><th>Step</th><th>What it covers</th><th>Ask a person first</th><th>Do it automatically</th></tr>
+      {% for key, label, help in steps %}
+      <tr><td><strong>{{ label }}</strong></td>
+        <td class="small">{{ help }}{% if key == 'auto_hold' %}<div class="{{ 'muted' if gate.passed else 'flash warning' }}" style="margin-top:6px">{{ gate.why }}{% if not gate.passed %} Until it passes, the agent prepares holds and a person places them.{% endif %}</div>{% endif %}</td>
+        <td><label class="check" style="margin:0"><input type="radio" name="{{ key }}" value="ask" {{ 'checked' if not st[key] }}> Ask first</label></td>
+        <td><label class="check" style="margin:0"><input type="radio" name="{{ key }}" value="auto" {{ 'checked' if st[key] }}> Automatic</label></td></tr>
+      {% endfor %}
+    </table></div>
+    <p class="small muted">Confirming a booking always needs a person.</p>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">What clients approve in the portal</h2>
+    <label class="check"><input type="checkbox" name="client_approves_plan" value="1" {{ 'checked' if st.client_approves_plan }}> The play plan, once the team confirms it</label>
+    <label class="check"><input type="checkbox" name="client_approves_final" value="1" {{ 'checked' if st.client_approves_final }}> The final preview of their ad, once the team approves the file</label>
+    <p class="small muted">When these are off, the team's confirmation and approval are enough.</p>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">Play plans</h2>
+    <label>Day parts <span class="hint">one per line, as Name = from-to | Arabic name (24-hour clock); every hour of the day in exactly one part. 22-6 runs past midnight. Clients see the Arabic name in Arabic.</span></label>
+    <textarea name="dayparts" rows="5" class="mono">{{ st.dayparts }}</textarea>
+    <p class="small muted">Plans already made keep the hours they were made with.</p>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">Loading and ending</h2>
+    <div class="row">
+      <div><label>Offer a renewal this many days before the end</label><input type="number" name="renewal_days" min="0" max="60" value="{{ st.renewal_days }}"></div>
+      <div style="grid-column: span 2"><label>File names in the Ready to load folder <span class="hint">{screen} {booking} {client} {start} {end} {version} {file} {ext}</span></label>
+        <input type="text" name="load_filename" class="mono" value="{{ st.load_filename }}"></div>
+    </div>
+  </div>
+  <p><button class="primary" type="submit">{{ t('save') }}</button></p>
+</form>
+{% endblock %}

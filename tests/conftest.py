@@ -80,6 +80,14 @@ class FakeGoogle:
                                             "data": fh.read()}
         return f"file{self._n}"
 
+    def drive_copy(self, file_id, folder_id, name):
+        self.files = getattr(self, "files", {})
+        self._n += 1
+        src = self.files[file_id]
+        self.files[f"file{self._n}"] = dict(src, folder=folder_id, name=name)
+        self.calls.append(("copy", file_id, folder_id, name))
+        return f"file{self._n}"
+
 
 def _config(**over):
     os.environ.pop("GOOGLE_CLIENT_ID", None)

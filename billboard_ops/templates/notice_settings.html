@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}My notices · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head"><div><h1>My notices</h1><p class="muted">Choose what you see in the app and what you also get by email. Problems with the app itself always show.</p></div>
+  <div class="actions"><a class="btn" href="{{ url_for('main.notices') }}">{{ t('notifications') }}</a></div></div>
+<form method="post" class="card table-wrap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <table>
+    <tr><th>Topic</th><th>What it covers</th><th>In the app</th><th>By email</th></tr>
+    {% for key, (label, help, _) in topics.items() %}{% set p = pref(key) %}
+    <tr><td><strong>{{ label }}</strong></td><td class="small">{{ help }}</td>
+      <td><input type="checkbox" name="app_{{ key }}" value="1" {{ 'checked' if p.app }} style="width:auto" aria-label="{{ label }} in the app"></td>
+      <td><input type="checkbox" name="email_{{ key }}" value="1" {{ 'checked' if p.email }} style="width:auto" aria-label="{{ label }} by email"></td></tr>
+    {% endfor %}
+  </table>
+  <p><button class="primary" type="submit">{{ t('save') }}</button></p>
+</form>
+{% endblock %}

@@ -1,7 +1,8 @@
 """The background worker: `python -m billboard_ops.worker`.
 
-Every few seconds it runs queued jobs (calendar and sheet mirroring, emails, sheet checks). Every minute it expires
-holds, sends hold reminders and closes finished campaigns. Every 10 minutes it re-reads the old sheets for direct
+Every few seconds it runs queued jobs (calendar and sheet mirroring, emails, sheet checks, file checks, play plans,
+Drive copies). Every minute it expires holds, sends reminders, checks bookings are ready to start, puts them live,
+offers renewals and closes finished campaigns. Every 10 minutes it re-reads the old sheets for direct
 edits. It writes a heartbeat, which /health and Settings → Connections show.
 """
 
@@ -40,9 +41,11 @@ def tick(now=None, today=None):
         bookings.remind_holds(s, now)
     with db.session_scope() as s:
         bookings.complete_finished(s, today or date.today())
-    from . import creatives
+    from . import creatives, lifecycle
     with db.session_scope() as s:
         creatives.tick(s, today or date.today())
+    with db.session_scope() as s:
+        lifecycle.tick(s, today)
     if runtime.config is not None and runtime.config.email_in:
         with db.session_scope() as s:
             jobs.enqueue(s, "poll_email", {}, dedupe_key="poll_email")
@@ -70,7 +73,8 @@ def main():
     if cfg.DATABASE_URL.startswith("sqlite"):
         from .models import Base
         Base.metadata.create_all(db.engine())
-    from . import creative_eval, creatives, evaluate, intake, mail, outbox, sync  # noqa: F401 - job handlers
+    from . import (creative_eval, creatives, evaluate, intake, loading, mail, outbox, plans,  # noqa: F401
+                   sync)  # job handlers
     from .channels import email_in  # noqa: F401
     signal.signal(signal.SIGTERM, _on_term)
     signal.signal(signal.SIGINT, _on_term)

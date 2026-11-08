@@ -34,7 +34,6 @@ def general():
             settings.put(s, "mirror_spreadsheet_id", spreadsheet_id_from(f_str("mirror_spreadsheet_id")))
             settings.put(s, "mirror_tab", f_str("mirror_tab") or "Bookings (from app)")
             settings.put(s, "company_name", f_str("company_name") or "Billboard Ops")
-            settings.put(s, "auto_hold", request.form.get("auto_hold") == "1")
             if "creative_lead_days" in request.form:      # the Creative section was on the form
                 settings.put(s, "creative_lead_days", max(0, min(30, f_int("creative_lead_days", 5))))
                 settings.put(s, "weekend_days", ",".join(x.strip() for x in f_str("weekend_days").split(",")
@@ -44,7 +43,6 @@ def general():
                 settings.put(s, "drive_parent_folder_id", spreadsheet_id_from(f_str("drive_parent_folder_id")
                                                                                .replace("/folders/", "/d/")))
                 settings.put(s, "content_rules", request.form.get("content_rules", "").strip())
-                settings.put(s, "auto_send_technical", request.form.get("auto_send_technical") == "1")
             settings.put(s, "remind_clients", request.form.get("remind_clients") == "1")
             after = settings.all_settings(s)
             log(s, current_user().email, "changed", "settings", "general", "General settings changed",
@@ -55,6 +53,52 @@ def general():
             return done("Settings saved.", "admin.general")
     from ..evaluate import gate
     return render_template("settings_general.html", st=settings.all_settings(s), gate=gate(s))
+
+
+@bp.route("/settings/automation", methods=["GET", "POST"])
+@needs("settings")
+def automation():
+    """What the agent may do on its own, what clients approve, and the Phase 4 settings."""
+    from .. import automation as auto
+    from ..plans import parse_dayparts
+    s = get_db()
+    if request.method == "POST":
+        parts, errors = parse_dayparts(request.form.get("dayparts", ""))
+        pattern = f_str("load_filename") or settings.DEFAULTS["load_filename"]
+        if "{ext}" not in pattern:
+            errors.append("The file name pattern must end with {ext}, so the file keeps its type.")
+        try:
+            pattern.format(screen="S", booking="B", client="C", start="1", end="2", version=1, ext=".mp4", file="f")
+        except (KeyError, IndexError, ValueError):
+            errors.append("The file name pattern can only use {screen}, {booking}, {client}, {start}, {end}, "
+                          "{version}, {file} and {ext}.")
+        if errors:
+            for e in errors:
+                flash(e, "error")
+            return render_template("settings_automation.html", st=dict(settings.all_settings(s), **{
+                "dayparts": request.form.get("dayparts", ""), "load_filename": pattern}), steps=auto.STEPS,
+                gate=_gate(s)), 400
+        before = settings.all_settings(s)
+        for key in auto.KEYS:
+            settings.put(s, key, request.form.get(key) == "auto")
+        settings.put(s, "client_approves_plan", request.form.get("client_approves_plan") == "1")
+        settings.put(s, "client_approves_final", request.form.get("client_approves_final") == "1")
+        settings.put(s, "renewal_days", max(0, min(60, f_int("renewal_days", 7))))
+        from ..plans import format_dayparts
+        settings.put(s, "dayparts", format_dayparts(parts))
+        settings.put(s, "load_filename", pattern)
+        after = settings.all_settings(s)
+        changed = {k: [before[k], after[k]] for k in after if before[k] != after[k]}
+        log(s, current_user().email, "changed", "settings", "automation",
+            "Automation settings changed: " + (", ".join(changed) or "nothing"), changed)
+        s.commit()
+        return done("Saved.", "admin.automation")
+    return render_template("settings_automation.html", st=settings.all_settings(s), steps=auto.STEPS, gate=_gate(s))
+
+
+def _gate(s):
+    from ..evaluate import gate
+    return gate(s)
 
 
 @bp.route("/settings/people", methods=["GET", "POST"])

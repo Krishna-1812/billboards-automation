@@ -1,0 +1,13 @@
+{% extends "portal_base.html" %}
+{% block title %}{{ tp('sign_in') }} · {{ tp('portal') }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:420px;margin:8vh auto">
+  <h1>{{ tp('sign_in') }}</h1>
+  {% if bad %}<div class="flash error">{{ tp('link_bad') }}</div><p><a href="{{ url_for('portal.login') }}">{{ tp('send_link') }}</a></p>
+  {% else %}
+  <p>{{ tp('link_intro', email=email) }}</p>
+  <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="primary" type="submit">{{ tp('link_continue') }}</button></form>
+  {% endif %}
+</div>
+{% endblock %}

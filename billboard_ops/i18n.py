@@ -14,6 +14,7 @@ STRINGS = {
     "proposals":        ("Proposals", "الطلبات"),
     "outbox":           ("Outbox", "الرسائل الصادرة"),
     "creative":         ("Creative", "التصاميم"),
+    "playlists":        ("Playlists", "قوائم العرض"),
     "availability":     ("Check vacancy", "التحقق من التوفر"),
     "bookings":         ("Bookings", "الحجوزات"),
     "clients":          ("Clients", "العملاء"),

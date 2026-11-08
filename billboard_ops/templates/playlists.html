@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Playlists · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>Playlists</h1>
+    <p class="muted">What plays on each screen, hour by hour{% if booking %}, for <a href="{{ url_for('bookings.booking_detail', code=booking.code) }}">{{ booking.code }}</a>{% endif %}. For whoever loads the screen software.</p></div>
+  <div class="actions">
+    {% set q = dict(request.args) %}
+    <a class="btn" href="{{ url_for('live.playlists', **dict(q, format='xlsx')) }}">Excel</a>
+    <a class="btn" href="{{ url_for('live.playlists', **dict(q, format='csv')) }}">CSV</a>
+    <a class="btn" href="{{ url_for('live.playlists', **dict(q, format='pdf')) }}">PDF</a>
+  </div>
+</div>
+<form method="get" class="card actions">
+  {% if booking %}<input type="hidden" name="booking" value="{{ booking.code }}">{% endif %}
+  <label style="margin:0">Screen <select name="screen"><option value="">{{ 'Its screens' if booking else 'All screens' }}</option>
+    {% for s in screens %}<option value="{{ s.id }}" {{ 'selected' if sid == s.id|string }}>{{ s.code }} {{ s.name }}</option>{% endfor %}</select></label>
+  <label style="margin:0">From <input type="date" name="from" value="{{ start.isoformat() }}"></label>
+  <label style="margin:0">Days <input type="number" name="days" value="{{ days }}" min="1" max="31" style="width:70px"></label>
+  <button type="submit">Show</button>
+  {% if booking %}<a href="{{ url_for('live.playlists', **{'from': start.isoformat(), 'days': days}) }}">All bookings</a>{% endif %}
+</form>
+{% set ns = namespace(key='') %}
+<div class="card table-wrap" style="margin-top:16px">
+  <table class="small">
+    <tr><th>Hour</th><th>Booking</th><th>Client</th><th>File</th><th class="num">Plays</th><th></th></tr>
+    {% for r in rows %}
+      {% set key = r.screen ~ r.day %}
+      {% if key != ns.key %}{% set ns.key = key %}<tr><th colspan="6" style="background:var(--bg);color:var(--ink)">{{ r.screen }} {{ r.screen_name }} · {{ r.day|date }}</th></tr>{% endif %}
+      <tr><td>{{ '%02d:00'|format(r.hour) }}{% if r.date != r.day %} <span class="muted">(next day)</span>{% endif %}</td>
+        <td><a href="{{ url_for('bookings.booking_detail', code=r.booking) }}">{{ r.booking }}</a></td><td>{{ r.client }}</td>
+        <td>{% if r.file %}<span class="mono">{{ r.file }}</span>{% else %}<span class="pill no">no approved file yet</span>{% endif %}</td>
+        <td class="num">{{ r.plays|round(1)|num }}</td>
+        <td class="small">{% if not r.plan_confirmed %}<span class="pill hold">plan not confirmed</span>{% endif %}{% if r.loaded %} <span class="pill ok">loaded</span>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="6" class="empty">Nothing plays on these days.</td></tr>{% endfor %}
+  </table>
+</div>
+{% endblock %}

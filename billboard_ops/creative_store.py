@@ -96,7 +96,8 @@ def preview_path(session, creative):
     os.makedirs(CACHE, exist_ok=True)
     # Keyed by more than the id, so a copy cached for another file can never be shown in its place.
     stamp = int(creative.received_at.timestamp()) if creative.received_at else 0
-    key = f"{creative.id}-{creative.size}-{stamp}-{creative.drive_file_id or 'db'}"
+    kind = type(creative).__name__.lower()          # creatives and proof of play share the cache
+    key = f"{kind}-{creative.id}-{creative.size}-{stamp}-{creative.drive_file_id or 'db'}"
     path = os.path.join(CACHE, f"{key}{os.path.splitext(creative.filename)[1]}")
     if not os.path.exists(path):
         tmp = path + ".part"
