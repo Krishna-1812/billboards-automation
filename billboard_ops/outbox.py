@@ -99,6 +99,10 @@ def send_email(msg):
         em["In-Reply-To"] = reply_to
         em["References"] = refs or reply_to
     em.set_content(msg.body)
+    for a in msg.attachments:              # for example the proposal's PDF
+        if a.data:
+            main, _, sub = (a.content_type or "application/octet-stream").partition("/")
+            em.add_attachment(a.data, maintype=main, subtype=sub or "octet-stream", filename=a.filename)
     with smtplib.SMTP(cfg.SMTP_HOST, cfg.SMTP_PORT, timeout=30) as smtp:
         smtp.starttls()
         if cfg.SMTP_USER:

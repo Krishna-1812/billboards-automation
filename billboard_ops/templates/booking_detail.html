@@ -11,16 +11,14 @@
   <div class="actions">
     {% if b.status == 'hold' and can('hold') or b.status not in ('hold', 'cancelled', 'expired', 'completed') and can('edit_confirmed') %}
       <a class="btn" href="{{ url_for('bookings.booking_edit', code=b.code) }}">{{ t('edit') }}</a>{% endif %}
-    {% if b.status == 'hold' and can('confirm') %}
-      <form method="post" enctype="multipart/form-data" action="{{ url_for('bookings.booking_action', code=b.code, action='confirm') }}" class="actions">
-        {{ m.csrf() }}<label class="small" style="margin:0">Signed proposal or PO <span class="hint">(optional)</span>
-        <input type="file" name="document" style="width:auto"></label>
-        <button class="primary" type="submit">{{ t('confirm') }}</button></form>{% endif %}
+    {% if b.status == 'hold' and can('confirm') and (b.po_received_at or not po_required) %}
+      <form method="post" action="{{ url_for('bookings.booking_action', code=b.code, action='confirm') }}" class="inline">
+        {{ m.csrf() }}<button class="primary" type="submit">{{ t('confirm') }}</button></form>{% endif %}
   </div>
 </div>
 
-{% set stages = [('hold', 'Held'), ('confirmed', 'Confirmed'), ('creative_approved', 'Files approved'), ('plan_set', 'Plan set'), ('scheduled', 'Loaded'), ('live', 'Live'), ('completed', 'Finished')] %}
-{% set at = {'enquiry': -1, 'hold': 0, 'confirmed': 1, 'awaiting_creative': 1, 'checking': 1, 'changes_requested': 1, 'creative_approved': 2, 'plan_set': 3, 'scheduled': 4, 'live': 5, 'completed': 7}.get(b.status, -1) %}
+{% set stages = [('hold', 'Held'), ('po', 'PO received'), ('confirmed', 'Confirmed'), ('creative_approved', 'Files approved'), ('plan_set', 'Plan set'), ('scheduled', 'Loaded'), ('live', 'Live'), ('completed', 'Finished')] %}
+{% set at = {'enquiry': -1, 'hold': 1 if b.po_received_at else 0, 'confirmed': 2, 'awaiting_creative': 2, 'checking': 2, 'changes_requested': 2, 'creative_approved': 3, 'plan_set': 4, 'scheduled': 5, 'live': 6, 'completed': 8}.get(b.status, -1) %}
 {% set stopped = b.status in ('cancelled', 'expired') %}
 <ol class="stepper {{ 'stopped' if stopped }}" aria-label="Where this booking is">
   {% for key, label in stages %}
@@ -55,7 +53,8 @@
   <div class="tile tile-dark span-3">
     <div class="t">Next step <span class="livedot" aria-hidden="true"></span></div>
     <div style="font-size:20px;font-weight:800;letter-spacing:-.02em;line-height:1.25">
-      {%- if b.status == 'hold' %}Confirm it before {{ b.hold_expires_at|date }}
+      {%- if b.status == 'hold' and not b.po_received_at and po_required %}Get the client's purchase order
+      {%- elif b.status == 'hold' %}Confirm it before {{ b.hold_expires_at|date }}
       {%- elif b.status in ('confirmed', 'awaiting_creative') %}{{ 'Wait for the client\'s files' if b.creative_requested_at else 'Ask the client for their files' }}
       {%- elif b.status == 'checking' %}Check the files that came in
       {%- elif b.status == 'changes_requested' %}The client is fixing their files
@@ -66,12 +65,50 @@
       {%- elif b.status == 'completed' %}Finished. Share the proof of play
       {%- elif stopped %}Nothing. Its screen time is free again
       {%- else %}Turn it into a hold{% endif %}</div>
-    <div class="sub">{% if b.status == 'hold' %}<span class="muted">Or it lets go of its screen time</span>
+    <div class="sub">{% if b.status == 'hold' and not b.po_received_at and po_required %}<a href="#po">Add the PO</a> <span class="muted">· the hold ends {{ b.hold_expires_at|date }}</span>
+      {% elif b.status == 'hold' %}<span class="muted">Or it lets go of its screen time</span>
       {% elif files.collecting and b.status in ('confirmed', 'awaiting_creative', 'checking', 'changes_requested') %}<a href="#files">Go to the files</a>
       {% elif live and b.status in ('creative_approved', 'plan_set') %}<a href="#ready">Go to getting ready</a>
       {% elif live and b.status in ('live', 'completed') %}<a href="#proof">Go to proof of play</a>{% endif %}</div>
   </div>
 </div>
+
+{% if b.status not in ('cancelled', 'expired', 'enquiry') %}
+<div class="card po {{ 'got' if b.po_received_at else ('waiting' if b.status == 'hold' and po_required else '') }}" id="po">
+  <div class="po-head">
+    <div><div class="t" style="font-weight:800">Purchase order</div>
+      {% if b.agreed_amount is not none %}<div class="small muted">Agreed: <strong>{{ b.currency }} {{ '{:,.0f}'.format(b.agreed_amount) }}</strong>{% if quote %} in proposal <a href="{{ url_for('quotes.quote_page', ref=quote.ref) }}">{{ quote.ref }}</a>{% endif %}</div>{% endif %}</div>
+    {% if b.po_received_at %}<span class="pill ok">Received {{ b.po_received_at|date }}</span>
+    {% elif b.no_po_reason %}<span class="pill partial">Confirmed without a PO</span>
+    {% elif b.status == 'hold' %}<span class="pill hold">Waiting for the client</span>{% endif %}
+  </div>
+  {% if b.po_received_at %}
+    <p style="margin:8px 0 0">{% if b.po_number %}PO <strong>{{ b.po_number }}</strong>{% else %}A PO{% endif %}{% if b.po_amount is not none %} for <strong>{{ b.currency }} {{ '{:,.0f}'.format(b.po_amount) }}</strong>{% endif %}, from {{ b.po_received_by }}.
+      {% for d in docs %}<a href="{{ url_for('inbox.booking_document', code=b.code, doc_id=d.id) }}">{{ d.filename }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>
+    {% if po_gap %}<p class="flash warning" style="margin-top:8px">{{ po_gap }}</p>{% endif %}
+  {% elif b.no_po_reason %}
+    <p class="small" style="margin:8px 0 0">Confirmed without a PO: {{ b.no_po_reason }}</p>
+  {% endif %}
+  {% if b.status == 'hold' and can('hold') %}
+  <form method="post" enctype="multipart/form-data" action="{{ url_for('bookings.booking_action', code=b.code, action='po') }}" style="margin-top:12px">
+    {{ m.csrf() }}
+    <div class="row">
+      <div><label>PO or booking order file</label><input type="file" name="document" accept=".pdf,image/*,.doc,.docx,.xlsx"></div>
+      <div><label>PO number</label><input type="text" name="po_number" value="{{ b.po_number }}"></div>
+      <div><label>Amount ({{ b.currency or currency }}) <span class="hint">before tax</span></label><input type="text" inputmode="decimal" name="po_amount" value="{{ '%.0f'|format(b.po_amount) if b.po_amount is not none else '' }}"></div>
+    </div>
+    <p class="actions" style="margin-top:10px"><button type="submit" class="{{ '' if b.po_received_at else 'primary' }}">{{ 'Replace the PO' if b.po_received_at else 'Add the PO' }}</button>
+      {% if b.po_received_at and can('confirm') %}<button class="primary" type="submit" formaction="{{ url_for('bookings.booking_action', code=b.code, action='confirm') }}">{{ t('confirm') }}</button>{% endif %}</p>
+  </form>
+  {% if not b.po_received_at and po_required and can('confirm') %}
+  <details style="margin-top:6px"><summary class="small">Confirm without a PO</summary>
+    <form method="post" action="{{ url_for('bookings.booking_action', code=b.code, action='confirm') }}" class="actions" style="margin-top:8px">
+      {{ m.csrf() }}<input type="text" name="no_po_reason" required placeholder="Why, for the log: e.g. Long-standing client, PO follows next week" style="flex:1;min-width:240px">
+      <button type="submit">Confirm without a PO</button></form></details>
+  {% endif %}
+  {% endif %}
+</div>
+{% endif %}
 
 {% if b.status == 'hold' %}
 <div class="note">This hold expires on <strong>{{ b.hold_expires_at|dt }} UTC</strong>. Until then it keeps its screen time.

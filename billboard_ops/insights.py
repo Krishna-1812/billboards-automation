@@ -130,11 +130,15 @@ def top_numbers(session, today, fills=None):
 # ── The pipeline ────────────────────────────────────────────────────────────────
 
 def pipeline(session, start, end):
-    """Requests → holds → confirmed → campaigns started, in a period."""
+    """Requests → proposals sent → holds → confirmed → campaigns started, in a period, and what was confirmed
+    is worth (the agreed price of bookings confirmed in it)."""
     t0, t1 = datetime.combine(start, datetime.min.time()), datetime.combine(end + timedelta(days=1), datetime.min.time())
     requests = session.scalar(select(func.count()).select_from(Proposal).where(
         Proposal.created_at >= t0, Proposal.created_at < t1,
         Proposal.status.not_in(("not_proposal", "merged")))) or 0
+    from .models import QuoteVersion
+    proposals = session.scalar(select(func.count()).select_from(QuoteVersion).where(
+        QuoteVersion.version == 1, QuoteVersion.sent_at >= t0, QuoteVersion.sent_at < t1)) or 0
     holds = session.scalar(select(func.count()).select_from(Booking).where(
         Booking.created_at >= t0, Booking.created_at < t1, Booking.source != "import")) or 0
     confirmed = session.scalar(select(func.count()).select_from(Booking).where(
@@ -147,7 +151,10 @@ def pipeline(session, start, end):
                              .where(Booking.live_at.is_(None), Booking.status.in_(("live", "completed")))):
         if b.start_date and start <= b.start_date <= end:
             started += 1
-    return {"requests": requests, "holds": holds, "confirmed": confirmed, "started": started}
+    value = session.scalar(select(func.coalesce(func.sum(Booking.agreed_amount), 0.0)).where(
+        Booking.confirmed_at >= t0, Booking.confirmed_at < t1)) or 0.0
+    return {"requests": requests, "proposals": proposals, "holds": holds, "confirmed": confirmed, "started": started,
+            "value": value}
 
 
 # ── At risk ─────────────────────────────────────────────────────────────────────

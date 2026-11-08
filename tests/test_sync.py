@@ -29,7 +29,7 @@ def test_a_hold_appears_on_the_screens_calendar_and_follows_its_status(s, people
     assert ev["colorId"] == "5" and ev["start"] == {"date": future(5).isoformat()}
     assert ev["end"] == {"date": future(10).isoformat()}                      # all-day end is exclusive
     assert "https://ops.example.com/bookings/" + b.code in ev["description"]
-    svc.confirm(s, people["manager"], b)
+    svc.confirm(s, people["manager"], b, po_number="PO-1")
     s.commit()
     run_due()
     assert google.events["cal-szr01"][ev_id]["colorId"] == "10"                # same event, now green

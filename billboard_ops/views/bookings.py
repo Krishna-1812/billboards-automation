@@ -8,7 +8,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import joinedload
 
 from .. import bookings as svc
-from .. import vacancy
+from .. import settings, vacancy
 from ..activity import log
 from ..models import Activity, Booking, BookingLine, Client, Screen, Spec, STATUSES
 from ..permissions import Forbidden, can
@@ -263,8 +263,12 @@ def booking_new():
         return _render_form(s, lines=[_line_echo(l) for l in lines] or [{}])
     status = "confirmed" if request.form.get("status") == "confirmed" else "hold"
     try:
-        b = svc.create(s, current_user(), client, lines, title=f_str("title"), status=status,
+        if status == "confirmed" and not can(current_user(), "confirm"):
+            raise Forbidden("confirm")
+        b = svc.create(s, current_user(), client, lines, title=f_str("title"), status="hold",
                        override_reason=f_str("override_reason"), notes=f_str("notes"))
+        if status == "confirmed":       # straight to confirmed: the same rule as confirming a hold (the PO)
+            svc.confirm(s, current_user(), b, po_number=f_str("po_number"), no_po_reason=f_str("no_po_reason"))
     except svc.Overbooked as e:
         s.rollback()
         flash("There isn't room for all of this. See below.", "error")
@@ -320,8 +324,12 @@ def booking_detail(code):
     messages = s.scalars(select(Message).where(Message.booking_id == b.id).order_by(Message.id)).all()
     from .creatives import booking_panel
     from .live import booking_panel as live_panel
+    from ..models import Quote
+    quote = s.scalars(select(Quote).where(Quote.booking_id == b.id)).first()
     return render_template("booking_detail.html", b=b, checks=checks, history=history, docs=docs,
-                           proposal=proposal, messages=messages, files=booking_panel(s, b), live=live_panel(s, b))
+                           proposal=proposal, messages=messages, files=booking_panel(s, b), live=live_panel(s, b),
+                           quote=quote, po_gap=svc.po_mismatch(b), po_required=settings.get(s, "po_required"),
+                           currency=settings.get(s, "currency"))
 
 
 @bp.route("/bookings/<code>/edit", methods=["GET", "POST"])
@@ -360,11 +368,21 @@ def booking_action(code, action):
     b = _booking(s, code)
     u = current_user()
     try:
-        if action == "confirm":
+        if action in ("confirm", "po"):
             f = request.files.get("document")
             doc = (f.filename, f.mimetype or "", f.read()) if f and f.filename else None
-            svc.confirm(s, u, b, document=doc)
-            msg = f"{b.code} is confirmed."
+            amount = request.form.get("po_amount", "").replace(",", "").strip()
+            amount = float(amount) if amount else None
+            if action == "po":
+                if not can(u, "hold"):
+                    abort(403)
+                svc.record_po(s, u.email, b, f_str("po_number"), amount, doc)
+                gap = svc.po_mismatch(b)
+                msg = "Purchase order added." + (f" {gap}" if gap else "")
+            else:
+                svc.confirm(s, u, b, document=doc, po_number=f_str("po_number") if doc or f_str("po_number") != b.po_number
+                            else "", po_amount=amount, no_po_reason=f_str("no_po_reason"))
+                msg = f"{b.code} is confirmed."
         elif action == "extend":
             days = max(1, min(30, int(request.form.get("days") or 1)))
             svc.extend_hold(s, u, b, days)
@@ -378,6 +396,10 @@ def booking_action(code, action):
         s.rollback()
         flash(_why(e), "error")
         return redirect(url_for("bookings.booking_detail", code=code))
+    except ValueError:
+        s.rollback()
+        flash("The amount should be a number, for example 120000.", "error")
+        return redirect(url_for("bookings.booking_detail", code=code) + "#po")
     s.commit()
     return done(msg, "bookings.booking_detail", code=code)
 
@@ -434,5 +456,10 @@ def client_edit(client_id=None):
                             .where(Booking.client_id == c.id).order_by(Booking.id.desc())).unique().all()
     from .portal import access_panel
     from .. import insights
+    from .. import quotes as qs
+    from ..models import Quote
+    client_quotes = s.scalars(select(Quote).where(Quote.client_id == c.id).order_by(Quote.id.desc()).limit(20)).all() \
+        if c.id else []
     return render_template("client_form.html", c=c, history=history, portal_users=access_panel(s, c) if c.id else [],
+                           client_quotes=client_quotes, quote_totals=qs.totals,
                            stats=insights.client_stats(s, c) if c.id else None)

@@ -41,6 +41,7 @@ def _screen_from_form(sc):
     sc.loop_seconds = f_int("loop_seconds", 0)
     sc.slot_seconds = f_int("slot_seconds", 0)
     sc.sellable_pct = f_float("sellable_pct", 100.0)
+    sc.rate_week = f_float("rate_week")
     sc.open_hour = f_int("open_hour", 6)
     sc.close_hour = f_int("close_hour", 24)
     sc.active = f_bool("active")
@@ -52,6 +53,8 @@ def _screen_from_form(sc):
         errors.append("A slot can't be longer than the loop.")
     if not (0 <= sc.open_hour <= 23 and 1 <= sc.close_hour <= 24):
         errors.append("Opening hours run from 0 to 23, closing from 1 to 24.")
+    if sc.rate_week is not None and sc.rate_week < 0:
+        errors.append("The rate can't be negative.")
     if not 0 < sc.sellable_pct <= 100:
         errors.append("The sellable share is between 1 and 100%.")
     if sc.timezone:

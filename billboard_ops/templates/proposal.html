@@ -40,7 +40,7 @@
 {% endmacro %}
 {% block content %}
 <div class="head">
-  <div><h1>{{ p.ref }} <span class="pill {{ {'needs_review': 'hold', 'held': 'ok', 'failed': 'error', 'declined': 'no', 'waiting_client': 'partial'}.get(p.status, '') }}">{{ p.status|nice }}</span></h1>
+  <div><h1>{{ p.ref }} <span class="pill {{ {'needs_review': 'hold', 'held': 'ok', 'failed': 'error', 'declined': 'no', 'waiting_client': 'partial', 'proposal_sent': 'partial'}.get(p.status, '') }}">{{ p.status|nice }}</span></h1>
     <p class="muted">{{ p.channel|channel }} from {{ p.sender_name or '' }} {{ p.sender }}{% if p.subject %} · {{ p.subject }}{% endif %}
       · read {{ p.read_count }} time(s){% if cost %}, ${{ '%.3f'|format(cost) }}{% endif %}</p></div>
   <div class="actions">
@@ -51,6 +51,8 @@
   </div>
 </div>
 
+{% if quotes_for %}<div class="note" style="margin-bottom:14px">Proposals for this request:
+  {% for q in quotes_for %}<a href="{{ url_for('quotes.quote_page', ref=q.ref) }}">{{ q.ref }}</a> <span class="pill {{ {'sent': 'hold', 'changes_requested': 'partial', 'accepted': 'ok', 'declined': 'no', 'expired': 'no'}.get(q.status, '') }}">{{ q.status|nice }}</span>{{ ' · ' if not loop.last }}{% endfor %}</div>{% endif %}
 <div class="split">
   <div>
     <h2 style="margin-top:0">Conversation</h2>
@@ -124,7 +126,8 @@
       <label>Notes</label><textarea name="notes">{{ form.get('notes', d.get('notes', '')) }}</textarea>
       {% if overbooked and can('override') %}<label>Reason for holding past capacity</label><input type="text" name="override_reason" required value="{{ form.get('override_reason', '') }}">{% endif %}
       <p class="actions" style="margin-top:14px">
-        <button class="primary" formaction="{{ url_for('inbox.proposal_action', ref=p.ref, action='hold') }}">{{ t('place_hold') }}</button>
+        <button class="primary" formaction="{{ url_for('inbox.proposal_action', ref=p.ref, action='quote') }}">Make a proposal</button>
+        <button formaction="{{ url_for('inbox.proposal_action', ref=p.ref, action='hold') }}">{{ t('place_hold') }} straight away</button>
         <button formaction="{{ url_for('inbox.proposal_action', ref=p.ref, action='save') }}">Save changes and check again</button>
       </p>
     </form>

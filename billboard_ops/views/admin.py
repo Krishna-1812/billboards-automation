@@ -92,6 +92,13 @@ def automation():
                                                        .split(",") if "@" in e))
         settings.put(s, "keep_files_months", max(1, min(120, f_int("keep_files_months", 12))))
         settings.put(s, "keep_messages_months", max(1, min(120, f_int("keep_messages_months", 24))))
+        settings.put(s, "currency", (f_str("currency") or "AED")[:3].upper())
+        settings.put(s, "quote_valid_days", max(1, min(90, f_int("quote_valid_days", 7))))
+        try:
+            settings.put(s, "max_discount_pct", max(0.0, min(100.0, float(request.form.get("max_discount_pct") or 0))))
+        except ValueError:
+            pass
+        settings.put(s, "po_required", request.form.get("po_required") == "1")
         after = settings.all_settings(s)
         changed = {k: [before[k], after[k]] for k in after if before[k] != after[k]}
         log(s, current_user().email, "changed", "settings", "automation",

@@ -11,7 +11,7 @@ from .. import evaluate, extract, intake, outbox
 from ..activity import log
 from ..jobs import enqueue
 from ..models import (AiCall, Attachment, Booking, BookingDocument, Client, EvalCase, EvalRun, Message, Proposal,
-                      Screen)
+                      Quote, Screen)
 from ..permissions import Forbidden, can
 from ..web import current_user, done, f_str, get_db, login_required, needs
 from .bookings import _active_screens, _client_from_form, _lines_from_form, _why
@@ -115,7 +115,8 @@ def _render(s, p, lines=None, overbooked=None, status=200):
         clients=s.scalars(select(Client).order_by(Client.name)).all(), screens=_active_screens(s),
         overbooked=overbooked, form=request.form, dup=dup, cost=cost, booking=intake.booking_for(s, p),
         reading_now=p.status in ("new", "reading"),
-        case=s.scalars(select(EvalCase).where(EvalCase.source_proposal_id == p.id)).first()), status
+        case=s.scalars(select(EvalCase).where(EvalCase.source_proposal_id == p.id)).first(),
+        quotes_for=s.scalars(select(Quote).where(Quote.request_id == p.id).order_by(Quote.id)).all()), status
 
 
 @bp.route("/inbox/<ref>")
@@ -160,18 +161,18 @@ def proposal_action(ref, action):
     s = get_db()
     p = _proposal(s, ref)
     u = current_user()
-    need = {"save": "hold", "hold": "hold", "ask": "hold", "decline": "hold", "dismiss": "hold", "reopen": "hold",
+    need = {"save": "hold", "hold": "hold", "quote": "hold", "ask": "hold", "decline": "hold", "dismiss": "hold", "reopen": "hold",
             "read": "hold", "merge": "hold", "case": "accuracy"}.get(action)
     if need is None:
         abort(404)
     if not can(u, need):
         abort(403)
     try:
-        if action in ("save", "hold"):
+        if action in ("save", "hold", "quote"):
             s.autoflush = False
             lines, errors = _lines_from_form(s)
             client = _client_from_form(s)
-            if errors or (action == "hold" and client is None):
+            if errors or (action in ("hold", "quote") and client is None):
                 for e in dict.fromkeys(errors or ["Choose a client, or type a new client's name."]):
                     flash(e, "error")
                 s.rollback()
@@ -180,6 +181,20 @@ def proposal_action(ref, action):
                 _draft_from_form(s, p, lines, client)
                 s.commit()
                 return done("Saved, and vacancy checked again.", "inbox.proposal_page", ref=ref)
+            if action == "quote":
+                from .. import quotes as qs
+                _draft_from_form(s, p, lines, client)
+                s.flush()
+                try:
+                    q = qs.draft_from_request(s, u, p)
+                except qs.QuoteError as e:
+                    s.rollback()
+                    flash(str(e), "error")
+                    return redirect(url_for("inbox.proposal_page", ref=ref))
+                s.commit()
+                flash(f"Proposal {q.ref} drafted with {len(q.options)} option(s). Check the prices, then send it.",
+                      "ok")
+                return redirect(url_for("quotes.quote_page", ref=q.ref))
             try:
                 b = intake.place_hold(s, u, p, client=client, lines=lines, title=f_str("title"),
                                       notes=f_str("notes"), override_reason=f_str("override_reason"))

@@ -46,6 +46,9 @@ def tick(now=None, today=None):
         creatives.tick(s, today or date.today())
     with db.session_scope() as s:
         lifecycle.tick(s, today)
+    from . import quotes
+    with db.session_scope() as s:
+        quotes.expire(s, today or date.today())
     from . import backup, monitor, retention, summary
     with db.session_scope() as s:
         summary.maybe_send(s, now)

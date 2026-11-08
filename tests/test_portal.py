@@ -115,7 +115,7 @@ def _two_clients(s, people, small, portal_people, media):
     theirs = svc.create(s, people["sales"], portal_people["globex"],
                         [svc.LineIn(small["c"].id, future(30), future(40), ad_seconds=10, plays_per_hour=12)],
                         title="Globex secret launch")
-    svc.confirm(s, people["manager"], theirs)
+    svc.confirm(s, people["manager"], theirs, po_number="PO-1")
     c2 = creatives.add_file(s, theirs, filename="globex.mp4", content_type="video/mp4", data=read(media["good.mp4"]))
     p2 = proof.add(s, people["ops"], theirs, filename="g.jpg", content_type="image/jpeg", data=read(media["good.png"]))
     s.commit()
@@ -159,19 +159,25 @@ def test_accepting_a_hold_with_a_signed_po(app, s, people, small, portal_people)
                    [svc.LineIn(small["a"].id, future(10), future(16), ad_seconds=10, plays_per_hour=30)])
     s.commit()
     c = as_client(app, portal_people["sara"])
-    assert "Accept the hold and send the signed proposal" in c.get("/portal").get_data(as_text=True)
-    r = c.post(f"/portal/bookings/{b.code}/accept", data=form(document=(io.BytesIO(b"%PDF-1.4"), "po.pdf")),
+    assert "Send your purchase order so we can confirm the booking" in c.get("/portal").get_data(as_text=True)
+    r = c.post(f"/portal/bookings/{b.code}/accept", data=form(), content_type="multipart/form-data")
+    s.expire_all()
+    assert s.get(Booking, b.id).client_accepted_at is None                          # nothing sent: nothing taken
+    r = c.post(f"/portal/bookings/{b.code}/accept", data=form(document=(io.BytesIO(b"%PDF-1.4"), "po.pdf"),
+                                                              po_number="ACME-4471", po_amount="12,000"),
                content_type="multipart/form-data")
     assert r.status_code == 302
     s.expire_all()
     b = s.get(Booking, b.id)
     assert b.client_accepted_at is not None and b.status == "hold"                  # the team still confirms
+    assert b.po_number == "ACME-4471" and b.po_amount == 12000 and b.po_received_by == "sara@acme.example"
     doc = s.scalars(select(BookingDocument)).one()
     assert doc.filename == "po.pdf" and doc.uploaded_by == "sara@acme.example"
-    assert "accepted the hold in the portal and sent a document" in s.scalars(
-        select(Activity).where(Activity.action == "client_accepted")).one().summary
+    assert "Purchase order received (ACME-4471)" in s.scalars(
+        select(Activity).where(Activity.action == "po_received")).one().summary
     emails = [j.payload for j in s.scalars(select(Job).where(Job.kind == "send_email"))]
-    assert any("accepted hold" in e["subject"] and "owner@example.com" in e["to"] for e in emails)
+    assert any("sent the PO" in e["subject"] and "owner@example.com" in e["to"] for e in emails)
+    assert "We received your purchase order" in c.get(f"/portal/bookings/{b.code}").get_data(as_text=True)
 
 
 def test_upload_and_see_the_result(app, s, people, small, portal_people, media, ai_reads_ads):
@@ -258,7 +264,7 @@ def test_arabic(app, s, people, small, portal_people, media, ai_reads_ads):
     omar = portal_people["omar"]
     b = svc.create(s, people["sales"], portal_people["globex"],
                    [svc.LineIn(small["a"].id, future(30), future(36), ad_seconds=10, plays_per_hour=12)])
-    svc.confirm(s, people["manager"], b)
+    svc.confirm(s, people["manager"], b, po_number="PO-1")
     s.commit()
     c = as_client(app, omar)
     page = c.get("/portal").get_data(as_text=True)

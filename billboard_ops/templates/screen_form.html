@@ -26,6 +26,13 @@
     </div>
     <p class="small muted">For example, a 120-second loop of 10-second slots has 12 slots; one slot plays 30 times an hour.</p>
   </fieldset>
+  <fieldset><legend>Rate card</legend>
+    <div class="row">
+      <div><label>Price of one slot for one week ({{ app_currency() }}) <span class="hint">empty = no rate yet</span></label>
+        <input type="number" min="0" step="any" name="rate_week" value="{{ '%g'|format(sc.rate_week) if sc.rate_week is not none else '' }}"></div>
+    </div>
+    <p class="small muted">Proposals start from it: more slots, more weeks or the whole screen cost more; a shorter day part costs less, pro rata. Every price can still be changed on the proposal.</p>
+  </fieldset>
   <fieldset><legend>Operating hours</legend>
     <div class="row">
       <div><label>Opens at (0–23)</label><input type="number" min="0" max="23" name="open_hour" value="{{ sc.open_hour }}"></div>

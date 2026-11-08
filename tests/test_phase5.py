@@ -32,7 +32,7 @@ def hold(s, people, inv, start, days=7, pph=30, screen="a", client=None):
 def test_occupancy_is_loop_time_used(s, people, inventory):
     w0, w1 = insights.week_of(date.today())
     b = hold(s, people, inventory, w0, days=7, pph=36)                 # 360 s of 3600 = 10% of every hour
-    svc.confirm(s, people["manager"], b)
+    svc.confirm(s, people["manager"], b, po_number="PO-1")
     s.commit()
     avg, per = insights.occupancy(s, [inventory["a"], inventory["b"]], w0, w1)
     assert per[inventory["a"].id] == pytest.approx(10.0) and per[inventory["b"].id] == 0 and avg == pytest.approx(5.0)
@@ -45,7 +45,7 @@ def test_pipeline_and_unreplied(s, people, inventory):
     p = Proposal(channel="email", sender="ads@acme.example", status="needs_review", ref="PR-1")
     s.add(p)
     b = hold(s, people, inventory, future(20))
-    svc.confirm(s, people["manager"], b)
+    svc.confirm(s, people["manager"], b, po_number="PO-1")
     s.flush()
     m = Message(proposal_id=p.id, booking_id=b.id, direction="out", channel="email", kind="creative_request",
                 status="sent", subject="Files needed", sent_at=utcnow() - timedelta(days=4))
@@ -77,7 +77,7 @@ def test_at_risk_lists_unready_starts_and_expiring_holds(s, people, small):
 def test_the_agents_work_and_peoples_changes(s, people, inventory, fake_ai):
     from billboard_ops import intake, outbox
     b = hold(s, people, inventory, future(20))
-    svc.confirm(s, people["manager"], b)
+    svc.confirm(s, people["manager"], b, po_number="PO-1")
     plans.draft(s, b)
     p = plans.build(plans.dayparts(s), {"Morning peak": 10, "Daytime": 30, "Evening peak": 60, "Night": 0})
     plans.save(s, people["ops"], b, {b.lines[0].id: p})

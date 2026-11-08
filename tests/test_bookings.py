@@ -54,11 +54,11 @@ def test_overbooking_is_refused_then_allowed_for_a_manager_with_a_reason(s, peop
 def test_only_managers_confirm(s, people, inventory):
     b = svc.create(s, people["sales"], inventory["client"], [line(inventory["a"])])
     with pytest.raises(Forbidden):
-        svc.confirm(s, people["sales"], b)
-    svc.confirm(s, people["manager"], b)
+        svc.confirm(s, people["sales"], b, po_number="PO-1")
+    svc.confirm(s, people["manager"], b, po_number="PO-1")
     assert b.status == "confirmed" and b.confirmed_by == "manager@example.com" and b.hold_expires_at is None
     with pytest.raises(svc.BookingError):
-        svc.confirm(s, people["manager"], b)
+        svc.confirm(s, people["manager"], b, po_number="PO-1")
     with pytest.raises(Forbidden):
         svc.create(s, people["sales"], inventory["client"], [line(inventory["b"])], status="confirmed")
 

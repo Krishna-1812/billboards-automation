@@ -240,6 +240,9 @@ def test_confirm_extend_and_cancel_buttons(app, s, people, inventory, login):
     assert b.hold_expires_at - old == timedelta(days=2)
     mgr.post(f"/bookings/{b.code}/confirm", data=form())
     s.refresh(b)
+    assert b.status == "hold"          # no purchase order yet
+    mgr.post(f"/bookings/{b.code}/confirm", data=form(no_po_reason="Known client, PO follows"))
+    s.refresh(b)
     assert b.status == "confirmed"
     mgr.post(f"/bookings/{b.code}/cancel", data=form(reason="Changed plans"))
     s.refresh(b)

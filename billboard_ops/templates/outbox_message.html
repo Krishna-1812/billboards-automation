@@ -9,6 +9,7 @@
       {% if msg.approved_by %} · approved by {{ msg.approved_by }}{% endif %}{% if msg.sent_at %} · sent {{ msg.sent_at|dt }}{% endif %}</p></div>
 </div>
 {% if msg.error %}<div class="flash error">{{ msg.error }}</div>{% endif %}
+{% if msg.attachments %}<div class="note" style="margin-bottom:14px">Attached: {% for a in msg.attachments %}<a href="{{ url_for('inbox.attachment', att_id=a.id) }}" target="_blank" rel="noopener">{{ a.filename }}</a>{{ ', ' if not loop.last }}{% endfor %}{% if msg.channel == 'whatsapp' %}. WhatsApp sends the text only; the link in it opens the proposal in the portal.{% endif %}</div>{% endif %}
 {% if msg.status in ('draft', 'failed') and can('send_messages') %}
 <form method="post" class="card">
   {{ m.csrf() }}

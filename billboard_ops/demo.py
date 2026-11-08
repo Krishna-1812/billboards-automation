@@ -23,6 +23,8 @@ SCREENS = [
     ("DT-01", "Downtown Boulevard", "Downtown", 25.1972, 55.2744, "port"),
     ("DT-02", "Dubai Mall Fashion Ave", "Downtown", 25.1985, 55.2796, "land"),
 ]
+RATES = {"SZR-01": 28000, "SZR-02": 24000, "SZR-03": 22000, "MAR-01": 14000, "MAR-02": 12000, "DXB-01": 18000,
+         "DT-01": 16000, "DT-02": 30000}     # one slot, one week, in AED (made-up figures for the demo)
 CLIENTS = ["Acme Foods", "Gulf Motors", "Noor Bank", "Sahara Telecom", "Bloom Cosmetics", "Desert Air"]
 
 
@@ -39,7 +41,7 @@ def seed(s, owner_email="owner@example.com"):
     screens = []
     for code, name, area, lat, lng, kind in SCREENS:
         sc = Screen(code=code, name=name, area=area, lat=lat, lng=lng, spec=land if kind == "land" else port,
-                    loop_seconds=120 if kind == "land" else 60, slot_seconds=10,
+                    loop_seconds=120 if kind == "land" else 60, slot_seconds=10, rate_week=RATES.get(code),
                     open_hour=6 if code != "MAR-02" else 16, close_hour=24 if code != "MAR-02" else 2)
         s.add(sc)
         screens.append(sc)
@@ -66,7 +68,69 @@ def seed(s, owner_email="owner@example.com"):
         except svc.Overbooked:
             continue
     seed_proposals(s, screens, today)
+    seed_quotes(s, owner, screens, clients, today)
     return len(screens)
+
+
+def _price(b):
+    from . import pricing
+    return sum(pricing.list_price(l.screen, l.start_date, l.end_date, l.start_hour, l.end_hour, l.ad_seconds,
+                                  l.plays_per_hour, l.exclusive) or 0 for l in b.lines)
+
+
+def seed_quotes(s, owner, screens, clients, today):
+    """Proposals at each step: one waiting for the client, one where they asked for changes and got a second
+    version, and one accepted that waits for its purchase order."""
+    from . import quotes
+    from .models import Proposal
+    d = lambda n: today + timedelta(days=n)  # noqa: E731
+    by = {sc.code: sc for sc in screens}
+    gulf_request = s.scalars(select(Proposal).where(Proposal.sender == "marketing@gulfmotors.example")).first()
+    if gulf_request is not None:
+        q = quotes.draft_from_request(s, owner, gulf_request)
+        q.budget, q.message = 160000, "Thank you for thinking of us for the SUV launch. Option B swaps in the free screens."
+        quotes.send(s, owner, q)
+
+    sahara = clients[3]
+    q = quotes.create(s, owner, sahara, "5G launch")
+    line = lambda code, a, b, pph=30: {"screen_id": by[code].id, "start_date": d(a), "end_date": d(b),  # noqa: E731
+                                       "ad_seconds": 10, "plays_per_hour": pph}
+    quotes.add_option(s, q, "Option A: Sheikh Zayed Rd", [line("SZR-01", 20, 33), line("SZR-02", 20, 33)])
+    quotes.add_option(s, q, "Option B: Downtown and Marina", [line("DT-02", 20, 33), line("MAR-01", 20, 33, 12)])
+    s.flush()
+    for o in q.options:
+        s.refresh(o)
+    quotes.send(s, owner, q)
+    quotes.ask_changes(s, "ads@sahara.example", q, "Option A looks right. Can you do 10% off and add a bonus week?")
+    q.options[0].discount_pct = 10
+    q.options[0].value_adds = "A bonus week on SZR-02 after the campaign"
+    quotes.send(s, owner, q, note="10% off Option A, bonus week on SZR-02")
+    quotes.ask_changes(s, "ads@sahara.example", q, "Thanks. Could Option B start a week later?")
+
+    acme = clients[0]
+    q = quotes.create(s, owner, acme, "Summer menu")
+    q.message = "Two ways to run the summer menu. Option B adds the Marina screens in the evenings."
+    quotes.add_option(s, q, "Option A: Downtown", [line("DT-02", 40, 53), line("DT-01", 40, 53)])
+    quotes.add_option(s, q, "Option B: Downtown and Marina", [
+        line("DT-02", 40, 53), {"screen_id": by["MAR-02"].id, "start_date": d(40), "end_date": d(53),
+                                "ad_seconds": 10, "plays_per_hour": 60, "start_hour": 18, "end_hour": 24}],
+        discount_pct=8, value_adds="Weekly proof-of-play photos")
+    s.flush()
+    for o in q.options:
+        s.refresh(o)
+    quotes.send(s, owner, q)
+
+    desert = clients[5]
+    q = quotes.create(s, owner, desert, "Summer fares")
+    quotes.add_option(s, q, "Option A: Airport", [line("DXB-01", 25, 38, 30)], discount_pct=5,
+                      value_adds="Proof of play photos every week")
+    s.flush()
+    s.refresh(q.options[0])
+    quotes.send(s, owner, q)
+    try:
+        quotes.accept(s, owner, q, q.options[0])
+    except svc.Overbooked:
+        pass
 
 
 def _raw(client, lines, missing=(), questions=(), language="en", conf="high"):
@@ -142,7 +206,8 @@ def seed_campaigns(s, owner, screens, clients, today):
     def book(client, scr, start, days, pph, title):
         b = svc.create(s, owner, client, [svc.LineIn(x.id, start, start + timedelta(days=days - 1), ad_seconds=10,
                                                      plays_per_hour=pph) for x in scr], title=title)
-        svc.confirm(s, owner, b)
+        b.agreed_amount, b.currency = _price(b), "AED"
+        svc.confirm(s, owner, b, po_number=f"PO-{client.name[:4].upper()}-{b.id:03d}", po_amount=b.agreed_amount)
         s.flush()
         return b
 

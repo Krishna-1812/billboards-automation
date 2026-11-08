@@ -343,6 +343,42 @@ textarea.big { min-height: 260px; }
   background: linear-gradient(90deg, var(--accent), #8F80FF); }
 .launchbar span { position: absolute; inset-inline-end: 16px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 800; }
 
+/* ── Proposals ────────────────────────────────────────────────────────────────── */
+.qopt { margin-bottom: 16px; scroll-margin-top: 90px; }
+.qopt.chosen { box-shadow: 0 0 0 3px var(--mint), var(--shadow-sm); }
+.qopt-head { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; }
+.qopt-head .qname { font-size: 18px; font-weight: 800; max-width: 420px; background: transparent; border-color: transparent; padding-inline: 6px; }
+.qopt-head .qname:hover, .qopt-head .qname:focus { background: var(--panel-2); border-color: var(--line); }
+.qopt-head .qname:disabled { color: var(--ink); }
+.qtotal { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 15px; }
+.qtotal strong { font-size: 20px; letter-spacing: -.02em; }
+.qtable td { padding: 6px 6px; } .qtable th { padding: 8px 6px; }
+.qtable input, .qtable select { padding: 7px 9px; font-size: 13px; border-radius: 10px; min-width: 0; }
+.qtable input[type=date] { width: 138px; }
+.qtable td.hrs, .qtable td.freq { white-space: nowrap; }
+.qtable td.hrs select { width: 64px; display: inline-block; } .qtable td.hrs select + select { margin-inline-start: 4px; }
+.qtable td.freq select { width: auto; display: inline-block; margin-inline-end: 4px; }
+.qtable select[name=screen_id] { width: 190px; }
+.qroom { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li { position: relative; padding: 0 0 16px 22px; border-inline-start: 2px solid var(--lilac); margin-inline-start: 6px; }
+.timeline li:last-child { padding-bottom: 0; }
+.timeline li::before { content: ""; position: absolute; inset-inline-start: -7px; top: 3px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 0 3px var(--lilac); }
+.timeline .when { font-size: 12px; font-weight: 700; color: var(--muted); }
+.qcards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.qcard { display: flex; flex-direction: column; gap: 10px; }
+.qcard .price { font-size: 30px; font-weight: 800; letter-spacing: -.03em; }
+.qcard ul { margin: 0; padding-inline-start: 18px; }
+
+/* ── Purchase order card ───────────────────────────────────────────────────── */
+.po { margin-bottom: 16px; }
+.po.waiting { background: var(--bad-soft); box-shadow: none; }
+.po.waiting .muted, .po.waiting .hint { color: #8A2F12; }
+.po.got { background: var(--ok-soft); box-shadow: none; }
+.po.waiting input, .po.got input { background: rgba(255, 255, 255, .7); }
+.po-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+
 /* ── Booking progress ───────────────────────────────────────────────────────── */
 .stepper { list-style: none; margin: 0 0 18px; padding: 8px; display: flex; gap: 4px; background: var(--panel);
   border-radius: 999px; box-shadow: var(--shadow-sm); overflow-x: auto; scrollbar-width: none; }

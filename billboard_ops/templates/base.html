@@ -24,6 +24,7 @@
     <nav class="navpill" aria-label="Main">
       <a href="{{ url_for('main.dashboard') }}" class="{{ 'on' if ep == 'main.dashboard' }}">{{ t('overview') }}</a>
       <a href="{{ url_for('inbox.inbox') }}" class="{{ 'on' if ep.startswith('inbox.proposal') or ep in ('inbox.inbox', 'inbox.inbox_new') }}">{{ t('proposals') }}{% if inbox_counts.get('review') %} <span class="count">{{ inbox_counts['review'] }}</span>{% endif %}</a>
+      <a href="{{ url_for('quotes.quote_list') }}" class="{{ 'on' if ep.startswith('quotes.') }}">{{ t('offers') }}{% if inbox_counts.get('quotes') %} <span class="count">{{ inbox_counts['quotes'] }}</span>{% endif %}</a>
       <a href="{{ url_for('inbox.outbox_list') }}" class="{{ 'on' if ep.startswith('inbox.outbox') }}">{{ t('outbox') }}{% if inbox_counts.get('outbox') %} <span class="count">{{ inbox_counts['outbox'] }}</span>{% endif %}</a>
       <a href="{{ url_for('bookings.calendar_grid') }}" class="{{ 'on' if ep.startswith('bookings.calendar') }}">{{ t('calendar') }}</a>
       <a href="{{ url_for('bookings.booking_list', status='open') }}" class="{{ 'on' if ep.startswith('bookings.booking') or ep.startswith('live.plan') }}">{{ t('bookings') }}</a>

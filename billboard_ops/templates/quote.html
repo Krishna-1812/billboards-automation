@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ q.ref }} · Proposal · Billboard Ops{% endblock %}
+{% macro hour_select(name, value, blank) %}
+  <select name="{{ name }}" aria-label="{{ blank }}">
+    <option value="">{{ blank }}</option>
+    {% for h in range(0, 25) %}<option value="{{ h }}" {{ 'selected' if value is not none and value != '' and value|string == h|string }}>{{ '%02d'|format(h) }}</option>{% endfor %}
+  </select>
+{% endmacro %}
+{% macro line_row(l, screen=None) %}
+  {% set per_slot = screen.plays_per_hour_per_slot if screen else 30 %}
+  {% set mode = 'whole' if l and l.exclusive else 'slots' %}
+  {% set val = 1 if not l or l.exclusive else '%g'|format((l.plays_per_hour / per_slot)|round(2)) %}
+  <tr class="qline">
+    <td><select name="screen_id" aria-label="Screen"><option value="">Choose…</option>
+      {% for s in screens %}<option value="{{ s.id }}" {{ 'selected' if l and l.screen_id == s.id }}>{{ s.code }} · {{ s.name[:24] }}</option>{% endfor %}</select></td>
+    <td><input type="date" name="start_date" value="{{ l.start_date.isoformat() if l else '' }}" aria-label="From"></td>
+    <td><input type="date" name="end_date" value="{{ l.end_date.isoformat() if l else '' }}" aria-label="To"></td>
+    <td class="hrs">{{ hour_select('start_hour', l.start_hour if l else '', 'All') }}{{ hour_select('end_hour', l.end_hour if l else '', '—') }}</td>
+    <td><input type="number" name="ad_seconds" min="1" value="{{ l.ad_seconds if l else '' }}" placeholder="10" aria-label="Ad length in seconds" style="width:64px"></td>
+    <td class="freq"><select name="freq_mode" aria-label="Frequency">
+        {% for v, label in [('slots', 'Slots'), ('pph', 'Plays/hour'), ('whole', 'Whole screen')] %}<option value="{{ v }}" {{ 'selected' if mode == v }}>{{ label }}</option>{% endfor %}</select>
+      <input type="number" name="freq_value" min="0.1" step="any" value="{{ val }}" aria-label="How many" style="width:70px"></td>
+    <td><select name="bonus" aria-label="Charged or bonus"><option value="0">Charged</option><option value="1" {{ 'selected' if l and l.bonus }}>Bonus</option></select></td>
+    <td><input type="text" inputmode="decimal" name="price" value="{{ '%.0f'|format(l.price) if l and l.price is not none else '' }}"
+               placeholder="{{ ('%.0f'|format(list_price(l)) if list_price(l) is not none else 'no rate') if l else 'rate card' }}" aria-label="Price" style="width:110px"></td>
+    <td><button type="button" class="linkish danger" onclick="this.closest('tr').remove()" aria-label="Remove this screen">✕</button></td>
+  </tr>
+{% endmacro %}
+{% block content %}
+{% set cur = q.currency %}
+<div class="head">
+  <div>
+    <div class="eyebrow">Proposal for <a href="{{ url_for('bookings.client_edit', client_id=q.client_id) }}">{{ q.client.name }}</a>{% if q.request %} · from request <a href="{{ url_for('inbox.proposal_page', ref=q.request.ref) }}">{{ q.request.ref }}</a>{% endif %}</div>
+    <h1>{{ q.ref }} <span class="pill {{ {'draft': '', 'sent': 'hold', 'changes_requested': 'partial', 'accepted': 'ok', 'declined': 'no', 'expired': 'no', 'withdrawn': ''}[q.status] }}">{{ q.status|nice }}</span>
+      {% if q.version %}<span class="chip">Version {{ q.version }}</span>{% endif %}</h1>
+    {% if q.title %}<p class="muted">{{ q.title }}</p>{% endif %}
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('quotes.quote_pdf', ref=q.ref) }}" target="_blank" rel="noopener">See the PDF</a>
+    {% if editable and can('hold') %}<a class="btn primary" href="#send">Send to the client</a>{% endif %}
+  </div>
+</div>
+
+{% if q.status == 'changes_requested' %}
+<div class="tile tile-peach" style="min-height:0;margin-bottom:16px"><div class="t">The client asked for changes</div>
+  <div style="white-space:pre-wrap">{{ q.client_note }}</div>
+  <div class="sub muted">Change the options below, then send the next version.</div></div>
+{% elif q.status == 'accepted' %}
+{% set acc = q.options|selectattr('id', 'equalto', q.accepted_option_id)|first %}
+<div class="tile tile-mint" style="min-height:0;margin-bottom:16px"><div class="t">Accepted{% if acc %}: {{ acc.name }}{% endif %}</div>
+  <div>By {{ q.accepted_by }} on {{ q.accepted_at|dt }}.{% if q.booking %} The hold is <a href="{{ url_for('bookings.booking_detail', code=q.booking.code) }}">{{ q.booking.code }}</a>, waiting for the purchase order.{% endif %}</div></div>
+{% elif q.status in ('declined', 'expired', 'withdrawn') %}
+<div class="note" style="margin-bottom:16px">This proposal is {{ q.status|nice|lower }}{% if q.client_note %}: {{ q.client_note }}{% endif %}.</div>
+{% endif %}
+
+{% set ns = namespace(best=none) %}
+{% for o in q.options %}{% set t_ = totals(o) %}{% if not t_.missing and (ns.best is none or t_.net < ns.best) %}{% set ns.best = t_.net %}{% endif %}{% endfor %}
+<div class="bento" style="margin-bottom:18px">
+  <div class="tile tile-lilac span-3"><div class="t">Options</div><div class="big">{{ q.options|length }}</div><div class="sub muted">for the client to choose from</div></div>
+  <div class="card tile span-3"><div class="t">From</div><div class="big" style="font-size:36px">{{ '%s %s'|format(cur, '{:,.0f}'.format(ns.best)) if ns.best is not none else '—' }}</div><div class="sub muted">the lowest option, after discounts</div></div>
+  <div class="tile {{ 'tile-mint' if q.budget and ns.best is not none and ns.best <= q.budget else 'tile-peach' if q.budget else 'card' }} span-3"><div class="t">Client's budget</div>
+    <div class="big" style="font-size:36px">{{ '%s %s'|format(cur, '{:,.0f}'.format(q.budget)) if q.budget else '—' }}</div>
+    <div class="sub muted">{% if not q.budget %}Not given{% elif ns.best is not none and ns.best <= q.budget %}At least one option fits it{% else %}Every option is over it{% endif %}</div></div>
+  <div class="tile tile-dark span-3"><div class="t">Valid until</div><div class="big" style="font-size:36px">{{ q.valid_until.strftime('%-d %b') if q.valid_until else '—' }}</div>
+    <div class="sub muted">{% if q.sent_at %}Last sent {{ q.sent_at|dt }}{% else %}Not sent yet{% endif %}</div></div>
+</div>
+
+<details class="card" {{ 'open' if editable and not q.version }}>
+  <summary><strong>Details and the note to the client</strong></summary>
+  <form method="post" action="{{ url_for('quotes.quote_details', ref=q.ref) }}" style="margin-top:12px">
+    {{ m.csrf() }}
+    <div class="row">
+      <div><label>Campaign</label><input type="text" name="title" value="{{ q.title }}" {{ 'disabled' if not editable }}></div>
+      <div><label>Valid until</label><input type="date" name="valid_until" value="{{ q.valid_until.isoformat() if q.valid_until else '' }}" {{ 'disabled' if not editable }}></div>
+      <div><label>Currency</label><input type="text" name="currency" value="{{ q.currency }}" maxlength="3" {{ 'disabled' if not editable }}></div>
+      <div><label>Client's budget</label><input type="text" inputmode="decimal" name="budget" value="{{ '%.0f'|format(q.budget) if q.budget else '' }}" {{ 'disabled' if not editable }}></div>
+    </div>
+    <label>Note to the client <span class="hint">(on the PDF and in the portal)</span></label>
+    <textarea name="message" {{ 'disabled' if not editable }}>{{ q.message }}</textarea>
+    <label>Note for the team <span class="hint">(the client never sees it)</span></label>
+    <textarea name="internal_note" {{ 'disabled' if not editable }}>{{ q.internal_note }}</textarea>
+    {% if editable %}<p><button class="primary" type="submit">{{ t('save') }}</button></p>{% endif %}
+  </form>
+</details>
+
+<div class="head" style="margin-top:22px"><h2 style="margin:0">Options</h2>
+  {% if editable %}<form method="post" action="{{ url_for('quotes.option_new', ref=q.ref) }}" class="inline">{{ m.csrf() }}<button type="submit">+ Add an option</button></form>{% endif %}</div>
+
+{% for o in q.options %}{% set t_ = totals(o) %}
+<form method="post" action="{{ url_for('quotes.option_save', ref=q.ref, oid=o.id) }}" class="card qopt {{ 'chosen' if q.accepted_option_id == o.id }}" id="opt{{ o.id }}">
+  {{ m.csrf() }}
+  <div class="qopt-head">
+    <input type="text" name="name" value="{{ o.name }}" class="qname" aria-label="Option name" {{ 'disabled' if not editable }}>
+    <div class="qtotal">{% if t_.missing %}<span class="pill warning">No price for {{ t_.missing|unique|join(', ') }}</span>{% else %}
+      {% if t_.discount %}<span class="muted" style="text-decoration:line-through">{{ cur }} {{ '{:,.0f}'.format(t_.gross) }}</span>{% endif %}
+      <strong>{{ cur }} {{ '{:,.0f}'.format(t_.net) }}</strong>{% if t_.discount %} <span class="chip mint">{{ '%.0f'|format(t_.discount_pct) }}% off</span>{% endif %}{% endif %}
+      <span class="chip">{{ '{:,}'.format(t_.plays) }} plays</span></div>
+  </div>
+  <div class="table-wrap"><table class="small qtable">
+    <thead><tr><th>Screen</th><th>From</th><th>To</th><th>Hours</th><th>Ad (s)</th><th>Frequency</th><th>Charged</th><th>Price ({{ cur }})</th><th></th></tr></thead>
+    <tbody class="qlines">
+    {% if editable %}
+      {% for l in o.lines %}{{ line_row(l, l.screen) }}{% endfor %}
+    {% else %}
+      {% for l in o.lines %}<tr><td><strong>{{ l.screen.code }}</strong> {{ l.screen.name }}</td><td>{{ l.start_date|date }}</td><td>{{ l.end_date|date }}</td>
+        <td>{{ fmt_hours(l.start_hour, l.end_hour) }}</td><td>{{ l.ad_seconds }}</td><td>{{ m.frequency(l) }}</td><td>{{ 'Bonus' if l.bonus else 'Charged' }}</td>
+        <td class="num">{{ 'Bonus' if l.bonus else '{:,.0f}'.format(line_price(l)) if line_price(l) is not none else '—' }}</td><td></td></tr>{% endfor %}
+    {% endif %}
+    </tbody>
+  </table></div>
+  {% if editable %}
+  <template class="qtpl">{{ line_row(none) }}</template>
+  <p style="margin:8px 0 0"><button type="button" class="linkish" onclick="addLine(this)">+ Add a screen</button>
+    <span class="small muted">· An empty price uses the rate card (shown in grey). Bonus lines play but aren't charged.</span></p>
+  {% endif %}
+  {% if editable %}
+  <div class="qroom">{% for l in o.lines %}{% set r = checks.get(l.id) %}{% if r %}<span class="pill {{ r.status }}" title="{{ l.screen.name }}">{{ l.screen.code }}: {{ t(r.status) }}</span>{% endif %}{% endfor %}</div>
+  {% endif %}
+  <div class="row" style="margin-top:12px">
+    <div><label>Discount %</label><input type="text" inputmode="decimal" name="discount_pct" value="{{ '%g'|format(o.discount_pct) }}" {{ 'disabled' if not editable }}></div>
+    <div><label>Or an agreed total ({{ cur }}) <span class="hint">replaces the discount</span></label><input type="text" inputmode="decimal" name="agreed_total" value="{{ '%.0f'|format(o.agreed_total) if o.agreed_total is not none else '' }}" {{ 'disabled' if not editable }}></div>
+    <div style="flex:2"><label>Value adds <span class="hint">one per line</span></label><textarea name="value_adds" rows="2" {{ 'disabled' if not editable }} placeholder="e.g. One extra week free on SZR-02">{{ o.value_adds }}</textarea></div>
+  </div>
+  {% if t_.discount_pct > limit + 0.01 and not can('confirm') and editable %}<p class="flash warning" style="margin-top:8px">A {{ '%.0f'|format(t_.discount_pct) }}% discount is above {{ '%.0f'|format(limit) }}%: a Manager has to send this proposal.</p>{% endif %}
+  {% if t_.bonus_value %}<p class="small muted">The bonus lines are worth {{ cur }} {{ '{:,.0f}'.format(t_.bonus_value) }} on the rate card.</p>{% endif %}
+  {% if editable %}
+  <div class="actions" style="margin-top:12px">
+    <button class="primary" type="submit">Save {{ o.name.split(':')[0] }}</button>
+    <button type="submit" formaction="{{ url_for('quotes.option_action', ref=q.ref, oid=o.id, action='copy') }}">Copy it</button>
+    {% if q.options|length > 1 %}<button class="linkish danger" type="submit" formaction="{{ url_for('quotes.option_action', ref=q.ref, oid=o.id, action='delete') }}" onclick="return confirm('Delete {{ o.name }}?')">Delete it</button>{% endif %}
+  </div>
+  {% endif %}
+</form>
+{% endfor %}
+
+{% if editable and can('hold') %}
+<div class="grid cols-2" style="margin-top:8px">
+  <form method="post" action="{{ url_for('quotes.quote_send', ref=q.ref) }}" class="card" id="send">
+    {{ m.csrf() }}
+    <h2 style="margin-top:0">{{ 'Send the next version' if q.version else 'Send to the client' }}</h2>
+    <p class="small muted">It goes to the Outbox first, with the PDF attached and a link to the portal, where the client can compare the options, ask for changes or accept one. Save each option before sending.</p>
+    {% if q.version %}<label>What changed in this version <span class="hint">(kept with the version)</span></label><input type="text" name="note" placeholder="e.g. Frequency down to 1 slot, 12% discount">{% endif %}
+    <p><button class="primary" type="submit">{{ 'Send version ' ~ (q.version + 1) if q.version else 'Send the proposal' }}</button></p>
+  </form>
+  {% if q.version %}
+  <div class="card">
+    <h2 style="margin-top:0">The client answered</h2>
+    <p class="small muted">When they answer by phone, email or WhatsApp. In the portal they do it themselves.</p>
+    <form method="post" action="{{ url_for('quotes.quote_answer', ref=q.ref) }}" class="actions">
+      {{ m.csrf() }}<input type="hidden" name="kind" value="accept">
+      <select name="option_id" style="width:auto" aria-label="Option accepted">{% for o in q.options %}<option value="{{ o.id }}">{{ o.name }}</option>{% endfor %}</select>
+      <button class="primary" type="submit">Accepted: place the hold</button></form>
+    <form method="post" action="{{ url_for('quotes.quote_answer', ref=q.ref) }}" style="margin-top:12px">
+      {{ m.csrf() }}
+      <label>Asked for changes, or why they declined</label><input type="text" name="text" placeholder="e.g. Same screens, 10% off, add one week">
+      <p class="actions" style="margin-top:8px"><button type="submit" name="kind" value="changes">Save what they asked for</button>
+        <button type="submit" name="kind" value="decline" class="linkish danger">They declined</button></p>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% if editable and can('hold') %}
+<form method="post" action="{{ url_for('quotes.quote_answer', ref=q.ref) }}" class="inline" style="margin-top:8px">{{ m.csrf() }}<input type="hidden" name="kind" value="withdraw">
+  <button type="submit" class="linkish danger" onclick="return confirm('Withdraw this proposal?')">Withdraw this proposal</button></form>
+{% endif %}
+
+{% if q.versions %}
+<h2>Negotiation</h2>
+<div class="card">
+  <ol class="timeline">
+  {% for v in q.versions|reverse %}
+    <li><div class="when">Version {{ v.version }} · {{ v.sent_at|dt }} · {{ v.sent_by }}</div>
+      {% if v.note %}<div><strong>{{ v.note }}</strong></div>{% endif %}
+      <div class="small">{% for o in v.snapshot.options %}{{ o.name }}: {{ v.snapshot.currency }} {{ '{:,.0f}'.format(o.totals.net) }}{% if o.totals.discount %} ({{ '%.0f'|format(o.totals.discount_pct) }}% off){% endif %}{{ ' · ' if not loop.last }}{% endfor %}</div>
+      <a class="small" href="{{ url_for('quotes.quote_pdf', ref=q.ref, v=v.version) }}" target="_blank" rel="noopener">PDF of version {{ v.version }}</a></li>
+  {% endfor %}
+  </ol>
+</div>
+{% endif %}
+{% if q.internal_note and not editable %}<p class="small muted">Team note: {{ q.internal_note }}</p>{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+function addLine(btn) {
+  var form = btn.closest('form');
+  var row = form.querySelector('template.qtpl').content.cloneNode(true);
+  form.querySelector('tbody.qlines').appendChild(row);
+}
+</script>
+{% endblock %}

@@ -52,7 +52,7 @@ def confirmed(s, people, inv, start=None):
                    [svc.LineIn(inv["a"].id, start, start + timedelta(days=13), ad_seconds=10, plays_per_hour=30),
                     svc.LineIn(inv["b"].id, start, start + timedelta(days=13), ad_seconds=10, plays_per_hour=30)],
                    title="Launch")
-    svc.confirm(s, people["manager"], b)
+    svc.confirm(s, people["manager"], b, po_number="PO-1")
     s.commit()
     jobs_now(s)
     run_due()

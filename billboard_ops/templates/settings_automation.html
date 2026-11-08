@@ -32,6 +32,16 @@
     <p class="small muted">Plans already made keep the hours they were made with.</p>
   </div>
   <div class="card">
+    <h2 style="margin-top:0">Proposals and purchase orders</h2>
+    <div class="row">
+      <div><label>Currency</label><input type="text" name="currency" maxlength="3" value="{{ st.currency }}"></div>
+      <div><label>A proposal stays open for (days)</label><input type="number" name="quote_valid_days" min="1" max="90" value="{{ st.quote_valid_days }}"></div>
+      <div><label>Sales can give up to (% discount) <span class="hint">above it, a Manager sends the proposal</span></label><input type="number" name="max_discount_pct" min="0" max="100" step="any" value="{{ st.max_discount_pct }}"></div>
+    </div>
+    <label class="check"><input type="checkbox" name="po_required" value="1" {{ 'checked' if st.po_required }}> A booking is confirmed only once the client's purchase order (or booking order) is in. A Manager can still confirm without one by giving a reason, which is logged.</label>
+    <p class="small muted">Each screen's rate card price is on its page (Screens → the screen → Edit).</p>
+  </div>
+  <div class="card">
     <h2 style="margin-top:0">Loading and ending</h2>
     <div class="row">
       <div><label>Offer a renewal this many days before the end</label><input type="number" name="renewal_days" min="0" max="60" value="{{ st.renewal_days }}"></div>

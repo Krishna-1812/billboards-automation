@@ -12,6 +12,22 @@
   <div class="tile tile-peach span-4"><div class="t">{{ tp('tile_held') }}</div><div class="big">{{ ns.held }}</div><div class="sub muted">{{ tp('tile_held_sub') }}</div></div>
   <div class="tile tile-lilac span-4"><div class="t">{{ tp('tile_files') }}</div><div class="big">{{ ns.files }}</div><div class="sub muted">{{ tp('tile_files_sub') }}</div></div>
 </div>
+{% if offers %}
+<h2>{{ tp('proposals') }}</h2>
+<div class="qcards" style="margin-bottom:8px">
+  {% for q in offers %}{% set sn = last_sent(q) %}
+  {% set nets = sn.options|map(attribute='totals')|map(attribute='net')|list if sn else [] %}
+  <a class="card qcard" href="{{ url_for('portal.quote', ref=q.ref) }}" style="color:inherit;text-decoration:none">
+    <div class="t" style="display:flex;justify-content:space-between;gap:8px;font-weight:800">{{ q.ref }}
+      <span class="pill {{ {'sent': 'hold', 'changes_requested': 'partial', 'accepted': 'ok'}.get(q.status, 'no') }}">{{ tp('qs_' ~ q.status) }}</span></div>
+    {% if q.title %}<div>{{ q.title }}</div>{% endif %}
+    {% if nets %}<div class="price" style="font-size:24px">{{ tp('q_from', amount=sn.currency ~ ' ' ~ '{:,.0f}'.format(nets|min)) }}</div>{% endif %}
+    <div class="small muted">{{ tp('q_options', n=sn.options|length if sn else 0) }}{% if sn and sn.valid_until %} · {{ tp('q_valid', date=fmt(sn.valid_until)) }}{% endif %}</div>
+    <span class="btn {{ 'primary' if q.status == 'sent' else '' }}" style="align-self:flex-start">{{ tp('q_see') }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
 <h2>{{ tp('current') }}</h2>
 <div class="card table-wrap">
   <table>

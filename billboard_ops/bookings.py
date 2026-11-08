@@ -204,20 +204,63 @@ def update(session, user, booking, lines, title=None, notes=None, override_reaso
     return booking
 
 
-def confirm(session, user, booking, now=None, document=None):
-    """Confirm a hold. `document` (filename, content_type, bytes) is the signed proposal or purchase order."""
+def record_po(session, actor, booking, number="", amount=None, document=None, now=None):
+    """The client's purchase order (or booking order) for a hold: its number, amount and file. `actor` is the email
+    of whoever added it (a client in the portal, or the team)."""
+    if booking.status in ("cancelled", "expired", "completed"):
+        raise BookingError(f"A {booking.status} booking can't take a purchase order.")
+    has_file = bool(document and document[2])
+    if not has_file and not (number or "").strip():
+        raise BookingError("Add the purchase order: its file, its number, or both.")
+    if has_file:
+        from .models import BookingDocument
+        session.add(BookingDocument(booking_id=booking.id, filename=document[0][:300], content_type=document[1][:120],
+                                    data=document[2], uploaded_by=actor))
+    booking.po_number = (number or booking.po_number or "").strip()[:80]
+    if amount is not None:
+        booking.po_amount = float(amount)
+    booking.po_received_at = now or utcnow()
+    booking.po_received_by = actor
+    gap = po_mismatch(booking)
+    log(session, actor, "po_received", "booking", booking.code,
+        "Purchase order received" + (f" ({booking.po_number})" if booking.po_number else "")
+        + (f" for {booking.currency or ''} {booking.po_amount:,.0f}".replace("  ", " ") if booking.po_amount else "")
+        + (f". {gap}" if gap else ""))
+    return booking
+
+
+def po_mismatch(booking):
+    """A sentence when the PO's amount differs from the agreed price, else ''."""
+    if booking.po_amount is None or booking.agreed_amount is None:
+        return ""
+    if abs(booking.po_amount - booking.agreed_amount) < 1:
+        return ""
+    cur = booking.currency or ""
+    return (f"The PO says {cur} {booking.po_amount:,.0f} but the agreed price is {cur} {booking.agreed_amount:,.0f}."
+            .replace("  ", " "))
+
+
+def confirm(session, user, booking, now=None, document=None, po_number="", po_amount=None, no_po_reason=""):
+    """Confirm a hold. It needs the purchase order: on file already, or `document` (filename, content_type, bytes)
+    and/or `po_number` here. Without one, a Manager can still confirm by giving `no_po_reason`, which is logged."""
     require(user, "confirm")
     if booking.status != "hold":
         raise BookingError(f"Only a hold can be confirmed; this booking is {booking.status}.")
     now = now or utcnow()
-    if document and document[2]:
-        from .models import BookingDocument
-        session.add(BookingDocument(booking_id=booking.id, filename=document[0][:300], content_type=document[1][:120],
-                                    data=document[2], uploaded_by=actor_of(user)))
+    if (document and document[2]) or (po_number or "").strip():
+        record_po(session, actor_of(user), booking, po_number, po_amount, document, now)
+    if booking.po_received_at is None and settings.get(session, "po_required"):
+        if not (no_po_reason or "").strip():
+            raise BookingError("A purchase order is needed to confirm. Add the client's PO, or give a reason to "
+                               "confirm without one.")
+        booking.no_po_reason = no_po_reason.strip()[:500]
+        notify(session, f"{booking.code} was confirmed without a purchase order by {actor_of(user)}: "
+                        f"{booking.no_po_reason}", kind="warning", link=f"/bookings/{booking.code}")
     booking.status = "confirmed"
     booking.confirmed_at, booking.confirmed_by = now, actor_of(user)
     booking.hold_expires_at = None
-    log(session, actor_of(user), "confirmed", "booking", booking.code, f"Confirmed for {booking.client.name}")
+    log(session, actor_of(user), "confirmed", "booking", booking.code, f"Confirmed for {booking.client.name}"
+        + (f" without a PO: {booking.no_po_reason}" if booking.no_po_reason else ""))
     sync.queue_booking(session, booking)
     # Phase 3: ask the client for the files (the message is a draft until a person approves it).
     from .jobs import enqueue

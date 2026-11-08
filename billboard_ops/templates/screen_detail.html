@@ -18,6 +18,7 @@
       <tr><th>Spec</th><td>{% if sc.spec %}<a href="{{ url_for('screens.spec_edit', spec_id=sc.spec_id) }}">{{ sc.spec.name }}</a>: {{ sc.spec.width_px }}×{{ sc.spec.height_px }} {{ sc.spec.orientation }}, ads of {{ sc.spec.durations_s }}s{% else %}<span class="pill warning">No spec yet</span>{% endif %}</td></tr>
       <tr><th>Loop</th><td>{{ sc.loop_seconds }}s: {{ sc.slots_per_loop }} slots of {{ sc.slot_seconds }}s; one slot = {{ sc.plays_per_hour_per_slot|num }} plays an hour</td></tr>
       <tr><th>Sellable</th><td>{{ sc.sellable_pct|num }}% of airtime</td></tr>
+      <tr><th>Rate card</th><td>{% if sc.rate_week is not none %}{{ app_currency() }} {{ '{:,.0f}'.format(sc.rate_week) }} a slot a week{% else %}<span class="muted">not set</span>{% endif %}</td></tr>
       <tr><th>Hours</th><td>{{ '24 hours' if sc.open_hour == 0 and sc.close_hour == 24 else fmt_hours(sc.open_hour, sc.close_hour) }} ({{ sc.timezone }})</td></tr>
       <tr><th>Physical size</th><td>{{ sc.physical_size or '—' }}</td></tr>
       <tr><th>Calendar</th><td class="mono">{{ sc.calendar_id or 'not set' }}</td></tr>

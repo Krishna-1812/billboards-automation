@@ -80,7 +80,11 @@
     <input type="text" name="override_reason" required value="{{ form.get('override_reason', '') }}" placeholder="e.g. Owner agreed to bump house content for this client">
   {% endif %}
   {% if not booking and can('confirm') %}
-    <label class="check"><input type="checkbox" name="status" value="confirmed" {{ 'checked' if form.get('status') == 'confirmed' }}> Save as confirmed, not a hold</label>
+    <label class="check"><input type="checkbox" name="status" value="confirmed" {{ 'checked' if form.get('status') == 'confirmed' }} onchange="document.getElementById('poFields').hidden = !this.checked"> Save as confirmed, not a hold</label>
+    <div class="row" id="poFields" {{ '' if form.get('status') == 'confirmed' else 'hidden' }}>
+      <div><label>Client's PO number</label><input type="text" name="po_number" value="{{ form.get('po_number', '') }}"></div>
+      <div style="flex:2"><label>Or why it's confirmed without a PO</label><input type="text" name="no_po_reason" value="{{ form.get('no_po_reason', '') }}"></div>
+    </div>
   {% endif %}
   <p class="actions" style="margin-top:16px">
     <button class="primary" type="submit">{{ t('save') }}</button>

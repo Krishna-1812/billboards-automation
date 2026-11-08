@@ -515,8 +515,11 @@ def counts(session):
     rows = dict(session.execute(select(Proposal.status, func.count()).group_by(Proposal.status)).all())
     drafts_waiting = session.scalar(select(func.count()).select_from(Message)
                                     .where(Message.direction == "out", Message.status.in_(("draft", "failed"))))
+    from .models import Quote
+    quotes_waiting = session.scalar(select(func.count()).select_from(Quote)
+                                    .where(Quote.status.in_(("draft", "changes_requested"))))
     return {"review": rows.get("needs_review", 0) + rows.get("failed", 0) + rows.get("new", 0)
-            + rows.get("reading", 0), "outbox": drafts_waiting or 0, **rows}
+            + rows.get("reading", 0), "outbox": drafts_waiting or 0, "quotes": quotes_waiting or 0, **rows}
 
 
 def booking_for(session, p):

@@ -36,6 +36,11 @@ DEFAULTS = {
     "weekly_summary_to": "",              # more addresses for it, comma separated
     "keep_files_months": 12,              # files and proof kept this long after a campaign ends
     "keep_messages_months": 24,           # message text and attachments kept this long
+    # Proposals and the purchase order
+    "currency": "AED",                    # prices on the rate card and proposals
+    "quote_valid_days": 7,                # how long a proposal stays open
+    "max_discount_pct": 10,               # Sales can send up to this discount; above it, a Manager sends it
+    "po_required": True,                  # confirming needs the PO (a Manager can confirm without, with a reason)
 }
 
 

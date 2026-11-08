@@ -36,6 +36,16 @@
 <p class="small muted">Spend appears here once pricing is set up.</p>
 {% endif %}
 {% if c.id %}
+<div class="head" style="margin:22px 0 10px"><h2 style="margin:0">Proposals</h2>
+  {% if can('hold') %}<form method="post" action="{{ url_for('quotes.quote_new') }}" class="inline">{{ m.csrf() }}<input type="hidden" name="client_id" value="{{ c.id }}"><button type="submit">+ New proposal</button></form>{% endif %}</div>
+<div class="card table-wrap"><table class="small">
+  {% for q in client_quotes %}{% set nets = [] %}{% for o in q.options %}{% set t_ = quote_totals(o) %}{% if o.lines and not t_.missing %}{% set _ = nets.append(t_.net) %}{% endif %}{% endfor %}
+  <tr><td><a href="{{ url_for('quotes.quote_page', ref=q.ref) }}">{{ q.ref }}</a> {{ q.title }}</td>
+    <td><span class="pill {{ {'sent': 'hold', 'changes_requested': 'partial', 'accepted': 'ok', 'declined': 'no', 'expired': 'no'}.get(q.status, '') }}">{{ q.status|nice }}</span></td>
+    <td class="num">{{ '%s %s'|format(q.currency, '{:,.0f}'.format(nets|min)) if nets else '—' }}</td>
+    <td class="muted">{{ q.sent_at|dt if q.sent_at else 'Not sent' }}</td></tr>
+  {% else %}<tr><td class="empty">No proposals yet.</td></tr>{% endfor %}
+</table></div>
 <h2 id="portal">Client portal</h2>
 <div class="card">
   <p class="small muted">These people sign in to the portal with a one-time link sent to their email, and see only {{ c.name }}'s bookings.</p>

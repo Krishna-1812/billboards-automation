@@ -361,3 +361,48 @@ def wrap_up(lang, name, company, booking, has_proof, portal_url):
 def sign_in_link(lang, company, url, minutes):
     lg = lang if lang in ("en", "ar") else "en"
     return t("subj_link", lg), t("link", lg, company=company, url=url, minutes=minutes)
+
+
+# ── Proposals ───────────────────────────────────────────────────────────────────
+
+T.update({
+    "subj_quote":     ("Our proposal {ref}", "عرضنا {ref}"),
+    "subj_quote_rev": ("Our revised proposal {ref}", "عرضنا المعدّل {ref}"),
+    "quote_intro":    ("Thank you for your request. Here is our proposal, with {n} option(s):",
+                       "شكراً لطلبكم. إليكم عرضنا، ويتضمن {n} خيار/خيارات:"),
+    "quote_rev":      ("As discussed, here is our revised proposal, with {n} option(s):",
+                       "كما تم الاتفاق، إليكم عرضنا المعدّل، ويتضمن {n} خيار/خيارات:"),
+    "quote_option":   ("{name}: {screens} screen(s), {dates}, about {plays} plays. {price}",
+                       "{name}: عدد الشاشات {screens}، {dates}، حوالي {plays} عرض. {price}"),
+    "quote_price":    ("{cur} {net}", "{cur} {net}"),
+    "quote_disc":     ("{cur} {net} after a {pct}% discount", "{cur} {net} بعد خصم {pct}%"),
+    "quote_pdf":      ("The full proposal is attached as a PDF.", "العرض الكامل مرفق بصيغة PDF."),
+    "quote_link":     ("You can compare the options, ask for changes or accept one here: {link}",
+                       "يمكنكم مقارنة الخيارات أو طلب تعديلات أو قبول أحدها من هنا: {link}"),
+    "quote_valid":    ("The prices are valid until {date}. Once you choose an option, we hold the screens for you, "
+                       "and the booking is confirmed when we receive your purchase order.",
+                       "الأسعار سارية حتى {date}. عند اختياركم أحد الخيارات نحجز الشاشات لكم مبدئياً، ويتم تأكيد الحجز "
+                       "عند استلام أمر الشراء."),
+})
+
+
+def proposal(lang, name, company, quote, snap, link, revised=False):
+    def body(lg):
+        out = [t("quote_rev" if revised else "quote_intro", lg, n=len(snap["options"])), ""]
+        for o in snap["options"]:
+            tt = o["totals"]
+            starts = [x["start"] for x in o["lines"]]
+            ends = [x["end"] for x in o["lines"]]
+            dates = f"{_d(min(starts), lg)} – {_d(max(ends), lg)}"
+            price = t("quote_disc", lg, cur=snap["currency"], net=f"{tt['net']:,.0f}", pct=f"{tt['discount_pct']:.0f}") \
+                if tt["discount"] else t("quote_price", lg, cur=snap["currency"], net=f"{tt['net']:,.0f}")
+            out.append("- " + t("quote_option", lg, name=o["name"], screens=len({x["screen"] for x in o["lines"]}),
+                                dates=dates, plays=f"{tt['plays']:,}", price=price))
+        out += ["", t("quote_pdf", lg)]
+        if link:
+            out.append(t("quote_link", lg, link=link))
+        if snap.get("valid_until"):
+            out.append(t("quote_valid", lg, date=_d(snap["valid_until"], lg)))
+        return "\n".join(out)
+    return _subject("subj_quote_rev" if revised else "subj_quote", lang, ref=quote.ref), _compose(lang, name, company,
+                                                                                                   body)

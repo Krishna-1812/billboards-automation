@@ -116,6 +116,8 @@ class Screen(Base):
     calendar_id: Mapped[str] = mapped_column(String(300), default="")    # its Google Calendar
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     notes: Mapped[str] = mapped_column(Text, default="")
+    # Proposals: the rate-card price of one slot in the loop for one week (see pricing.py). Empty = no rate yet.
+    rate_week: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     spec: Mapped[Optional[Spec]] = relationship()
 
@@ -211,6 +213,15 @@ class Booking(Base):
     # Phase 5: what the agent drafted for the plan, to tell whether a person changed it before confirming.
     plan_drafted_sig: Mapped[str] = mapped_column(String(40), default="", server_default="")
     plan_edited: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # Proposals and the purchase order: what was agreed (from the accepted proposal), and the PO.
+    agreed_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)     # net, before tax
+    currency: Mapped[str] = mapped_column(String(3), default="", server_default="")
+    po_number: Mapped[str] = mapped_column(String(80), default="", server_default="")
+    po_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    po_received_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    po_received_by: Mapped[str] = mapped_column(String(254), default="", server_default="")
+    # Confirmed without a PO: a Manager's reason.
+    no_po_reason: Mapped[str] = mapped_column(String(500), default="", server_default="")
 
     client: Mapped[Client] = relationship()
     lines: Mapped[list["BookingLine"]] = relationship(back_populates="booking", cascade="all, delete-orphan",
@@ -360,8 +371,8 @@ class BookingCounter(Base):
 
 # ── Phase 2: proposals ──────────────────────────────────────────────────────────
 
-PROPOSAL_STATUSES = ("new", "reading", "needs_review", "waiting_client", "held", "declined", "not_proposal",
-                     "merged", "failed")
+PROPOSAL_STATUSES = ("new", "reading", "needs_review", "waiting_client", "proposal_sent", "held", "declined",
+                     "not_proposal", "merged", "failed")
 OPEN_PROPOSAL = ("new", "reading", "needs_review", "waiting_client", "failed")
 
 
@@ -638,3 +649,97 @@ class LoginLink(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     user: Mapped[User] = relationship()
+
+
+# ── Proposals to clients: options, negotiation and acceptance ─────────────────
+
+QUOTE_STATUSES = ("draft", "sent", "changes_requested", "accepted", "declined", "expired", "withdrawn")
+QUOTE_OPEN = ("draft", "sent", "changes_requested")
+
+
+class Quote(Base):
+    """What the media owner proposes in answer to a request: one or more options, each with screens, dates,
+    frequency and price. Every time it is sent, the version goes up and the sent version is kept (QuoteVersion), so
+    the negotiation can be followed."""
+    __tablename__ = "quotes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ref: Mapped[str] = mapped_column(String(20), default="", index=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    request_id: Mapped[Optional[int]] = mapped_column(ForeignKey("proposals.id"), nullable=True)
+    title: Mapped[str] = mapped_column(String(200), default="")
+    status: Mapped[str] = mapped_column(String(20), default="draft")
+    version: Mapped[int] = mapped_column(Integer, default=0)        # 0 = never sent
+    currency: Mapped[str] = mapped_column(String(3), default="AED")
+    budget: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    valid_until: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    message: Mapped[str] = mapped_column(Text, default="")          # the note to the client, on the PDF and portal
+    internal_note: Mapped[str] = mapped_column(Text, default="")
+    client_note: Mapped[str] = mapped_column(Text, default="")      # what the client last asked for
+    accepted_option_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    accepted_by: Mapped[str] = mapped_column(String(254), default="")
+    booking_id: Mapped[Optional[int]] = mapped_column(ForeignKey("bookings.id"), nullable=True)
+    created_by: Mapped[str] = mapped_column(String(254), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+    client: Mapped[Client] = relationship()
+    request: Mapped[Optional[Proposal]] = relationship(foreign_keys=[request_id])
+    booking: Mapped[Optional[Booking]] = relationship(foreign_keys=[booking_id])
+    options: Mapped[list["QuoteOption"]] = relationship(back_populates="quote", cascade="all, delete-orphan",
+                                                        order_by="QuoteOption.position")
+    versions: Mapped[list["QuoteVersion"]] = relationship(back_populates="quote", cascade="all, delete-orphan",
+                                                          order_by="QuoteVersion.version")
+
+    __table_args__ = (Index("ix_quotes_status", "status"), Index("ix_quotes_client", "client_id"))
+
+
+class QuoteOption(Base):
+    __tablename__ = "quote_options"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    quote_id: Mapped[int] = mapped_column(ForeignKey("quotes.id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    name: Mapped[str] = mapped_column(String(120), default="")      # "Option A: as asked"
+    discount_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    value_adds: Mapped[str] = mapped_column(Text, default="")       # one per line: bonus spots, extra week...
+    # A negotiated total that replaces list price less discount; empty = worked out from the lines.
+    agreed_total: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    quote: Mapped[Quote] = relationship(back_populates="options")
+    lines: Mapped[list["QuoteLine"]] = relationship(back_populates="option", cascade="all, delete-orphan",
+                                                    order_by="[QuoteLine.start_date, QuoteLine.id]")
+
+
+class QuoteLine(Base):
+    __tablename__ = "quote_lines"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    option_id: Mapped[int] = mapped_column(ForeignKey("quote_options.id", ondelete="CASCADE"))
+    screen_id: Mapped[int] = mapped_column(ForeignKey("screens.id"))
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+    start_hour: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    end_hour: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    ad_seconds: Mapped[int] = mapped_column(Integer, default=10)
+    plays_per_hour: Mapped[float] = mapped_column(Float, default=30.0)
+    exclusive: Mapped[bool] = mapped_column(Boolean, default=False)
+    bonus: Mapped[bool] = mapped_column(Boolean, default=False)     # a value add: shown, not charged
+    # Empty = the rate card's price (pricing.py); a number = the price agreed for this line.
+    price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    option: Mapped[QuoteOption] = relationship(back_populates="lines")
+    screen: Mapped[Screen] = relationship()
+
+
+class QuoteVersion(Base):
+    """A proposal as it was sent: what the client saw, kept so the negotiation can be followed."""
+    __tablename__ = "quote_versions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    quote_id: Mapped[int] = mapped_column(ForeignKey("quotes.id", ondelete="CASCADE"))
+    version: Mapped[int] = mapped_column(Integer)
+    snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
+    note: Mapped[str] = mapped_column(Text, default="")             # what changed, in the team's words
+    sent_by: Mapped[str] = mapped_column(String(254), default="")
+    sent_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    quote: Mapped[Quote] = relationship(back_populates="versions")

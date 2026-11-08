@@ -1,0 +1,52 @@
+{% extends "portal_base.html" %}
+{% block title %}{{ q.ref }} · {{ tp('portal') }}{% endblock %}
+{% block content %}
+{% set cur = snap.currency %}
+<p class="small"><a href="{{ url_for('portal.home') }}">{{ '→' if plang == 'ar' else '←' }} {{ tp('back') }}</a></p>
+<div class="head">
+  <div><h1>{{ q.ref }} <span class="pill {{ {'sent': 'hold', 'changes_requested': 'partial', 'accepted': 'ok'}.get(q.status, 'no') }}">{{ tp('qs_' ~ q.status) if q.status != 'draft' else '' }}</span></h1>
+    <p class="muted">{% if q.title %}{{ q.title }} · {% endif %}{% if snap.valid_until %}{{ tp('q_valid', date=fmt(snap.valid_until)) }}{% endif %}</p></div>
+  <div class="actions"><a class="btn" href="{{ url_for('portal.quote_pdf', ref=q.ref) }}">{{ tp('q_pdf') }}</a></div>
+</div>
+
+{% if snap.message %}<div class="tile tile-lilac" style="min-height:0;margin-bottom:16px"><div class="t">{{ tp('q_note') }}</div><div style="white-space:pre-wrap">{{ snap.message }}</div></div>{% endif %}
+{% if q.status == 'changes_requested' and q.client_note %}<div class="note" style="margin-bottom:16px">{{ tp('q_you_asked', text=q.client_note) }}</div>{% endif %}
+
+<div class="qcards">
+{% for o in snap.options %}{% set tt = o.totals %}
+  <div class="card qcard {{ 'chosen' if q.accepted_option_id == o.id }}" {% if q.accepted_option_id == o.id %}style="box-shadow:0 0 0 3px var(--mint)"{% endif %}>
+    <div class="t" style="font-weight:800;font-size:17px">{{ o.name }}</div>
+    <div>{% if tt.discount %}<span class="muted" style="text-decoration:line-through">{{ cur }} {{ '{:,.0f}'.format(tt.gross) }}</span> <span class="chip mint">{{ '%.0f'|format(tt.discount_pct) }}%</span>{% endif %}
+      <div class="price">{{ cur }} {{ '{:,.0f}'.format(tt.net) }}</div>
+      <div class="small muted">{{ tp('q_plays', n='{:,}'.format(tt.plays)) }}</div></div>
+    <ul class="small">
+      {% for l in o.lines %}<li><strong>{{ l.screen_name }}</strong> · {{ fmt(l.start) }} {{ tp('to') }} {{ fmt(l.end) }}
+        <div class="muted">{% if l.start_hour is not none and l.end_hour is not none %}{{ '%02d:00–%02d:00'|format(l.start_hour, l.end_hour % 24) }}{% else %}{{ tp('q_all_hours') }}{% endif %} ·
+          {% if l.exclusive %}{{ tp('q_whole') }}{% else %}{{ tp('q_per_hour', n='%g'|format(l.plays_per_hour)) }}{% endif %}
+          · {% if l.bonus %}<strong>{{ tp('q_bonus') }}</strong>{% else %}{{ cur }} {{ '{:,.0f}'.format(l.price) }}{% endif %}</div></li>{% endfor %}
+    </ul>
+    {% if o.value_adds %}<div class="small"><strong>{{ tp('q_also') }}:</strong> {{ o.value_adds.splitlines()|select|join('; ') }}</div>{% endif %}
+    {% if can_answer %}
+    <form method="post" action="{{ url_for('portal.quote_answer', ref=q.ref, action='accept') }}" style="margin-top:auto">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="option_id" value="{{ o.id }}">
+      <button class="primary" type="submit" style="width:100%">{{ tp('q_accept') }}</button></form>
+    {% endif %}
+  </div>
+{% endfor %}
+</div>
+<p class="small muted" style="margin-top:12px">{{ tp('q_vat') }}</p>
+
+{% if can_answer %}
+<div class="card" style="margin-top:16px">
+  <h2 style="margin-top:0">{{ tp('q_changes') }}</h2>
+  <form method="post" action="{{ url_for('portal.quote_answer', ref=q.ref, action='changes') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>{{ tp('q_changes_hint') }}</label><textarea name="text" rows="3" required dir="auto"></textarea>
+    <p class="actions" style="margin-top:10px"><button class="primary" type="submit">{{ tp('q_send') }}</button></p>
+  </form>
+  <form method="post" action="{{ url_for('portal.quote_answer', ref=q.ref, action='decline') }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="linkish danger" type="submit" onclick="return confirm('{{ tp('q_decline_sure') }}')">{{ tp('q_decline') }}</button></form>
+</div>
+{% endif %}
+{% endblock %}

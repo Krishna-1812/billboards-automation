@@ -57,7 +57,8 @@ def compose(session, today):
              f"{top['files_failing']}",
              f"- Claude this month: ${top['spend']:.2f}", "",
              f"PIPELINE ({m0:%B} so far, {l0:%B} in brackets)",
-             f"- Requests {now['requests']} ({before['requests']}), holds {now['holds']} ({before['holds']}), "
+             f"- Requests {now['requests']} ({before['requests']}), proposals sent {now['proposals']} "
+             f"({before['proposals']}), holds {now['holds']} ({before['holds']}), "
              f"confirmed {now['confirmed']} ({before['confirmed']}), campaigns started {now['started']} "
              f"({before['started']})", ""]
     lines.append(f"AT RISK ({len(risks)})")

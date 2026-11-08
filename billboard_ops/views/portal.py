@@ -17,11 +17,11 @@ from flask import (Blueprint, abort, current_app, flash, g, redirect, render_tem
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from .. import creative_store, creatives, drafts, intake, plans, settings
+from .. import creative_store, creatives, drafts, intake, plans, quotes, settings
 from ..activity import log
 from ..mail import queue as queue_email
-from ..models import (BOOKED, FILE_STAGES, Booking, BookingDocument, BookingLine, Client, Creative, LoginLink,
-                      Proof, User, utcnow)
+from ..models import (BOOKED, FILE_STAGES, Booking, BookingLine, Client, Creative, LoginLink,
+                      Proof, Quote, User, utcnow)
 from ..notices import alert
 from ..permissions import can
 from ..portal_text import tp
@@ -184,7 +184,7 @@ def language():
 
 def next_step(s, b, lang):
     if b.status == "hold":
-        return tp("ns_accepted" if b.client_accepted_at else "ns_accept", lang)
+        return tp("ns_accepted" if b.po_received_at else "ns_accept", lang)
     if b.plan_status == "waiting_client" and b.status not in ("completed", "cancelled", "expired"):
         return tp("ns_plan", lang)
     if b.status in FILE_STAGES:
@@ -219,8 +219,12 @@ def home():
     current = [b for b in rows if b.status in ("hold",) + BOOKED]
     past = [b for b in rows if b not in current]
     current.sort(key=lambda b: b.start_date or b.created_at.date())
+    offers = [q for q in quotes.for_client(s, u.client_id) if q.status in ("sent", "changes_requested")
+              or (q.status in ("accepted", "declined", "expired") and q.updated_at and
+                  (utcnow() - q.updated_at).days < 30)]
     return render_template("portal_home.html", current=[(b, next_step(s, b, lang)) for b in current], past=past,
-                           client=s.get(Client, u.client_id))
+                           client=s.get(Client, u.client_id), offers=offers, last_sent=_last_sent,
+                           fmt=lambda d: drafts._d(d, lang))
 
 
 def _file_rows(s, b, lang):
@@ -261,26 +265,116 @@ def booking(code):
 @bp.route("/portal/bookings/<code>/accept", methods=["POST"])
 @portal_required
 def accept(code):
+    """The client accepts the hold and sends their purchase order: its file, number and amount."""
     s = get_db()
     b = _mine(s, code)
     u = client_user()
+    lang = _lang()
     if b.status != "hold":
         abort(404)
+    doc = request.files.get("document")
+    data = doc.read() if doc and doc.filename else b""
+    number = f_str("po_number")
+    try:
+        raw = request.form.get("po_amount", "").replace(",", "").strip()
+        amount = float(raw) if raw else None
+    except ValueError:
+        amount = None
+    if not data and not number:
+        flash(tp("po_need", lang), "error")
+        return redirect(url_for("portal.booking", code=code) + "#po")
+    from .. import bookings as booking_svc
     if b.client_accepted_at is None:
         b.client_accepted_at = utcnow()
-        doc = request.files.get("document")
-        if doc and doc.filename:
-            data = doc.read()
-            if data:
-                s.add(BookingDocument(booking_id=b.id, filename=doc.filename[:300], content_type=(doc.mimetype or "")[:120],
-                                      data=data, uploaded_by=u.email))
-        log(s, u.email, "client_accepted", "booking", b.code,
-            "The client accepted the hold in the portal" + (" and sent a document" if doc and doc.filename else ""))
-        alert(s, "client", f"{b.client.name} accepted hold {b.code} in the portal. Confirm the booking.",
-              link=f"/bookings/{b.code}", subject=f"{b.client.name} accepted hold {b.code}")
-        s.commit()
-    flash(tp("done_thanks", _lang()), "ok")
+    booking_svc.record_po(s, u.email, b, number, amount,
+                          (doc.filename, doc.mimetype or "", data) if data else None)
+    gap = booking_svc.po_mismatch(b)
+    alert(s, "client", f"{b.client.name} sent the purchase order for hold {b.code}. Confirm the booking."
+          + (f" {gap}" if gap else ""), link=f"/bookings/{b.code}",
+          subject=f"{b.client.name} sent the PO for {b.code}")
+    s.commit()
+    flash(tp("done_thanks", lang), "ok")
     return redirect(url_for("portal.booking", code=code))
+
+
+# ── Proposals ───────────────────────────────────────────────────────────────────
+
+def _last_sent(q):
+    return q.versions[-1].snapshot if q.versions else None
+
+
+def _my_quote(s, ref):
+    u = client_user()
+    q = s.scalars(select(Quote).where(Quote.ref == ref, Quote.client_id == u.client_id, Quote.version > 0)).first()
+    if q is None or not q.versions:
+        abort(404)
+    return q
+
+
+@bp.route("/portal/quotes/<ref>")
+@portal_required
+def quote(ref):
+    s = get_db()
+    q = _my_quote(s, ref)
+    lang = _lang()
+    return render_template("portal_quote.html", q=q, snap=_last_sent(q), lang=lang, fmt=lambda d: drafts._d(d, lang),
+                           can_answer=q.status in ("sent", "changes_requested"))
+
+
+@bp.route("/portal/quotes/<ref>/pdf")
+@portal_required
+def quote_pdf(ref):
+    s = get_db()
+    q = _my_quote(s, ref)
+    import io
+    pdf = quotes.to_pdf(q, _last_sent(q), settings.get(s, "company_name"))
+    return send_file(io.BytesIO(pdf), mimetype="application/pdf", download_name=f"{q.ref}-v{q.version}.pdf")
+
+
+@bp.route("/portal/quotes/<ref>/<action>", methods=["POST"])
+@portal_required
+def quote_answer(ref, action):
+    s = get_db()
+    q = _my_quote(s, ref)
+    u = client_user()
+    lang = _lang()
+    if q.status not in ("sent", "changes_requested") or action not in ("accept", "changes", "decline"):
+        abort(404)
+    try:
+        if action == "accept":
+            sent = {o["id"]: o for o in _last_sent(q)["options"]}
+            oid = int(request.form.get("option_id") or 0)
+            option = next((o for o in q.options if o.id == oid), None)
+            now = {o["id"]: o for o in quotes.snapshot(q)["options"]}
+            if option is None or oid not in sent or now.get(oid, {}).get("lines") != sent[oid]["lines"] \
+                    or now[oid]["totals"]["net"] != sent[oid]["totals"]["net"]:
+                flash(tp("q_updating", lang), "error")      # the team changed it since; what they saw isn't on offer
+                return redirect(url_for("portal.quote", ref=ref))
+            from .. import bookings as booking_svc
+            try:
+                b = quotes.accept(s, u, q, option, by_client=True)
+            except booking_svc.Overbooked:
+                s.rollback()
+                q = _my_quote(s, ref)
+                alert(s, "client", f"{q.client.name} tried to accept a proposal {q.ref} option that no longer fits. "
+                                   "Offer them another.", link=f"/quotes/{q.ref}")
+                s.commit()
+                flash(tp("q_no_room", lang), "error")
+                return redirect(url_for("portal.quote", ref=ref))
+            s.commit()
+            flash(tp("q_accepted_now", lang), "ok")
+            return redirect(url_for("portal.booking", code=b.code) + "#po")
+        if action == "changes":
+            quotes.ask_changes(s, u.email, q, request.form.get("text", ""))
+        else:
+            quotes.decline(s, u.email, q, request.form.get("text", ""))
+    except quotes.QuoteError as e:
+        s.rollback()
+        flash(str(e), "error")
+        return redirect(url_for("portal.quote", ref=ref))
+    s.commit()
+    flash(tp("done_thanks", lang), "ok")
+    return redirect(url_for("portal.quote", ref=ref))
 
 
 @bp.route("/portal/bookings/<code>/upload", methods=["POST"])

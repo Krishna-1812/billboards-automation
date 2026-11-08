@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Proposals · Billboard Ops{% endblock %}
+{% block content %}
+<div class="head">
+  <div><h1>Proposals</h1>
+    <p class="muted">What we offered each client, the negotiation, and what they accepted. A proposal is made from a request (Requests → the request → Make a proposal), or from scratch here.</p></div>
+  {% if can('hold') %}
+  <details class="menu">
+    <summary class="btn primary">+ New proposal</summary>
+    <div class="dropdown" style="width:300px;padding:14px">
+      <form method="post" action="{{ url_for('quotes.quote_new') }}">
+        {{ m.csrf() }}
+        <label>Client</label><select name="client_id" required><option value="">Choose…</option>{% for c in clients %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+        <label>Campaign</label><input type="text" name="title">
+        <p><button class="primary" type="submit">Start it</button></p>
+      </form>
+    </div>
+  </details>
+  {% endif %}
+</div>
+
+{% set open_n = (counts.get('draft', 0) + counts.get('sent', 0) + counts.get('changes_requested', 0)) %}
+<nav class="segmented" aria-label="Which proposals">
+  {% for key, label, n in [('open', 'Open', open_n), ('accepted', 'Accepted', counts.get('accepted', 0)), ('closed', 'Declined or expired', counts.get('declined', 0) + counts.get('expired', 0) + counts.get('withdrawn', 0)), ('all', 'All', none)] %}
+    <a href="{{ url_for('quotes.quote_list', show=key) }}" class="{{ 'on' if show == key }}">{{ label }}{% if n %} <span class="count" style="background:var(--lilac);color:var(--accent-strong)">{{ n }}</span>{% endif %}</a>
+  {% endfor %}
+</nav>
+
+<div class="card table-wrap" style="margin-top:14px">
+  <table>
+    <thead><tr><th>Proposal</th><th>Client</th><th>Options</th><th>From</th><th>Status</th><th>Valid until</th><th>Last sent</th></tr></thead>
+    {% for q in rows %}
+    {% set nets = [] %}{% for o in q.options %}{% set t_ = totals(o) %}{% if not t_.missing and o.lines %}{% set _ = nets.append(t_.net) %}{% endif %}{% endfor %}
+    <tr>
+      <td><a href="{{ url_for('quotes.quote_page', ref=q.ref) }}">{{ q.ref }}</a>{% if q.title %}<div class="small muted">{{ q.title }}</div>{% endif %}</td>
+      <td><span class="who-cell"><span class="mono-av av{{ q.client_id % 4 }}" aria-hidden="true">{{ q.client.name[:1]|upper }}</span>{{ q.client.name }}</span></td>
+      <td>{{ q.options|length }}</td>
+      <td class="num">{{ '%s %s'|format(q.currency, '{:,.0f}'.format(nets|min)) if nets else '—' }}</td>
+      <td><span class="pill {{ {'draft': '', 'sent': 'hold', 'changes_requested': 'partial', 'accepted': 'ok', 'declined': 'no', 'expired': 'no', 'withdrawn': ''}[q.status] }}">{{ q.status|nice }}</span>{% if q.version > 1 %} <span class="small muted">v{{ q.version }}</span>{% endif %}
+        {% if q.status == 'accepted' and q.booking %}<div class="small"><a href="{{ url_for('bookings.booking_detail', code=q.booking.code) }}">{{ q.booking.code }}</a></div>{% endif %}</td>
+      <td style="white-space:nowrap">{{ q.valid_until|date if q.valid_until else '—' }}</td>
+      <td class="small muted" style="white-space:nowrap">{{ q.sent_at|dt if q.sent_at else 'Not sent' }}</td>
+    </tr>
+    {% else %}<tr><td colspan="7" class="empty">No proposals here yet.</td></tr>{% endfor %}
+  </table>
+</div>
+{% endblock %}

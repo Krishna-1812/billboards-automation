@@ -114,7 +114,8 @@ def dashboard_table(s, what, today):
         m0, m1 = insights.month_of(today)
         l0, l1 = insights.last_month(today)
         a, b = insights.pipeline(s, m0, m1), insights.pipeline(s, l0, l1)
-        labels = {"requests": "Requests", "holds": "Holds placed", "confirmed": "Confirmed", "started": "Campaigns started"}
+        labels = {"requests": "Requests", "proposals": "Proposals sent", "holds": "Holds placed", "confirmed": "Confirmed",
+                  "started": "Campaigns started", "value": "Value confirmed"}
         return (["Stage", f"{m0:%B %Y}", f"{l0:%B %Y}"], [[labels[k], a[k], b[k]] for k in labels],
                 f"Pipeline {m0:%Y-%m}")
     if what == "screens":

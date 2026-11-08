@@ -19,7 +19,7 @@ def booking(s, people, inv, pph=30, screen="a", start=None, days=7, confirm=True
                    [svc.LineIn(inv[screen].id, start, start + timedelta(days=days - 1), ad_seconds=10,
                                plays_per_hour=pph, **kw)], title="Launch")
     if confirm:
-        svc.confirm(s, people["manager"], b)
+        svc.confirm(s, people["manager"], b, po_number="PO-1")
     s.commit()
     return b
 

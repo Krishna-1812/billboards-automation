@@ -26,7 +26,7 @@
             {% if d.get('unmatched') %}<div class="muted">{{ d['unmatched']|length }} location(s) not matched</div>{% endif %}
           {% elif p.status in ('new', 'reading') %}<span class="muted">Reading…</span>{% endif %}
         </td>
-        <td><span class="pill {{ {'needs_review': 'hold', 'held': 'ok', 'failed': 'error', 'declined': 'no', 'waiting_client': 'partial'}.get(p.status, '') }}">{{ p.status|nice }}</span>
+        <td><span class="pill {{ {'needs_review': 'hold', 'held': 'ok', 'failed': 'error', 'declined': 'no', 'waiting_client': 'partial', 'proposal_sent': 'partial'}.get(p.status, '') }}">{{ p.status|nice }}</span>
           {% if p.ready and p.status == 'needs_review' %}<div><span class="pill ok">Ready to hold</span></div>{% endif %}
           {% if d.get('missing') and p.status == 'needs_review' %}<div class="small muted">missing {{ d['missing']|join(', ') }}</div>{% endif %}
           {% if p.duplicate_of_id %}<div class="small muted">possible duplicate</div>{% endif %}</td>
