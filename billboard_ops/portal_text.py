@@ -76,7 +76,7 @@ P = {
     "tile_held":       ("Held for you", "محجوزة مبدئياً لكم"),
     "tile_files":      ("Need your files", "بانتظار ملفاتكم"),
     "tile_live_sub":   ("Campaigns playing on the screens", "حملات تُعرض على الشاشات"),
-    "tile_held_sub":   ("Accept them to keep the screen time", "أكّدوها للاحتفاظ بوقت العرض"),
+    "tile_held_sub":   ("Send your purchase order to confirm them", "أرسلوا أمر الشراء لتأكيدها"),
     "tile_files_sub":  ("Upload them from each booking", "ارفعوها من صفحة كل حجز"),
     "past":            ("Past campaigns", "الحملات السابقة"),
     "none_current":    ("Nothing booked right now.", "لا توجد حجوزات حالياً."),

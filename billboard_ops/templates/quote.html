@@ -120,7 +120,7 @@
   <div class="row" style="margin-top:12px">
     <div><label>Discount %</label><input type="text" inputmode="decimal" name="discount_pct" value="{{ '%g'|format(o.discount_pct) }}" {{ 'disabled' if not editable }}></div>
     <div><label>Or an agreed total ({{ cur }}) <span class="hint">replaces the discount</span></label><input type="text" inputmode="decimal" name="agreed_total" value="{{ '%.0f'|format(o.agreed_total) if o.agreed_total is not none else '' }}" {{ 'disabled' if not editable }}></div>
-    <div style="flex:2"><label>Value adds <span class="hint">one per line</span></label><textarea name="value_adds" rows="2" {{ 'disabled' if not editable }} placeholder="e.g. One extra week free on SZR-02">{{ o.value_adds }}</textarea></div>
+    <div style="flex:2"><label>Value adds <span class="hint">one per line</span></label><textarea name="value_adds" rows="1" style="min-height:44px" {{ 'disabled' if not editable }} placeholder="e.g. One extra week free on SZR-02">{{ o.value_adds }}</textarea></div>
   </div>
   {% if t_.discount_pct > limit + 0.01 and not can('confirm') and editable %}<p class="flash warning" style="margin-top:8px">A {{ '%.0f'|format(t_.discount_pct) }}% discount is above {{ '%.0f'|format(limit) }}%: a Manager has to send this proposal.</p>{% endif %}
   {% if t_.bonus_value %}<p class="small muted">The bonus lines are worth {{ cur }} {{ '{:,.0f}'.format(t_.bonus_value) }} on the rate card.</p>{% endif %}

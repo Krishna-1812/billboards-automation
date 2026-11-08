@@ -335,6 +335,32 @@ Do this once before launch, on a scratch Postgres database (for example a second
 The restore records itself in the database it was loaded into. Since that's the scratch database, tick
 **Restoring a backup was tested** on Settings → Launch yourself.
 
+## Proposals, negotiation and the purchase order
+
+The flow from a request to a confirmed booking:
+
+1. **Request.** The client asks (email, WhatsApp, the portal, or pasted in). The agent reads it (Requests).
+2. **Proposal.** "Make a proposal" on the request drafts the options: as asked; free screens nearby or the nearest
+   free dates for anything that doesn't fit; and one within the client's budget when they gave one (playing less
+   often). Prices start from each screen's **rate card** (Screens → Edit → *Price of one slot for one week*). The
+   formula is in `billboard_ops/pricing.py`: rate × slots × days ÷ 7 × booked hours ÷ operating hours. Any price can
+   be changed on the proposal. Proposals can also be made from scratch (Proposals, or a client's page).
+3. **Negotiation.** Each option has its screens, dates, hours, frequency, price, a discount (or an agreed total) and
+   value adds (bonus lines that play without charge, or anything written). "Send" puts the version in the Outbox
+   with its PDF and a portal link. When the client asks for changes, the team edits and sends the next version;
+   every version is kept, with what changed. Above the discount limit (Settings → Automation), a Manager sends it.
+4. **Acceptance and the purchase order.** The client accepts an option in the portal (or the team records it). That
+   places the hold, or brings the request's hold in line with it, with the agreed price. The client sends the
+   **purchase order** (or booking order) from the booking in the portal, or the team adds it on the booking page:
+   its file, number and amount. The app flags an amount that differs from the agreed price.
+5. **Confirmation.** A Manager confirms once the PO is in. Without one, they can still confirm by giving a reason,
+   which is logged and noticed (Settings → Automation can switch the PO rule off).
+6. **Assets.** As before: the client's files are requested, checked and approved, then the play plan, loading and
+   going live.
+
+Proposals past their "valid until" date expire on their own. The overview's pipeline counts proposals sent, and
+what confirmed bookings are worth.
+
 ## Layout
 
 | Path | What it is |
@@ -363,6 +389,7 @@ The restore records itself in the database it was loaded into. Since that's the 
 | `billboard_ops/insights.py`, `summary.py`, `exports.py` | Phase 5: the dashboard's numbers, the Monday summary, exports to Excel, CSV, PDF and Sheets |
 | `billboard_ops/security.py`, `monitor.py`, `backup.py`, `retention.py` | Phase 5: headers and rate limits; watching the connections; backups and restore; data rules and deleting a client |
 | `billboard_ops/launch.py`, `help_text.py`, `loadtest.py` | Phase 5: the launch checklist and cut-over; the role guides; the load test |
+| `billboard_ops/quotes.py`, `pricing.py` | Proposals: options, versions, sending, acceptance and the PDF; the rate-card formula |
 | `billboard_ops/views/`, `templates/`, `static/` | The pages |
 | `migrations/` | Alembic migrations, which Railway runs before each deploy |
 | `tests/` | The test suite. It runs on SQLite, and on Postgres when `TEST_DATABASE_URL` is set |

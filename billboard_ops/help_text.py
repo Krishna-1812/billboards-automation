@@ -28,8 +28,13 @@ GUIDES = {
         "title": ("Managers", "المديرون"),
         "intro": ("You confirm bookings and decide the exceptions.", "تؤكد الحجوزات وتقرر الاستثناءات."),
         "steps": [
-            ("Confirm a hold once the signed proposal or purchase order arrives; attach it when you confirm.",
-             "أكّد الحجز المبدئي عند وصول العرض الموقّع أو أمر الشراء، وأرفقه عند التأكيد."),
+            ("Confirm a hold once the client's purchase order (or booking order) is in: it shows on the booking with "
+             "its number and amount, and the app warns when the amount differs from the agreed price. Without a "
+             "PO you can still confirm by giving a reason, which is logged.",
+             "أكّد الحجز المبدئي بعد وصول أمر الشراء (أو أمر الحجز) من العميل: يظهر في صفحة الحجز برقمه ومبلغه، "
+             "وينبّهك التطبيق إذا اختلف المبلغ عن السعر المتفق عليه. يمكنك التأكيد دون أمر شراء بذكر السبب، ويُسجَّل ذلك."),
+            ("Proposals with a discount above the limit in Settings are sent by you, not by Sales.",
+             "العروض التي يتجاوز خصمها الحد المحدد في الإعدادات ترسلها أنت، لا فريق المبيعات."),
             ("Only you can book past a screen's capacity, approve a file that failed, or confirm a plan that "
              "overfills the loop. Each needs a reason, and it is logged.",
              "أنت وحدك تستطيع الحجز فوق سعة الشاشة، أو اعتماد ملف لم يجتز الفحص، أو تأكيد خطة تتجاوز الدورة. "
@@ -44,8 +49,21 @@ GUIDES = {
         "title": ("Sales", "المبيعات"),
         "intro": ("You turn requests into holds and keep clients moving.", "تحوّل الطلبات إلى حجوزات وتتابع العملاء."),
         "steps": [
-            ("Proposals: the agent reads each request. Check its reading, fix anything wrong, then place the hold.",
-             "الطلبات: يقرأ الوكيل كل طلب. راجع قراءته وصحّح أي خطأ، ثم ضع الحجز المبدئي."),
+            ("Requests: the agent reads each request. Check its reading and fix anything wrong, then “Make a "
+             "proposal”: options as asked, with free screens or dates when something doesn't fit, and one within "
+             "the client's budget.",
+             "الطلبات: يقرأ الوكيل كل طلب. راجع قراءته وصحّح أي خطأ، ثم اختر «إعداد عرض»: خيارات كما طُلبت، مع شاشات "
+             "أو تواريخ متاحة عند عدم التوفر، وخيار ضمن ميزانية العميل."),
+            ("Proposals: prices start from each screen's rate card. Change screens, dates, frequency, prices, the "
+             "discount and value adds, then send it: the PDF and a portal link go out from the Outbox.",
+             "العروض: تبدأ الأسعار من سعر كل شاشة في قائمة الأسعار. عدّل الشاشات والتواريخ والتكرار والأسعار والخصم "
+             "والإضافات، ثم أرسله: يخرج ملف PDF ورابط البوابة من صندوق الرسائل الصادرة."),
+            ("Negotiating: when the client asks for changes, edit the options and send the next version. Every "
+             "version is kept. When they accept an option, the hold is placed with the agreed price.",
+             "التفاوض: عندما يطلب العميل تعديلات، عدّل الخيارات وأرسل النسخة التالية. تُحفظ كل النسخ. وعند قبوله خياراً "
+             "يوضع الحجز المبدئي بالسعر المتفق عليه."),
+            ("Then chase the purchase order: add it on the booking page if it comes by email.",
+             "ثم تابع أمر الشراء: أضفه في صفحة الحجز إذا وصل بالبريد الإلكتروني."),
             ("Nothing fits? “Offer alternatives” drafts a reply with the nearest free dates and screens.",
              "لا يوجد توفر؟ «اقتراح بدائل» يُعدّ رداً بأقرب التواريخ والشاشات المتاحة."),
             ("Check vacancy answers “is there room?” in seconds, for any screens, dates, hours and frequency.",
@@ -88,8 +106,12 @@ GUIDES = {
              "سجّلوا الدخول ببريدكم الإلكتروني للعمل: نرسل لكم رابطاً يعمل مرة واحدة خلال 30 دقيقة. لا حاجة لكلمة مرور."),
             ("My bookings shows each campaign, where it stands and what's next.",
              "تعرض «حجوزاتي» كل حملة وحالتها والخطوة التالية."),
-            ("Accept a hold, and attach the signed proposal or purchase order.",
-             "اقبلوا الحجز المبدئي، وأرفقوا العرض الموقّع أو أمر الشراء."),
+            ("Proposals: compare the options side by side, ask for changes, or accept the one you want. The PDF is "
+             "there to download.",
+             "العروض: قارنوا الخيارات جنباً إلى جنب، واطلبوا التعديلات، أو اقبلوا الخيار المناسب. ملف PDF متاح للتنزيل."),
+            ("Once you accept, we hold the screens. Send your purchase order (its file, number and amount) from the "
+             "booking, and we confirm it.",
+             "بعد القبول نحجز الشاشات مبدئياً. أرسلوا أمر الشراء (الملف والرقم والمبلغ) من صفحة الحجز، ونقوم بتأكيده."),
             ("Upload your ad files. Within minutes you see whether they pass, and how to fix anything that doesn't.",
              "ارفعوا ملفات الإعلان. خلال دقائق تعرفون إن كانت مقبولة، وكيفية تصحيح ما لا يطابق المتطلبات."),
             ("All text must be in Arabic, or in Arabic and English.",

@@ -87,8 +87,9 @@ def seed_quotes(s, owner, screens, clients, today):
     by = {sc.code: sc for sc in screens}
     gulf_request = s.scalars(select(Proposal).where(Proposal.sender == "marketing@gulfmotors.example")).first()
     if gulf_request is not None:
+        gulf_request.draft = dict(gulf_request.draft or {}, budget={"amount": 160000, "currency": "AED"})
         q = quotes.draft_from_request(s, owner, gulf_request)
-        q.budget, q.message = 160000, "Thank you for thinking of us for the SUV launch. Option B swaps in the free screens."
+        q.message = "Thank you for thinking of us for the SUV launch. Option C fits the budget you mentioned."
         quotes.send(s, owner, q)
 
     sahara = clients[3]
