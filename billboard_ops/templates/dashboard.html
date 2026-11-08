@@ -26,7 +26,7 @@
       <div>
         <div class="eyebrow">Loop time sold this month · {{ month0.strftime('%B') }}</div>
         <div style="display:flex;align-items:baseline;gap:12px;margin-top:4px;flex-wrap:wrap">
-          <span style="font-size:64px;font-weight:800;letter-spacing:-0.045em;line-height:1">{{ top.month|round|int }}%</span>
+          <span class="kpi" style="font-size:64px;font-weight:800;letter-spacing:-0.045em;line-height:1">{{ top.month|round|int }}%</span>
           <span class="chip mint">This week {{ top.week|round|int }}%</span>
         </div>
       </div>

@@ -10,7 +10,7 @@
     </div>
     <div class="body">
     {% if done %}
-      <h1>{{ tw('su_done_title', name=done.name) }}</h1>
+      <h1 data-confetti>{{ tw('su_done_title', name=done.name) }}</h1>
       <p class="intro">{{ tw('su_done_body', ref=done.ref or '', email=done.email) }}</p>
       <div class="kicker">{{ tw('su_done_next') }}</div>
       <ol class="done-steps">

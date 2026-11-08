@@ -2,6 +2,7 @@
 {% import "_public.html" as p with context %}
 {% block title %}{{ company }} · {{ tw('eyebrow') }}{% endblock %}
 {% block body %}
+<div class="m-intro" aria-hidden="true"><div class="m-intro-in"><span class="logo"><i></i><i></i><i></i><i></i></span><span class="m-intro-name">{{ company }}</span></div></div>
 {{ p.topbar(links=true, network=screens|length > 0) }}
 
 <main id="main">
@@ -220,11 +221,20 @@
     const mine = new Set(); for (let j = 0; j < k; j++) mine.add(Math.floor(j * n / k));
     arcs.forEach((a, i) => a.classList.toggle('mine', mine.has(i)));
     const h = perHour * k, d = perDay * k;
-    ring.querySelector('[data-per-hour]').textContent = h.toLocaleString(lang) + '×';
-    ring.querySelector('[data-per-day]').textContent = d.toLocaleString(lang);
-    document.querySelector('[data-n-hour]').textContent = h.toLocaleString(lang);
-    document.querySelector('[data-n-day]').textContent = d.toLocaleString(lang);
+    const set = (el, v, suffix) => {
+      if (window.Motion && first === false) { el.textContent = '0' + (suffix || ''); window.Motion.countUp(el, v, 600); }
+      else el.textContent = v.toLocaleString('en') + (suffix || '');
+    };
+    set(ring.querySelector('[data-per-hour]'), h, '×');
+    set(ring.querySelector('[data-per-day]'), d);
+    set(document.querySelector('[data-n-hour]'), h);
+    set(document.querySelector('[data-n-day]'), d);
+    if (first === false) {
+      [ring, document.querySelector('.nums')].forEach(el => { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); });
+    }
+    first = false;
   }
+  let first = true;
   document.querySelectorAll('.chip[data-k]').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('.chip[data-k]').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
     pick(+b.dataset.k);

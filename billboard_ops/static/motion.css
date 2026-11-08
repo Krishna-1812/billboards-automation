@@ -1,0 +1,156 @@
+/* Motion for every page: the team app, the client portal and the public pages.
+   Page-to-page transitions, things arriving in order, hover that answers the pointer, celebrations for the big moments.
+   Short and quick, so it never slows the work down; all of it stops for people who ask for less motion. */
+
+/* ── Moving between pages: the bar stays put, the active tab slides, the page settles in ─────────────── */
+@view-transition { navigation: auto; }
+.topbar, .portal-top { view-transition-name: topbar; }
+.navpill > a.on { view-transition-name: navon; }
+.brand .logo, .pbrand .logo { view-transition-name: brandlogo; }
+main.page, main.portal-main { view-transition-name: page; }
+::view-transition-group(*) { animation-duration: .38s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+::view-transition-old(page) { animation: .18s ease-in both vt-out; }
+::view-transition-new(page) { animation: .38s cubic-bezier(.2, .8, .2, 1) both vt-in; }
+::view-transition-old(root) { animation: .2s ease both vt-fade-out; }
+::view-transition-new(root) { animation: .3s ease both vt-fade-in; }
+@keyframes vt-out { to { opacity: 0; transform: translateY(-8px) scale(.995); filter: blur(2px); } }
+@keyframes vt-in { from { opacity: 0; transform: translateY(14px); } }
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+
+/* ── The loading bar and the scroll bar at the very top ──────────────────────────────────────────────── */
+.m-load { position: fixed; top: 0; inset-inline-start: 0; height: 3px; width: 0; z-index: 1000; pointer-events: none; opacity: 0;
+  background: linear-gradient(90deg, #8F80FF, #FF7A52, #FFD166, #7FE0BF); box-shadow: 0 0 12px rgba(143, 128, 255, .8);
+  transition: width .4s cubic-bezier(.2, .8, .2, 1), opacity .3s ease; }
+.m-load.on { opacity: 1; }
+.m-scroll { position: fixed; top: 0; inset-inline: 0; height: 3px; z-index: 999; pointer-events: none; transform-origin: left;
+  transform: scaleX(var(--p, 0)); background: linear-gradient(90deg, #5A49E6, #FF7A52, #7FE0BF); opacity: .85; }
+[dir=rtl] .m-scroll { transform-origin: right; }
+
+/* ── Things arrive in order ──────────────────────────────────────────────────────────────────────────── */
+@keyframes m-rise { from { opacity: 0; transform: translateY(16px) scale(.985); } }
+@keyframes m-fade { from { opacity: 0; } }
+@keyframes m-pop { from { opacity: 0; transform: scale(.6); } 70% { transform: scale(1.12); } }
+@keyframes m-slide { from { opacity: 0; transform: translateX(-14px); } }
+[dir=rtl] { --m-slide: 14px; }
+.page > *, .portal-main > * { animation: m-rise .55s cubic-bezier(.2, .8, .2, 1) both; }
+.page > :nth-child(2), .portal-main > :nth-child(2) { animation-delay: .05s; }
+.page > :nth-child(3), .portal-main > :nth-child(3) { animation-delay: .1s; }
+.page > :nth-child(4), .portal-main > :nth-child(4) { animation-delay: .15s; }
+.page > :nth-child(5), .portal-main > :nth-child(5) { animation-delay: .2s; }
+.page > :nth-child(n+6), .portal-main > :nth-child(n+6) { animation-delay: .24s; }
+.bento > *, .grid > *, .qcards > *, .cols-2 > *, .cols-3 > *, .cols-4 > * { animation: m-rise .6s cubic-bezier(.2, .8, .2, 1) both;
+  animation-delay: calc(.08s + var(--i, 0) * 55ms); }
+tbody tr, table > tr { animation: m-fade .45s ease both; animation-delay: calc(.12s + var(--i, 0) * 22ms); }
+.cal tr { animation-name: m-slide; }
+.flash, .banner { animation: m-flash .6s cubic-bezier(.2, .8, .2, 1) both; position: relative; overflow: hidden; }
+@keyframes m-flash { from { opacity: 0; transform: translateY(-10px) scale(.98); } }
+.flash::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .55) 50%, transparent 70%) -150% 0 / 60% 100% no-repeat;
+  animation: m-shine 1.2s ease .5s 1 both; }
+@keyframes m-shine { to { background-position: 250% 0; } }
+.count { animation: m-pop .5s cubic-bezier(.2, .8, .2, 1) .4s both; }
+.ticks i { animation: m-pop .4s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(.4s + var(--i, 0) * 30ms); }
+.cal td a { animation: m-fade .4s ease both; }
+
+/* ── The logo breathes ───────────────────────────────────────────────────────────────────────────────── */
+.logo i { animation: m-logo 6s ease-in-out infinite; }
+.logo i:nth-child(2) { animation-delay: 1.5s; } .logo i:nth-child(3) { animation-delay: 3s; } .logo i:nth-child(4) { animation-delay: 4.5s; }
+@keyframes m-logo { 0%, 20%, 100% { opacity: 1; transform: none; } 10% { opacity: .35; transform: scale(.8); } }
+.brand:hover .logo i, .pbrand:hover .logo i { animation: m-logo-spin .7s cubic-bezier(.2, .8, .2, 1); }
+.brand:hover .logo i:nth-child(2), .pbrand:hover .logo i:nth-child(2) { animation-delay: .05s; }
+.brand:hover .logo i:nth-child(3), .pbrand:hover .logo i:nth-child(3) { animation-delay: .1s; }
+.brand:hover .logo i:nth-child(4), .pbrand:hover .logo i:nth-child(4) { animation-delay: .15s; }
+@keyframes m-logo-spin { 50% { transform: scale(.4) rotate(90deg); border-radius: 50%; } }
+
+/* ── The team app's top bar ──────────────────────────────────────────────────────────────────────────── */
+.navpill > a, .navpill > details > summary { transition: background .2s ease, color .2s ease, transform .15s ease; }
+.navpill > a:active { transform: scale(.96); }
+.navpill > a.on { box-shadow: 0 6px 16px rgba(23, 22, 42, .25); }
+.iconbtn:has(.dot) svg { animation: m-ring 4s ease-in-out 1s infinite; transform-origin: 50% 10%; }
+@keyframes m-ring { 0%, 86%, 100% { transform: none; } 88% { transform: rotate(14deg); } 91% { transform: rotate(-12deg); }
+  94% { transform: rotate(8deg); } 97% { transform: rotate(-4deg); } }
+.iconbtn .dot { animation: m-pulse 2s ease-out infinite; }
+@keyframes m-pulse { 0% { box-shadow: 0 0 0 2px var(--panel), 0 0 0 2px rgba(255, 122, 82, .6); }
+  100% { box-shadow: 0 0 0 2px var(--panel), 0 0 0 10px rgba(255, 122, 82, 0); } }
+.avatar { transition: transform .25s cubic-bezier(.2, .8, .2, 1), box-shadow .25s ease; }
+.avatar:hover { transform: rotate(-8deg) scale(1.06); box-shadow: 0 0 0 4px var(--accent-soft, #ECE8FF); }
+details[open] > .dropdown { animation: m-drop .22s cubic-bezier(.2, .8, .2, 1) both; transform-origin: top right; }
+[dir=rtl] details[open] > .dropdown { transform-origin: top left; }
+@keyframes m-drop { from { opacity: 0; transform: translateY(-6px) scale(.96); } }
+details[open] > .dropdown > * { animation: m-fade .3s ease both; animation-delay: calc(var(--i, 0) * 18ms); }
+.menu > summary svg { transition: transform .25s cubic-bezier(.2, .8, .2, 1); }
+.menu[open] > summary svg { transform: rotate(180deg); }
+.search { transition: width .35s cubic-bezier(.2, .8, .2, 1), box-shadow .2s ease; }
+.search:focus-within { box-shadow: 0 0 0 4px rgba(90, 73, 230, .18), 0 8px 24px rgba(23, 22, 42, .08); }
+@media (min-width: 1561px) { .search:focus-within { width: 300px; } }
+
+/* ── Tiles and cards answer the pointer ──────────────────────────────────────────────────────────────── */
+.m-tilt { transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--ty, 0));
+  transition: transform .5s cubic-bezier(.2, .8, .2, 1), box-shadow .4s ease; will-change: transform; }
+.m-tilt.m-hot { transition: transform .08s linear, box-shadow .4s ease; --ty: -3px; }
+.m-glare { position: relative; isolation: isolate; }
+.m-glare::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2; opacity: 0;
+  background: radial-gradient(420px circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, .38), transparent 45%);
+  transition: opacity .35s ease; mix-blend-mode: soft-light; }
+.tile-dark.m-glare::before, .m-glare.dark::before { background: radial-gradient(420px circle at var(--gx, 50%) var(--gy, 50%), rgba(143, 128, 255, .35), transparent 45%); mix-blend-mode: screen; }
+.m-glare:hover::before { opacity: 1; }
+a.tile { transition: transform .4s cubic-bezier(.2, .8, .2, 1), box-shadow .4s ease; }
+a.tile:hover { box-shadow: 0 2px 4px rgba(23, 22, 42, .05), 0 22px 44px rgba(23, 22, 42, .14); }
+a.tile .t span[aria-hidden] { transition: transform .3s cubic-bezier(.2, .8, .2, 1); display: inline-block; }
+a.tile:hover .t span[aria-hidden] { transform: translateX(5px); }
+[dir=rtl] a.tile:hover .t span[aria-hidden] { transform: translateX(-5px); }
+.card { transition: box-shadow .35s ease, transform .35s cubic-bezier(.2, .8, .2, 1); }
+tbody tr td { transition: background .2s ease; }
+tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent, #5A49E6); }
+[dir=rtl] tbody tr:hover td:first-child { box-shadow: inset -3px 0 0 var(--accent, #5A49E6); }
+.cal td a { transition: transform .18s cubic-bezier(.2, .8, .2, 1), box-shadow .18s ease; }
+.cal td a:hover { transform: scale(1.22); z-index: 2; position: relative; }
+
+/* ── Buttons: a ripple, a press, a spinner while the next page loads ─────────────────────────────────── */
+button, .btn { position: relative; overflow: hidden; }
+button.primary, .btn.primary { transition: transform .15s ease, box-shadow .25s ease, background .2s ease; }
+button.primary:hover, .btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(90, 73, 230, .35); }
+.m-ripple { position: absolute; border-radius: 50%; pointer-events: none; transform: scale(0); opacity: .45;
+  background: currentColor; animation: m-ripple .65s ease-out forwards; }
+@keyframes m-ripple { to { transform: scale(1); opacity: 0; } }
+.m-busy { pointer-events: none; color: transparent !important; }
+.m-busy::after { content: ""; position: absolute; inset: 0; margin: auto; width: 18px; height: 18px; border-radius: 50%;
+  border: 2.5px solid rgba(127, 127, 160, .35); border-top-color: var(--accent, #5A49E6); animation: m-spin .7s linear infinite; }
+.primary.m-busy::after, .glow.m-busy::after, .dark.m-busy::after { border-color: rgba(255, 255, 255, .35); border-top-color: #fff; }
+@keyframes m-spin { to { transform: rotate(360deg); } }
+.pill { transition: transform .2s cubic-bezier(.2, .8, .2, 1); }
+tr:hover .pill { transform: scale(1.05); }
+.pill.live::before { animation: m-live 1.6s ease-out infinite; }
+@keyframes m-live { 0% { box-shadow: 0 0 0 0 rgba(17, 107, 71, .45); } 100% { box-shadow: 0 0 0 8px rgba(17, 107, 71, 0); } }
+.livedot { animation: m-live-mint 1.6s ease-out infinite; }
+@keyframes m-live-mint { 0% { box-shadow: 0 0 0 0 rgba(127, 224, 191, .7); } 100% { box-shadow: 0 0 0 10px rgba(127, 224, 191, 0); } }
+
+/* ── The overview chart draws itself ─────────────────────────────────────────────────────────────────── */
+.m-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: m-draw 1.6s cubic-bezier(.4, 0, .2, 1) .35s forwards; }
+@keyframes m-draw { to { stroke-dashoffset: 0; } }
+.m-area { animation: m-fade 1.2s ease .9s both; }
+.m-dot { animation: m-pop .45s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(.6s + var(--i, 0) * 90ms); transform-box: fill-box; transform-origin: center; }
+.m-dot:hover { r: 7; }
+
+/* ── Celebrations ────────────────────────────────────────────────────────────────────────────────────── */
+.m-confetti { position: fixed; inset: 0; pointer-events: none; z-index: 1001; overflow: hidden; }
+.m-confetti i { position: absolute; width: 9px; height: 9px; border-radius: 2px; will-change: transform, opacity; }
+
+/* ── The pointer on the public pages: a soft LED dot that trails it ──────────────────────────────────── */
+.m-cursor { position: fixed; top: 0; left: 0; z-index: 1002; pointer-events: none; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  border-radius: 50%; border: 1.5px solid rgba(143, 128, 255, .75); transition: width .25s ease, height .25s ease, margin .25s ease,
+  background .25s ease, border-color .25s ease, opacity .3s ease; opacity: 0; mix-blend-mode: difference; }
+.m-cursor.on { opacity: 1; }
+.m-cursor.big { width: 64px; height: 64px; margin: -32px 0 0 -32px; background: rgba(143, 128, 255, .18); border-color: rgba(255, 179, 148, .9); }
+.m-cursor.down { width: 24px; height: 24px; margin: -12px 0 0 -12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+  *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important; }
+  .m-tilt { transform: none !important; }
+  .m-draw { stroke-dashoffset: 0; }
+  .m-cursor, .m-confetti, .m-scroll { display: none; }
+}
+@media print { .page > *, .bento > *, tbody tr { animation: none !important; } .m-load, .m-scroll, .m-cursor { display: none; } }
