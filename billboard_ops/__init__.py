@@ -23,14 +23,20 @@ log = logging.getLogger(__name__)
 def create_app(config=None):
     cfg = config or Config()
     runtime.init(cfg)
-    if not cfg.SECRET_KEY:
-        if not (cfg.TESTING or cfg.DEV_LOGIN or cfg.DATABASE_URL.startswith("sqlite")):
-            raise RuntimeError("SECRET_KEY must be set (Railway → Variables).")
-        cfg.SECRET_KEY = "dev-only-not-secret"
     db.init_engine(cfg.DATABASE_URL)
     if cfg.DATABASE_URL.startswith("sqlite"):
         # Local and test databases are made on the spot; Postgres is built by the migrations (alembic upgrade head).
         Base.metadata.create_all(db.engine())
+    if not cfg.SECRET_KEY:
+        if cfg.TESTING or cfg.DEV_LOGIN or cfg.DATABASE_URL.startswith("sqlite"):
+            cfg.SECRET_KEY = "dev-only-not-secret"
+        else:
+            cfg.SECRET_KEY, cfg.SECRET_KEY_STORED = stored_secret(), True
+    if cfg.LOGIN_REQUIRED and not cfg.TESTING and not has_real_owner(cfg):
+        # Switching sign-in on with nobody allowed in would lock everyone out: keep it off and say why.
+        cfg.LOGIN_REQUIRED = False
+        cfg.LOGIN_BLOCKED = True
+        log.warning("Sign-in stays off: set OWNER_EMAILS to the owner's Google address first.")
 
     app = Flask(__name__)
     # Railway (like most hosts) serves the app behind one proxy that ends HTTPS: trust its X-Forwarded-Proto and
@@ -92,6 +98,7 @@ def create_app(config=None):
             "can": lambda cap: can(g.get("user"), cap), "csrf_token": csrf_token, "STATUSES": STATUSES,
             "status_label": lambda s: t(f"status_{s}", lang),
             "login_required": cfg.LOGIN_REQUIRED,
+            "login_blocked": cfg.LOGIN_BLOCKED,
         }
 
     from .views.filters import register as register_filters
@@ -115,10 +122,44 @@ def create_app(config=None):
     return app
 
 
+def stored_secret():
+    """No SECRET_KEY was set: make one once and keep it in the database, so every process signs cookies alike.
+    Setting SECRET_KEY on Railway replaces it."""
+    import secrets
+
+    from sqlalchemy.exc import IntegrityError
+
+    from .models import Setting
+    with db.session_scope() as s:
+        row = s.get(Setting, "secret_key")
+        if row is not None and row.value and row.value.get("v"):
+            return row.value["v"]
+    try:
+        with db.session_scope() as s:
+            s.add(Setting(key="secret_key", value={"v": secrets.token_urlsafe(48)}))
+    except IntegrityError:
+        pass                                   # another process made it first; use theirs
+    with db.session_scope() as s:
+        return s.get(Setting, "secret_key").value["v"]
+
+
+STAND_IN_OWNER = "owner@billboards.local"
+
+
+def has_real_owner(cfg):
+    """Someone can sign in as an owner: an address in OWNER_EMAILS, or an active owner added in Settings → People."""
+    if cfg.OWNER_EMAILS:
+        return True
+    from sqlalchemy import func, select
+    with db.session_scope() as s:
+        return s.scalars(select(User.id).where(User.role == "owner", User.active.is_(True),
+                                               func.lower(User.email) != STAND_IN_OWNER)).first() is not None
+
+
 def open_access_user(s, cfg):
     """While sign-in is off, everyone acts as this owner (the first of OWNER_EMAILS, or a stand-in address)."""
     from sqlalchemy import func, select
-    email = (cfg.OWNER_EMAILS or ["owner@billboards.local"])[0].strip().lower()
+    email = (cfg.OWNER_EMAILS or [STAND_IN_OWNER])[0].strip().lower()
     u = s.scalars(select(User).where(func.lower(User.email) == email)).first()
     if u is None:
         u = User(email=email, role="owner", name="Owner")

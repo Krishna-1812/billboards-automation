@@ -16,14 +16,14 @@
         <p class="actions"><button name="action" value="test_sheet">Test</button>
           {% if mirror %}<button name="action" value="mirror_now">Rewrite the mirror tab now</button>{% endif %}</p></form>
     {% else %}
-      <p><span class="pill no">Not connected</span> Set <span class="mono">GOOGLE_SERVICE_ACCOUNT_JSON</span> on Railway (both services). Until then, imports work from uploaded .xlsx files and nothing is mirrored.</p>
+      <p><span class="pill no">Not connected</span> Set <span class="mono">GOOGLE_SERVICE_ACCOUNT_JSON</span> on Railway (web service). Until then, imports work from uploaded .xlsx files and nothing is mirrored.</p>
     {% endif %}
     {% if no_calendar %}<p class="small"><span class="pill warning">{{ no_calendar|length }}</span> active screen(s) have no calendar set:
       {% for s in no_calendar[:15] %}<a href="{{ url_for('screens.screen_edit', screen_id=s.id) }}">{{ s.code }}</a>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
   </div>
   <div class="card">
     <h3 style="margin-top:0">Reading proposals</h3>
-    <p>Claude: {% if cfg.ANTHROPIC_API_KEY_SET %}<span class="pill ok">Connected</span> model <span class="mono">{{ cfg.PROPOSAL_MODEL }}</span>, effort {{ cfg.PROPOSAL_EFFORT }}{% else %}<span class="pill no">Not connected</span> set <span class="mono">ANTHROPIC_API_KEY</span> on both services{% endif %}.</p>
+    <p>Claude: {% if cfg.ANTHROPIC_API_KEY_SET %}<span class="pill ok">Connected</span> model <span class="mono">{{ cfg.PROPOSAL_MODEL }}</span>, effort {{ cfg.PROPOSAL_EFFORT }}{% else %}<span class="pill no">Not connected</span> set <span class="mono">ANTHROPIC_API_KEY</span> on the web service{% endif %}.</p>
     <p>Proposals mailbox: {% if cfg.email_in %}<span class="pill ok">Connected</span> {{ cfg.IMAP_USER }} on {{ cfg.IMAP_HOST }}, checked every minute{% else %}<span class="pill warning">Not set up</span> <span class="mono">IMAP_HOST</span>, <span class="mono">IMAP_USER</span>, <span class="mono">IMAP_PASSWORD</span>{% endif %}.</p>
     <p>WhatsApp: {% if cfg.whatsapp %}<span class="pill ok">Connected</span>{% else %}<span class="pill warning">Not set up</span> <span class="mono">WHATSAPP_TOKEN</span>, <span class="mono">WHATSAPP_PHONE_NUMBER_ID</span>, <span class="mono">WHATSAPP_APP_SECRET</span>, <span class="mono">WHATSAPP_VERIFY_TOKEN</span>{% endif %}.
       <br><span class="small">Webhook address for Meta: <span class="mono">{{ (cfg.APP_URL or request.host_url.rstrip('/')) }}/webhooks/whatsapp</span></span></p>

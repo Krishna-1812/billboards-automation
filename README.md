@@ -415,46 +415,71 @@ CI runs both, plus a check that the migrations match the models (`.github/workfl
 
 ## Deploying on Railway
 
-The app runs as one Railway project with three parts: **Postgres**, **web** and **worker**. Web and worker are
-both built from the root of this repo.
+The app runs as one Railway project with two parts: **Postgres** and **web**. The web service also runs the
+background worker next to the app (see `gunicorn.conf.py`), so there is no separate worker service to set up.
 
-1. **New project → Deploy from GitHub repo →** this repository. Then **Add → Database → PostgreSQL**.
-2. On the **web** service, open **Settings** and set:
-    - **Root Directory:** leave empty (the repo root).
-    - **Pre-deploy Command:** `alembic upgrade head`. This builds or updates the tables before each release.
-    - **Custom Start Command:** `gunicorn 'billboard_ops:create_app()' --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 60`
-    - **Healthcheck Path:** `/health`
-    - **Networking:** generate a domain, or add the client's own (for example `ops.clientdomain.com`).
+### Launch, in order
 
-   `railway.json` records the same settings. Enter them by hand anyway: config files are deprecated for new
-   Railway services.
-3. **Add a second service** from the same repo for the **worker**:
-    - **Root Directory:** leave empty (the repo root).
-    - **Custom Start Command:** `python -m billboard_ops.worker`
-    - **Healthcheck Path:** leave empty.
-    - **Restart Policy:** Always.
-    - **Networking:** add no domain.
+1. **Postgres.** In the Railway project: **+ Create → Database → PostgreSQL**. Then Postgres service →
+   **Backups**: switch them on.
+2. **Three variables on the web service** (web service → Variables):
 
-   The worker's heartbeat shows on `/health` and on Settings → Connections.
-4. **Variables.** Give both services the same values, using **Add Reference** for anything secret:
+   | Variable | Value |
+   | --- | --- |
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (Add Reference → Postgres → DATABASE_URL) |
+   | `OWNER_EMAILS` | The owner's Google address. More than one: separate them with commas. |
+   | `APP_URL` | The app's address, for example `https://billboards-automation-production.up.railway.app` |
 
-   | Variable | Needed | What it is |
-   | --- | --- | --- |
-   | `DATABASE_URL` | yes | `${{Postgres.DATABASE_URL}}` |
-   | `SECRET_KEY` | yes (web) | A long random string. It signs the login cookies. |
-   | `GOOGLE_CLIENT_ID` | later (web) | A Google OAuth client ID ("Web application"), with the app's address as an authorised JavaScript origin |
-   | `LOGIN_REQUIRED` | no | Sign-in is **off for now**: everyone who opens the app acts as the owner, and every page says so. It comes back on by itself once `GOOGLE_CLIENT_ID` is set, or with `LOGIN_REQUIRED=1`. `LOGIN_REQUIRED=0` keeps it off |
-   | `OWNER_EMAILS` | yes | The owner's email address. Owners add everyone else in Settings → People. |
-   | `GOOGLE_SERVICE_ACCOUNT_JSON` | for Sheets and Calendar | The whole JSON key of a Google service account (see below) |
-   | `APP_URL` | recommended | For example `https://ops.clientdomain.com`, for links in calendar events, emails and portal sign-in links |
-   | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | for email | Without these, reminders show only in the app |
-   | `ALERT_EMAILS` | recommended | Who gets an email when something breaks, or a connection is down for 30 minutes |
-   | `ANTHROPIC_API_KEY` | for Phase 2 | Claude reads the proposals. Without it, proposals arrive and the team fills them in by hand. |
-   | `PROPOSAL_MODEL`, `PROPOSAL_EFFORT` | optional | Defaults: `claude-opus-5-5`, `medium`. A cheaper model can be tried here, then checked with the accuracy test. |
-   | `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` | for email intake | The proposals mailbox. For Google Workspace: `imap.gmail.com`, port 993, and an app password. |
-   | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | for WhatsApp | From the Meta app (below) |
+   Railway deploys again by itself. Before each release, `alembic upgrade head` builds or updates the tables
+   (`railway.json` → `preDeployCommand`). The new database starts empty; the demo data on the old temporary
+   database is gone.
+3. **Google** (one Google Cloud project for all of it):
+    - Enable the **Google Sheets API**, **Google Calendar API** and **Google Drive API**.
+    - Create a **service account** with a JSON key, and paste the whole file into `GOOGLE_SERVICE_ACCOUNT_JSON`.
+      Then follow "Connecting Google Sheets and Calendar" and "Connecting Google Drive" below.
+    - **Sign-in:** set up the OAuth consent screen (Internal, for a Google Workspace), then create an **OAuth
+      client ID** of type **Web application**, with the app's address as an **authorised JavaScript origin**.
+      Put it in `GOOGLE_CLIENT_ID`. Sign-in switches on with that deploy, and the owners in `OWNER_EMAILS` can sign
+      in; they add everyone else in Settings → People.
+4. **Claude:** `ANTHROPIC_API_KEY`.
+5. **Email:** the `SMTP_*` variables, `MAIL_FROM` and `ALERT_EMAILS`, then the proposals mailbox (`IMAP_*`).
+6. **WhatsApp:** see "Connecting WhatsApp" below. Start Meta's business verification early: it can take days.
+7. **In the app:** Settings → Launch lists what's left, and checks most of it by itself: import the screens,
+   specs and bookings, set each screen's calendar, add the team, run the two accuracy tests, then the 14-day
+   parallel run and the cut-over.
 
-5. **Backups.** Turn on Railway's Postgres backups (Postgres service → Backups).
+Sign-in stays off until both `GOOGLE_CLIENT_ID` and an owner are set (`OWNER_EMAILS`, or an owner added in
+Settings → People), so switching it on can't lock everyone out; the banner says what's missing.
+
+### Settings Railway reads from `railway.json`
+
+- **Pre-deploy command:** `alembic upgrade head`.
+- **Start command:** `gunicorn 'billboard_ops:create_app()' --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 60`.
+  Gunicorn also reads `gunicorn.conf.py`, which starts the worker and starts it again if it stops.
+- **Healthcheck path:** `/health`. Its `worker_seconds_since_heartbeat` shows the worker is running.
+
+If you'd rather run the worker as its own service: add a second service from this repo with the start command
+`python -m billboard_ops.worker` and no domain, give it the same variables, and set `WORKER_IN_WEB=0` on the web
+service.
+
+### Every variable
+
+| Variable | Needed | What it is |
+| --- | --- | --- |
+| `DATABASE_URL` | yes | `${{Postgres.DATABASE_URL}}` |
+| `OWNER_EMAILS` | yes | The owners' Google addresses. Owners add everyone else in Settings → People. |
+| `APP_URL` | yes | For links in calendar events, emails and portal sign-in links |
+| `GOOGLE_CLIENT_ID` | for sign-in | A Google OAuth client ID ("Web application"), with the app's address as an authorised JavaScript origin |
+| `SECRET_KEY` | no | Signs the sign-in cookies. If it isn't set, the app makes one and keeps it in the database. |
+| `LOGIN_REQUIRED` | no | Sign-in comes on by itself once `GOOGLE_CLIENT_ID` is set. `LOGIN_REQUIRED=0` keeps it off; `1` turns it on without Google (only with `DEV_LOGIN`, for local use). |
+| `WORKER_IN_WEB` | no | `0` when a separate worker service runs |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | for Sheets, Calendar and Drive | The whole JSON key of a Google service account |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | for email | Without these, reminders show only in the app |
+| `ALERT_EMAILS` | recommended | Who gets an email when something breaks, or a connection is down for 30 minutes |
+| `ANTHROPIC_API_KEY` | for reading proposals and checking files | Without it, proposals arrive and the team fills them in by hand. |
+| `PROPOSAL_MODEL`, `PROPOSAL_EFFORT` | optional | Defaults: `claude-opus-5-5`, `medium`. A cheaper model can be tried here, then checked with the accuracy test. |
+| `IMAP_HOST`, `IMAP_PORT`, `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` | for email intake | The proposals mailbox. For Google Workspace: `imap.gmail.com`, port 993, and an app password. |
+| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | for WhatsApp | From the Meta app (below) |
 
 ### Connecting WhatsApp
 
@@ -482,7 +507,7 @@ both built from the root of this repo.
 
 1. In Google Cloud, create a project. Enable the **Google Sheets API** and the **Google Calendar API**.
 2. Create a **service account**, add a JSON key, and paste the whole file into `GOOGLE_SERVICE_ACCOUNT_JSON` on
-   both services.
+   the web service.
 3. Share with the service account's email address, which is shown in Settings → Connections:
     - every sheet to import from (viewer access is enough);
     - the mirror sheet (editor);

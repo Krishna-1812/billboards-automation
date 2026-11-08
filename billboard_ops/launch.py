@@ -49,14 +49,18 @@ def checks(session, cfg, today=None):
     groups.append(("The service", [
         _ok("ok" if cfg.DATABASE_URL.startswith("postgresql") else "todo", "The app uses the Postgres database",
             "" if cfg.DATABASE_URL.startswith("postgresql") else "It's on a temporary SQLite file, wiped on every deploy",
-            "Railway: add Postgres and set DATABASE_URL on both services"),
+            "Railway: add Postgres and set DATABASE_URL on the web service (README → Launch, in order)"),
         _ok("ok" if cfg.SECRET_KEY and cfg.SECRET_KEY not in ("dev-only-not-secret", "test") else "todo",
-            "SECRET_KEY is set", "", "Railway → web service → Variables"),
+            "Sign-in cookies are signed with a secret key",
+            "Made by the app and kept in the database (a SECRET_KEY variable on Railway would replace it)"
+            if getattr(cfg, "SECRET_KEY_STORED", False) else "", "Railway → web service → Variables → SECRET_KEY"),
         _ok("ok" if beat_ok else "todo", "The worker is running",
             "" if beat_ok else ("never seen" if age is None else f"last seen {int(age.total_seconds() // 60)} min ago"),
-            "Railway: add the worker service (README → Deploying on Railway)"),
+            "It starts with the web service; check the web service's logs for \"worker started\""),
         _ok("ok" if cfg.LOGIN_REQUIRED and cfg.GOOGLE_CLIENT_ID else "todo", "Sign-in with Google is on",
-            "" if cfg.LOGIN_REQUIRED else "Sign-in is switched off: anyone with the link can use the app",
+            "" if cfg.LOGIN_REQUIRED else ("Waiting for OWNER_EMAILS: without it nobody could sign in as an owner"
+                                           if getattr(cfg, "LOGIN_BLOCKED", False)
+                                           else "Sign-in is switched off: anyone with the link can use the app"),
             "Set GOOGLE_CLIENT_ID (and remove LOGIN_REQUIRED=0)"),
         _ok("ok" if cfg.APP_URL else "todo", "APP_URL is set, for links in emails and calendar events", "",
             "Railway → Variables"),

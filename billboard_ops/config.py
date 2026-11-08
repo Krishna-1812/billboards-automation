@@ -45,6 +45,8 @@ class Config:
         # LOGIN_REQUIRED=1, and on its own once GOOGLE_CLIENT_ID is set (LOGIN_REQUIRED=0 keeps it off even then).
         raw = os.environ.get("LOGIN_REQUIRED", "").strip()
         self.LOGIN_REQUIRED = _bool("LOGIN_REQUIRED") if raw else bool(self.GOOGLE_CLIENT_ID)
+        self.LOGIN_BLOCKED = False        # sign-in was asked for, but nobody could sign in as an owner yet
+        self.SECRET_KEY_STORED = False    # no SECRET_KEY was set, so the app made one and keeps it in the database
         # A Google service account (its JSON key, pasted whole) for Sheets, Calendar and Drive.
         self.GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
         # Email: SMTP for reminders and error alerts. Unset = messages are logged, not sent.
