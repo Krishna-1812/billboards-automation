@@ -145,6 +145,7 @@ P = {
     "final_body":      ("Tell us about your campaign. We reply within one working day with options, availability "
                         "and prices.",
                         "أخبرنا عن حملتك. نرد خلال يوم عمل واحد بالخيارات والتوفر والأسعار."),
+    "contact":         ("Contact", "تواصل معنا"),
     "footer_team":     ("Team sign-in", "دخول الفريق"),
     "rights":          ("All rights reserved.", "جميع الحقوق محفوظة."),
     "coords":          ("25.2048° N, 55.2708° E", "25.2048° شمالاً، 55.2708° شرقاً"),

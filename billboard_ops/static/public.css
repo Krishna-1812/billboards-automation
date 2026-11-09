@@ -334,11 +334,11 @@ section.sec.tight { padding-top: clamp(56px, 6vw, 96px); }
 .pfoot .cols .mono { color: var(--stone-2); margin-bottom: 6px; }
 .pfoot a { color: var(--paper); opacity: .85; transition: opacity .3s ease; } .pfoot a:hover { opacity: 1; }
 .pfoot .tz { font-variant-numeric: tabular-nums; }
-.wordmark { font-family: var(--serif); font-weight: 400; line-height: .78; letter-spacing: -0.04em; white-space: nowrap; margin: clamp(48px, 7vw, 120px) 0 0;
-  font-size: 20vw; transform: translateY(14%); color: var(--paper); }
-[dir=rtl] .wordmark { letter-spacing: 0; }
-.pfoot .copy { display: flex; justify-content: space-between; gap: 16px; padding: 18px 0 22px; color: var(--stone-2); position: relative; z-index: 1;
-  background: var(--ink); flex-wrap: wrap; }
+.wordmark { font-family: var(--serif); font-weight: 400; line-height: 1.02; letter-spacing: -0.04em; white-space: nowrap;
+  margin: clamp(48px, 7vw, 120px) 0 clamp(16px, 2vw, 32px); padding-bottom: .04em; font-size: 20vw; color: var(--paper); }
+[dir=rtl] .wordmark { letter-spacing: -0.04em; font-family: "Instrument Serif", Georgia, serif; }
+.pfoot .copy { display: flex; justify-content: space-between; gap: 16px; padding: 18px 0 26px; color: var(--stone-2); position: relative; z-index: 1;
+  background: var(--ink); flex-wrap: wrap; border-top: 1px solid var(--rule-d); }
 @media (max-width: 900px) { .pfoot .cols { grid-template-columns: 1fr 1fr; row-gap: 32px; } }
 
 /* ── Forms (becoming a client, signing in) ───────────────────────────────────── */

@@ -66,7 +66,7 @@
       <div><span class="mono">{{ tw('nav_how') }}</span>
         <a href="{{ url_for('public.welcome') }}#how">{{ tw('how_kicker') }}</a>
         <a href="{{ url_for('auth.login', door='team') }}">{{ tw('footer_team') }}</a></div>
-      <div><span class="mono">Contact</span>
+      <div><span class="mono">{{ tw('contact') }}</span>
         {% if public_email %}<a href="mailto:{{ public_email }}" dir="ltr">{{ public_email }}</a>{% endif %}
         {% if public_phone %}<a href="tel:{{ public_phone|replace(' ', '') }}" dir="ltr">{{ public_phone }}</a>{% endif %}
         {% if not public_email and not public_phone %}<a href="{{ url_for('public.signup') }}">{{ tw('cta') }}</a>{% endif %}</div>
