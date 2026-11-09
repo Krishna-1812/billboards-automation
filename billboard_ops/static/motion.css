@@ -20,11 +20,11 @@ main.page, main.portal-main { view-transition-name: page; }
 
 /* ── The loading bar and the scroll bar at the very top ──────────────────────────────────────────────── */
 .m-load { position: fixed; top: 0; inset-inline-start: 0; height: 3px; width: 0; z-index: 1000; pointer-events: none; opacity: 0;
-  background: linear-gradient(90deg, #8F80FF, #FF7A52, #FFD166, #7FE0BF); box-shadow: 0 0 12px rgba(143, 128, 255, .8);
+  background: var(--m-bar, linear-gradient(90deg, #8F80FF, #FF7A52, #FFD166, #7FE0BF)); box-shadow: var(--m-bar-glow, 0 0 12px rgba(143, 128, 255, .8));
   transition: width .4s cubic-bezier(.2, .8, .2, 1), opacity .3s ease; }
 .m-load.on { opacity: 1; }
 .m-scroll { position: fixed; top: 0; inset-inline: 0; height: 3px; z-index: 999; pointer-events: none; transform-origin: left;
-  transform: scaleX(var(--p, 0)); background: linear-gradient(90deg, #5A49E6, #FF7A52, #7FE0BF); opacity: .85; }
+  transform: scaleX(var(--p, 0)); background: var(--m-bar, linear-gradient(90deg, #5A49E6, #FF7A52, #7FE0BF)); opacity: .85; }
 [dir=rtl] .m-scroll { transform-origin: right; }
 
 /* ── Things arrive in order ──────────────────────────────────────────────────────────────────────────── */

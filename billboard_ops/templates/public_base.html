@@ -3,107 +3,23 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <meta name="theme-color" content="#0B0A1C">
+  <meta name="theme-color" content="#F2EFE8">
   <meta name="description" content="{{ tw('hero_sub', company=company) }}">
   <title>{% block title %}{{ company }}{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=DotGothic16&display=swap">
-  <link rel="stylesheet" href="{{ url_for('static', filename='public.css') }}?v=4">
-  <link rel="stylesheet" href="{{ url_for('static', filename='motion.css') }}?v=1">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=Noto+Naskh+Arabic:wght@400;500&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='motion.css') }}?v=2">
+  <link rel="stylesheet" href="{{ url_for('static', filename='public.css') }}?v=6">
   <script>try { if (!sessionStorage.getItem('intro') && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('m-intro-on'); } catch (e) {}</script>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%2317162A'/%3E%3Crect x='10' y='10' width='8.5' height='8.5' rx='2.5' fill='%238F80FF'/%3E%3Crect x='21.5' y='10' width='8.5' height='8.5' rx='2.5' fill='%23FFB394'/%3E%3Crect x='10' y='21.5' width='8.5' height='8.5' rx='2.5' fill='%237FE0BF'/%3E%3Crect x='21.5' y='21.5' width='8.5' height='8.5' rx='2.5' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%2311110F'/%3E%3Crect x='11' y='11' width='8' height='8' fill='%23F2EFE8'/%3E%3Crect x='21' y='11' width='8' height='8' fill='%23F2EFE8'/%3E%3Crect x='11' y='21' width='8' height='8' fill='%23F2EFE8'/%3E%3Crect x='21' y='21' width='8' height='8' fill='%23FF4F1A'/%3E%3C/svg%3E">
 </head>
-<body>
+<body class="quiet">
 <a class="skip" href="#main">{{ tw('skip') }}</a>
 {% block body %}{% endblock %}
-<script>
-window.CSRF = document.querySelector('meta[name=csrf-token]').content;
-(function () {
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const rtl = document.documentElement.dir === 'rtl';
-
-  // The top bar turns solid once the page scrolls.
-  const bar = document.querySelector('.ptop:not(.on-light)');
-  if (bar) { const f = () => bar.classList.toggle('solid', scrollY > 40); f(); addEventListener('scroll', f, {passive: true}); }
-
-  // Stars.
-  document.querySelectorAll('[data-stars]').forEach(el => {
-    for (let i = 0; i < (+el.dataset.stars || 70); i++) {
-      const s = document.createElement('i'), z = Math.random() < .15 ? 3 : (Math.random() < .5 ? 2 : 1);
-      s.style.cssText = `left:${Math.random() * 100}%;top:${Math.random() * 62}%;width:${z}px;height:${z}px;animation-delay:${(Math.random() * 5).toFixed(2)}s;animation-duration:${(3 + Math.random() * 4).toFixed(2)}s`;
-      el.appendChild(s);
-    }
-  });
-
-  // The skyline: drawn from a seed, so it's the same city every visit. Windows flicker; a few roofs carry a screen.
-  function rng(seed) { let x = seed % 2147483647 || 1; return () => (x = x * 16807 % 2147483647) / 2147483647; }
-  document.querySelectorAll('[data-skyline]').forEach(el => {
-    const W = 1440, H = 320, r = rng(+el.dataset.skyline || 7), cols = ['#8F80FF', '#FF7A52', '#7FE0BF', '#FFB394', '#FFD166'];
-    let far = '', near = '', wins = '', boards = '';
-    for (let x = -20; x < W;) { const w = 26 + r() * 64, h = 70 + r() * 150; far += `<rect x="${x.toFixed(1)}" y="${(H - h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}"/>`; x += w + r() * 4; }
-    const spire = W * (rtl ? .2 : .8);
-    for (let x = -14; x < W;) {
-      const w = 46 + r() * 86; let h = 70 + r() * 140;
-      if (Math.abs(x + w / 2 - spire) < 60) { x += 130; continue; }
-      near += `<rect x="${x.toFixed(1)}" y="${(H - h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="2"/>`;
-      for (let wy = H - h + 12; wy < H - 8; wy += 13) for (let wx = x + 8; wx < x + w - 10; wx += 11)
-        if (r() < .16) wins += `<rect class="${r() < .25 ? 'win' : ''}" style="animation-delay:${(r() * 7).toFixed(2)}s" x="${wx.toFixed(1)}" y="${wy.toFixed(1)}" width="4.5" height="6.5" rx="1" fill="${r() < .75 ? '#FFD166' : '#B4A9FF'}" opacity="${(.45 + r() * .45).toFixed(2)}"/>`;
-      if (w > 74 && r() < .3) {
-        const bw = w * .78, bx = x + (w - bw) / 2, by = H - h - 36, c = cols[Math.floor(r() * cols.length)];
-        boards += `<rect x="${(bx + bw * .22).toFixed(1)}" y="${by + 24}" width="3" height="12" fill="#1C1946"/><rect x="${(bx + bw * .78 - 3).toFixed(1)}" y="${by + 24}" width="3" height="12" fill="#1C1946"/><rect class="win" style="animation-duration:${(3 + r() * 4).toFixed(1)}s" x="${bx.toFixed(1)}" y="${by}" width="${bw.toFixed(1)}" height="24" rx="3" fill="${c}" filter="url(#glow)"/>`;
-      }
-      x += w + 2 + r() * 8;
-    }
-    const tower = `<path d="M${spire - 42} ${H} L${spire - 30} ${H - 190} L${spire - 16} ${H - 205} L${spire - 10} ${H - 262} L${spire - 4} ${H - 272} L${spire - 1.5} ${H - 318} L${spire + 1.5} ${H - 318} L${spire + 4} ${H - 272} L${spire + 10} ${H - 240} L${spire + 18} ${H - 190} L${spire + 30} ${H - 150} L${spire + 42} ${H} Z" fill="url(#near)"/><circle cx="${spire}" cy="${H - 318}" r="2.4" fill="#FF7A52" class="win"/>`;
-    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><defs>
-      <linearGradient id="near" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1C1946"/><stop offset="1" stop-color="#08071A"/></linearGradient>
-      <filter id="glow" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-      <g class="far" fill="#2A2464">${far}</g>${tower}<g fill="url(#near)">${near}</g><g>${wins}</g><g>${boards}</g></svg>`;
-  });
-
-  // The billboards.
-  const glows = ['rgba(143,128,255,.6)', 'rgba(255,122,82,.55)', 'rgba(127,224,191,.5)', 'rgba(255,179,148,.45)', 'rgba(242,93,156,.5)'];
-  document.querySelectorAll('[data-board]').forEach(b => {
-    const ads = [...b.querySelectorAll('.ad')], segs = [...b.querySelectorAll('.segs i')], which = b.querySelector('[data-which]');
-    const total = segs.length, ms = +b.dataset.slotMs || 3600; let i = 0;
-    b.style.setProperty('--slot-ms', ms + 'ms');
-    function show() {
-      const a = i % ads.length, s = i % total;
-      ads.forEach((el, k) => el.classList.toggle('on', k === a));
-      b.style.setProperty('--glow', glows[a % glows.length]);
-      segs.forEach((el, k) => { el.classList.toggle('done', k < s); el.classList.remove('now'); });
-      if (segs[s]) { void segs[s].offsetWidth; segs[s].classList.add('now'); }
-      if (which) which.textContent = which.dataset.tpl.replace('{n}', (s + 1).toLocaleString(document.documentElement.lang)).replace('{total}', total.toLocaleString(document.documentElement.lang));
-    }
-    show();
-    if (!reduce) setInterval(() => { i++; show(); }, ms);
-  });
-
-  // Sections rise into view; numbers count up.
-  function countUp(el) {
-    const to = +el.dataset.count, lang = document.documentElement.lang, t0 = performance.now(), d = 1400;
-    if (reduce) { el.textContent = to.toLocaleString(lang); return; }
-    (function f(t) { const p = Math.min(1, (t - t0) / d), e = 1 - Math.pow(1 - p, 3);
-      el.textContent = Math.round(to * e).toLocaleString(lang); if (p < 1) requestAnimationFrame(f); })(t0);
-  }
-  const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => {
-    if (!e.isIntersecting) return;
-    e.target.classList.add('in'); e.target.querySelectorAll('[data-count]').forEach(countUp); io.unobserve(e.target);
-  }), {threshold: .18, rootMargin: '0px 0px -40px 0px'}) : null;
-  document.querySelectorAll('.reveal, .steps, [data-counts]').forEach(el => io ? io.observe(el) : el.classList.add('in'));
-  if (!io) document.querySelectorAll('[data-count]').forEach(countUp);
-
-  // A soft light follows the pointer across the hero.
-  const hero = document.querySelector('.hero');
-  if (hero && !reduce && matchMedia('(pointer: fine)').matches) hero.addEventListener('pointermove', e => {
-    const r = hero.getBoundingClientRect();
-    hero.style.setProperty('--mx', (e.clientX - r.left) + 'px'); hero.style.setProperty('--my', (e.clientY - r.top) + 'px');
-  });
-})();
-</script>
-<script src="{{ url_for('static', filename='motion.js') }}?v=1"></script>
-<script src="{{ url_for('static', filename='public.js') }}?v=1"></script>
+<script>window.CSRF = document.querySelector('meta[name=csrf-token]').content;</script>
+<script src="{{ url_for('static', filename='motion.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='public.js') }}?v=3"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

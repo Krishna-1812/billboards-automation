@@ -7,6 +7,7 @@
   var doc = document.documentElement, rtl = doc.dir === 'rtl', lang = doc.lang || 'en';
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
   var Motion = window.Motion = {};
+  var quiet = document.body.classList.contains('quiet');   // the public pages: no ripples, no confetti
 
   // Order: each child of a grid of tiles, each table row and each menu item knows its place, for the stagger.
   function order() {
@@ -67,7 +68,7 @@
   // A ripple where you press.
   document.addEventListener('pointerdown', function (e) {
     var b = e.target.closest && e.target.closest('button:not(.linkish), .btn, .chip[type=button], .doors button, .navpill > a');
-    if (!b || b.disabled) return;
+    if (!b || b.disabled || quiet) return;
     var r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2, s = document.createElement('span');
     s.className = 'm-ripple';
     s.style.cssText = 'width:' + d + 'px;height:' + d + 'px;left:' + (e.clientX - r.left - d / 2) + 'px;top:' + (e.clientY - r.top - d / 2) + 'px';
@@ -181,7 +182,7 @@
   Motion.confetti = confetti;
   var BIG = /confirm|accepted|approved|is live|went live|placed|booked|sent|ready in the outbox|purchase order|thank/i;
   $$('.flash.ok, .alert.ok').forEach(function (f) {
-    if (!BIG.test(f.textContent)) return;
+    if (quiet || !BIG.test(f.textContent)) return;
     var r = f.getBoundingClientRect();
     setTimeout(function () { confetti(r.left + r.width / 2, r.top + r.height / 2, 110); }, 350);
   });

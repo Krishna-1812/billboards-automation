@@ -2,67 +2,62 @@
 {% import "_public.html" as p with context %}
 {% block title %}{{ tw('sign_in') }} · {{ company }}{% endblock %}
 {% block body %}
-<div class="split">
+<div class="login">
+  <aside class="side">
+    <a class="pbrand" href="{{ url_for('public.welcome') }}">{{ p.mark() }}<span>{{ company }}</span></a>
+    {{ p.stage(slots=12, slot_ms=3800) }}
+    <h2>{{ tw('in_side_title')|safe }}</h2>
+  </aside>
   <main class="main" id="main">
     <div class="top">
-      <a class="pbrand" href="{{ url_for('public.welcome') }}"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>{{ company }}</a>
-      <a class="langbtn" href="{{ request.path }}?lang={{ 'en' if plang == 'ar' else 'ar' }}{% if door == 'team' %}&amp;door=team{% endif %}">{{ tw('other_lang') }}</a>
+      <span class="clock mono stone" data-clock>{{ tw('dubai') }} <span data-t>--:--</span></span>
+      <a class="ulink" href="{{ request.path }}?lang={{ 'en' if plang == 'ar' else 'ar' }}{% if door == 'team' %}&amp;door=team{% endif %}">{{ tw('other_lang') }}</a>
     </div>
-    <div class="body">
-      <h1>{{ tw('in_title') }}</h1>
-      <p class="intro">{{ tw('in_sub') }}</p>
+    <div class="body" data-hero>
+      <div class="kicker fade"><span class="n">→</span><span>{{ tw('in_kicker') }}</span></div>
+      <h1 class="display" data-split>{{ tw('in_title')|safe }}</h1>
+      <p class="lede fade" style="--d:.25s">{{ tw('in_sub') }}</p>
       {% with msgs = get_flashed_messages(with_categories=true) %}
         {% for cat, m in msgs %}<div class="alert {{ 'error' if cat == 'error' else 'ok' }}" role="status">{{ m }}</div>{% endfor %}
       {% endwith %}
-      <div class="doors" role="tablist" aria-label="{{ tw('in_sub') }}">
-        <button type="button" role="tab" id="t-client" aria-controls="d-client" aria-selected="{{ 'false' if door == 'team' else 'true' }}">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>{{ tw('in_client') }}</button>
-        <button type="button" role="tab" id="t-team" aria-controls="d-team" aria-selected="{{ 'true' if door == 'team' else 'false' }}">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/><circle cx="17" cy="9" r="2.5"/><path d="M17.5 14.2c2.2.4 3.6 1.9 4 4.3"/></svg>{{ tw('in_team') }}</button>
-      </div>
+      <div class="fade" style="--d:.35s">
+        <div class="doors" role="tablist" aria-label="{{ tw('in_sub') }}">
+          <button type="button" role="tab" id="t-client" aria-controls="d-client" aria-selected="{{ 'false' if door == 'team' else 'true' }}">{{ tw('in_client') }}</button>
+          <button type="button" role="tab" id="t-team" aria-controls="d-team" aria-selected="{{ 'true' if door == 'team' else 'false' }}">{{ tw('in_team') }}</button>
+        </div>
 
-      <section class="door" id="d-client" role="tabpanel" aria-labelledby="t-client" {{ 'hidden' if door == 'team' }}>
-        <p class="lede">{{ tw('in_client_body') }}</p>
-        <form method="post" action="{{ url_for('portal.login') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <div class="field"><label for="c-email">{{ tw('in_email') }}</label><input id="c-email" type="email" name="email" required autocomplete="email" dir="ltr"></div>
-          <p style="margin:16px 0 0"><button class="btn glow block" type="submit">{{ tw('in_send_link') }} <span class="arrow" aria-hidden="true">→</span></button></p>
-        </form>
-      </section>
-
-      <section class="door" id="d-team" role="tabpanel" aria-labelledby="t-team" {{ 'hidden' if door != 'team' }}>
-        <p class="lede">{{ tw('in_team_body') }}</p>
-        <div id="err" class="alert error" role="alert" hidden></div>
-        {% if google_client_id %}
-          <script src="https://accounts.google.com/gsi/client" async defer></script>
-          <div id="g_id_onload" data-client_id="{{ google_client_id }}" data-callback="onGoogle" data-auto_prompt="false"></div>
-          <div class="gwrap"><div class="g_id_signin" data-type="standard" data-size="large" data-text="signin_with" data-shape="pill" data-width="320" data-locale="{{ plang }}"></div></div>
-        {% endif %}
-        {% if dev_login %}
-          <form method="post" action="{{ url_for('auth.dev_sign_in') }}" style="margin-top:16px">
+        <section class="door" id="d-client" role="tabpanel" aria-labelledby="t-client" {{ 'hidden' if door == 'team' }}>
+          <p class="lede2">{{ tw('in_client_body') }}</p>
+          <form method="post" action="{{ url_for('portal.login') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="field"><label for="d-email">{{ tw('in_dev') }}</label><input id="d-email" type="email" name="email" required dir="ltr"></div>
-            <p style="margin:16px 0 0"><button class="btn dark block" type="submit">{{ tw('sign_in') }}</button></p>
+            <div class="field"><label for="c-email">{{ tw('in_email') }}</label><input id="c-email" type="email" name="email" required autocomplete="email" dir="ltr"></div>
+            <p style="margin:32px 0 0"><button class="btn lg block" type="submit">{{ tw('in_send_link') }} {{ p.arr() }}</button></p>
           </form>
-        {% endif %}
-        {% if not google_client_id and not dev_login %}
-          <div class="alert info">{{ tw('in_not_set') }}</div>
-        {% endif %}
-      </section>
+        </section>
 
-      <p class="alt">{{ tw('in_new') }} <a href="{{ url_for('public.signup') }}">{{ tw('become_client') }}</a></p>
+        <section class="door" id="d-team" role="tabpanel" aria-labelledby="t-team" {{ 'hidden' if door != 'team' }}>
+          <p class="lede2">{{ tw('in_team_body') }}</p>
+          <div id="err" class="alert error" role="alert" hidden></div>
+          {% if google_client_id %}
+            <script src="https://accounts.google.com/gsi/client" async defer></script>
+            <div id="g_id_onload" data-client_id="{{ google_client_id }}" data-callback="onGoogle" data-auto_prompt="false"></div>
+            <div class="gwrap"><div class="g_id_signin" data-type="standard" data-size="large" data-text="signin_with" data-shape="pill" data-theme="filled_black" data-width="320" data-locale="{{ plang }}"></div></div>
+          {% endif %}
+          {% if dev_login %}
+            <form method="post" action="{{ url_for('auth.dev_sign_in') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="field"><label for="d-email">{{ tw('in_dev') }}</label><input id="d-email" type="email" name="email" required dir="ltr"></div>
+              <p style="margin:32px 0 0"><button class="btn lg block" type="submit">{{ tw('sign_in') }} {{ p.arr() }}</button></p>
+            </form>
+          {% endif %}
+          {% if not google_client_id and not dev_login %}
+            <div class="alert info" style="margin-top:24px">{{ tw('in_not_set') }}</div>
+          {% endif %}
+        </section>
+      </div>
+      <p class="alt fade" style="--d:.5s">{{ tw('in_new') }} <a class="ulink" href="{{ url_for('public.signup') }}">{{ tw('cta') }} {{ p.arr() }}</a></p>
     </div>
   </main>
-  <aside class="side">
-    <div class="stars" data-stars="50" aria-hidden="true" style="position:absolute;inset:0;z-index:-2"></div>
-    <div>
-      <div class="eyebrow"><span class="live" aria-hidden="true"></span>{{ company }}</div>
-      <h2 style="margin-top:14px">{{ tw('in_side_title') }}</h2>
-      <p>{{ tw('in_side_body', company=company) }}</p>
-    </div>
-    {{ p.board(slots=12, slot_ms=3400) }}
-    {{ p.skyline(23) }}
-  </aside>
 </div>
 {% endblock %}
 {% block scripts %}

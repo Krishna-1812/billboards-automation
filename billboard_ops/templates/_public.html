@@ -1,8 +1,18 @@
-{# Pieces the public pages share: the top bar, the billboard, the skyline, the footer. #}
+{# Pieces the public pages share: the arrow, the mark, the top bar, the big screen, the footer. #}
 
-{% macro topbar(light=false, links=false, network=false) %}
-<header class="ptop{{ ' on-light' if light }}"><div class="in">
-  <a class="pbrand" href="{{ url_for('public.welcome') }}"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="name">{{ company }}</span></a>
+{% macro arr() %}<svg class="arr" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"/></svg>{% endmacro %}
+
+{% macro mark() %}<span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>{% endmacro %}
+
+{% macro cta(cls='btn sm') %}
+  {% if viewer == 'team' %}<a class="{{ cls }}" href="{{ url_for('main.dashboard') }}">{{ tw('open_app') }} {{ arr() }}</a>
+  {% elif viewer == 'client' %}<a class="{{ cls }}" href="{{ url_for('portal.home') }}">{{ tw('open_portal') }} {{ arr() }}</a>
+  {% else %}<a class="{{ cls }}" href="{{ url_for('public.signup') }}">{{ tw('cta') }} {{ arr() }}</a>{% endif %}
+{% endmacro %}
+
+{% macro topbar(links=false, network=false) %}
+<header class="ptop"><div class="in">
+  <a class="pbrand" href="{{ url_for('public.welcome') }}">{{ mark() }}<span class="name">{{ company }}</span></a>
   {% if links %}
   <nav class="plinks" aria-label="{{ company }}">
     {% if network %}<a href="#network">{{ tw('nav_network') }}</a>{% endif %}
@@ -11,66 +21,58 @@
   </nav>
   {% endif %}
   <div class="pright">
-    <a class="langbtn" href="{{ request.path }}?lang={{ 'en' if plang == 'ar' else 'ar' }}" lang="{{ 'en' if plang == 'ar' else 'ar' }}">{{ tw('other_lang') }}</a>
-    {% if viewer == 'team' %}
-      <a class="btn glow sm" href="{{ url_for('main.dashboard') }}">{{ tw('open_app') }} <span class="arrow" aria-hidden="true">→</span></a>
-    {% elif viewer == 'client' %}
-      <a class="btn glow sm" href="{{ url_for('portal.home') }}">{{ tw('open_portal') }} <span class="arrow" aria-hidden="true">→</span></a>
-    {% else %}
-      {% if request.endpoint != 'auth.login' %}<a class="signin-link" href="{{ url_for('auth.login') }}">{{ tw('sign_in') }}</a>{% endif %}
-      {% if request.endpoint not in ('public.signup', 'public.signup_done') %}<a class="btn glow sm" href="{{ url_for('public.signup') }}">{{ tw('become_client') }}</a>{% endif %}
-    {% endif %}
+    <span class="clock mono" data-clock>{{ tw('dubai') }} <span data-t>--:--</span></span>
+    <a class="ulink" href="{{ request.path }}?lang={{ 'en' if plang == 'ar' else 'ar' }}" lang="{{ 'en' if plang == 'ar' else 'ar' }}">{{ tw('other_lang') }}</a>
+    {% if not viewer and request.endpoint != 'auth.login' %}<a class="ulink" href="{{ url_for('auth.login') }}">{{ tw('sign_in') }}</a>{% endif %}
+    {% if viewer or request.endpoint not in ('public.signup', 'public.signup_done') %}{{ cta() }}{% endif %}
   </div>
 </div></header>
 {% endmacro %}
 
-{# The billboard. Each ad wipes in like an LED panel refreshing; the bar under it is the loop, one segment a slot. #}
-{% macro board(slots=12, slot_ms=3600, live=false) %}
-{% set ads = tw('ads') %}{% set subs = tw('ads_sub') %}
-<div class="board-stage" data-board data-slot-ms="{{ slot_ms }}" aria-hidden="true">
-  <div class="board">
-    <div class="frame">
-      <div class="screen">
-        {% for a in ads %}
-        <div class="ad t{{ loop.index0 }}{{ ' on' if loop.first }}">
-          <span class="tag">{{ company }}</span>
-          {% if loop.index0 == 0 %}<span class="shape" style="width:46%;aspect-ratio:1;inset-inline-end:-8%;top:-18%;background:rgba(255,255,255,.16)"></span>{% endif %}
-          {% if loop.index0 == 1 %}<span class="shape" style="width:34%;aspect-ratio:1;inset-inline-end:8%;top:12%;background:rgba(255,236,170,.55);box-shadow:0 0 60px rgba(255,209,102,.9)"></span>{% endif %}
-          {% if loop.index0 == 2 %}<span class="shape" style="width:120%;height:60%;inset-inline-start:-10%;top:-30%;border-radius:0 0 50% 50%;background:rgba(255,255,255,.12)"></span>{% endif %}
-          {% if loop.index0 == 4 %}<span class="shape" style="width:30%;aspect-ratio:1;inset-inline-end:10%;top:16%;border-radius:28%;transform:rotate(18deg);background:rgba(255,255,255,.2)"></span>{% endif %}
-          <span class="big"{% if live %} data-live="company"{% endif %}>{{ tw('su_your_brand') if live else a }}</span>
-          <span class="small"{% if live %} data-live="when"{% endif %}>{{ tw('su_on_air') if live else subs[loop.index0] }}</span>
-        </div>
-        {% endfor %}
-        <span class="led"></span><span class="sweep"></span><span class="gloss"></span>
-      </div>
+{# The big screen: flat-colour posters taking turns, the way a loop does. Each wipes in over the last. #}
+{% macro stage(slots=12, slot_ms=4200, where='', cls='') %}
+{% set posters = tw('posters') %}
+<div class="stage-wrap {{ cls }}" data-stage data-slot-ms="{{ slot_ms }}" data-slots="{{ slots }}">
+  <div class="stage" aria-hidden="true">
+    {% for k, t, f in posters %}
+    <div class="poster p{{ loop.index0 }}{{ ' on' if loop.first }}">
+      <span class="art"></span>
+      <span class="pk">{{ k }}</span>
+      <p class="pt">{{ t|safe }}</p>
+      <span class="pf">{{ f }}</span>
     </div>
-    <div class="legs"><i></i><i></i></div>
+    {% endfor %}
   </div>
-  <div class="playbar">
-    <span class="np">{{ tw('now_playing') }}</span>
-    <span class="segs">{% for _ in range(slots) %}<i></i>{% endfor %}</span>
-    <span class="which" data-which data-tpl="{{ tw('slot_of', n='{n}', total='{total}') }}">{{ tw('slot_of', n=1, total=slots) }}</span>
+  <div class="stage-cap" aria-hidden="true">
+    <span class="live">{{ tw('now_showing') }}</span>
+    <span class="track"><i></i></span>
+    <span class="slot" data-slot data-tpl="{{ tw('slot_of', n='{n}', total='{total}') }}">{{ tw('slot_of', n='01', total='%02d'|format(slots)) }}{% if where %} · {{ where }}{% endif %}</span>
   </div>
 </div>
 {% endmacro %}
 
-{% macro skyline(seed=7) %}<div class="skyline" data-skyline="{{ seed }}"></div>{% endmacro %}
-
 {% macro footer() %}
-<footer class="pfoot"><div class="wrap in">
-  <a class="pbrand" href="{{ url_for('public.welcome') }}"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>{{ company }}</a>
-  <nav aria-label="Footer">
-    {% if public_email %}<a href="mailto:{{ public_email }}" dir="ltr">{{ public_email }}</a>{% endif %}
-    {% if public_phone %}<a href="tel:{{ public_phone|replace(' ', '') }}" dir="ltr">{{ public_phone }}</a>{% endif %}
-    {% if viewer == 'team' %}<a href="{{ url_for('main.dashboard') }}">{{ tw('open_app') }}</a>
-    {% elif viewer == 'client' %}<a href="{{ url_for('portal.home') }}">{{ tw('open_portal') }}</a>
-    {% else %}
-    <a href="{{ url_for('public.signup') }}">{{ tw('become_client') }}</a>
-    <a href="{{ url_for('auth.login') }}">{{ tw('sign_in') }}</a>
-    <a href="{{ url_for('auth.login', door='team') }}">{{ tw('footer_team') }}</a>
-    {% endif %}
-  </nav>
-  <div class="copy">© {{ year }} {{ company }}. {{ tw('rights') }}</div>
-</div></footer>
+<footer class="pfoot">
+  <div class="wrap">
+    <div class="cols">
+      <div><span class="mono">{{ company }}</span>
+        <span class="stone" style="color:var(--stone-2)">{{ tw('coords') }}</span>
+        <span class="tz" data-clock>{{ tw('dubai') }} <span data-t>--:--</span> {{ tw('gst') }}</span></div>
+      <div><span class="mono">{{ tw('nav_portal') }}</span>
+        {% if viewer == 'team' %}<a href="{{ url_for('main.dashboard') }}">{{ tw('open_app') }}</a>
+        {% elif viewer == 'client' %}<a href="{{ url_for('portal.home') }}">{{ tw('open_portal') }}</a>
+        {% else %}<a href="{{ url_for('public.signup') }}">{{ tw('become_client') }}</a>
+        <a href="{{ url_for('auth.login') }}">{{ tw('sign_in') }}</a>{% endif %}</div>
+      <div><span class="mono">{{ tw('nav_how') }}</span>
+        <a href="{{ url_for('public.welcome') }}#how">{{ tw('how_kicker') }}</a>
+        <a href="{{ url_for('auth.login', door='team') }}">{{ tw('footer_team') }}</a></div>
+      <div><span class="mono">Contact</span>
+        {% if public_email %}<a href="mailto:{{ public_email }}" dir="ltr">{{ public_email }}</a>{% endif %}
+        {% if public_phone %}<a href="tel:{{ public_phone|replace(' ', '') }}" dir="ltr">{{ public_phone }}</a>{% endif %}
+        {% if not public_email and not public_phone %}<a href="{{ url_for('public.signup') }}">{{ tw('cta') }}</a>{% endif %}</div>
+    </div>
+    <div class="wordmark" data-fit aria-hidden="true">{{ company }}</div>
+  </div>
+  <div class="wrap"><div class="copy mono"><span>© {{ year }} {{ company }}. {{ tw('rights') }}</span><span>{{ tw('coords') }}</span></div></div>
+</footer>
 {% endmacro %}

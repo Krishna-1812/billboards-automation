@@ -17,12 +17,12 @@ def test_a_visitor_sees_the_front_page_not_a_sign_in_form(app):
     r = c.get("/")
     assert r.status_code == 302 and r.headers["Location"].endswith("/welcome")
     page = c.get("/welcome").get_data(as_text=True)
-    assert "city&#39;s biggest screens" in page or "city's biggest screens" in page
-    assert "Become a client" in page and "/signup" in page and "/login" in page
+    assert "Seen by Dubai" in page and "seconds</em> at a time" in page
+    assert "Plan a campaign" in page and "Become a client" in page and "/signup" in page and "/login" in page
     # Other team pages still go to the sign-in page, and remember where the visitor was going.
     r = c.get("/bookings")
     assert r.headers["Location"].endswith("/login")
-    assert "I&#39;m on the team" in c.get("/login").get_data(as_text=True)
+    assert 'id="t-team"' in c.get("/login").get_data(as_text=True)
 
 
 def test_the_front_page_lists_screens_but_never_prices(app, s, inventory):

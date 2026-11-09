@@ -1,142 +1,140 @@
 {% extends "public_base.html" %}
 {% import "_public.html" as p with context %}
-{% block title %}{{ company }} · {{ tw('eyebrow') }}{% endblock %}
+{% block title %}{{ company }} · {{ tw('dubai') }}{% endblock %}
 {% block body %}
-<div class="m-intro" aria-hidden="true"><div class="m-intro-in"><span class="logo"><i></i><i></i><i></i><i></i></span><span class="m-intro-name">{{ company }}</span></div></div>
+{% set ns = namespace(n=0) %}
+{% macro kicker(text) %}{% set ns.n = ns.n + 1 %}<div class="kicker reveal"><span class="n">{{ '%02d'|format(ns.n) }}</span><span>{{ text }}</span></div>{% endmacro %}
+
+<div class="curtain" aria-hidden="true">
+  <div class="c-top mono"><span>{{ company }}</span><span>{{ tw('coords') }}</span></div>
+  <div class="c-name"><span>{{ company }}</span></div>
+  <div class="c-bot mono"><span>{{ tw('dubai') }}</span><span class="c-count">000</span></div>
+  <div class="c-line"><i></i></div>
+</div>
+
 {{ p.topbar(links=true, network=screens|length > 0) }}
 
 <main id="main">
-<section class="hero">
-  <div class="stars" data-stars="90" aria-hidden="true"></div>
-  <div class="spot" aria-hidden="true"></div>
-  <div class="grid">
-    <div>
-      <div class="eyebrow"><span class="live" aria-hidden="true"></span>{{ tw('eyebrow') }}</div>
-      <h1>
-        <span class="l"><span>{{ tw('hero_1') }}</span></span>
-        <span class="l"><span>{{ tw('hero_2') }}</span></span>
-        <span class="l"><span class="neon">{{ tw('hero_3') }}</span></span>
-      </h1>
-      <p class="sub">{{ tw('hero_sub', company=company) }}</p>
-      <div class="ctas">
-        {% if viewer == 'team' %}
-          <a class="btn glow" href="{{ url_for('main.dashboard') }}">{{ tw('open_app') }} <span class="arrow" aria-hidden="true">→</span></a>
-        {% elif viewer == 'client' %}
-          <a class="btn glow" href="{{ url_for('portal.home') }}">{{ tw('open_portal') }} <span class="arrow" aria-hidden="true">→</span></a>
-        {% else %}
-          <a class="btn glow" href="{{ url_for('public.signup') }}">{{ tw('cta_start') }} <span class="arrow" aria-hidden="true">→</span></a>
-          <a class="btn ghost" href="{{ url_for('auth.login') }}">{{ tw('cta_signin') }}</a>
-        {% endif %}
+<section class="hero" data-hero>
+  <div class="wrap">
+    <h1 class="display">
+      <span class="l l1" data-split>{{ tw('hero_1') }}</span>
+      <span class="l l2" data-split style="--d:.12s">{{ tw('hero_2', slot=lp.slot)|safe }}</span>
+    </h1>
+    <div class="hero-row">
+      <div class="hero-copy fade" style="--d:.45s">
+        <p>{{ tw('hero_sub', company=company) }}</p>
+        <div class="hero-ctas">
+          {{ p.cta('btn') }}
+          {% if not viewer %}<a class="ulink" href="{{ url_for('auth.login') }}">{{ tw('sign_in') }} {{ p.arr() }}</a>{% endif %}
+        </div>
       </div>
+      <dl class="hero-meta fade" style="--d:.6s">
+        {% if stats %}
+        <div><dt>{{ tw('meta_network') }}</dt><dd>{{ tw('meta_screens', n=stats.screens) }}</dd></div>
+        <div><dt>{{ tw('meta_coverage') }}</dt><dd>{{ tw('meta_districts', n=stats.areas) if stats.areas else tw('dubai') }}</dd></div>
+        {% endif %}
+        <div><dt>{{ tw('meta_loop') }}</dt><dd>{{ tw('meta_loop_v', loop=lp.loop, slots=lp.slots) }}</dd></div>
+        <div><dt>{{ tw('meta_reply') }}</dt><dd>{{ tw('meta_reply_v') }}</dd></div>
+      </dl>
     </div>
-    {{ p.board(slots=lp.slots if lp.slots <= 24 else 12) }}
   </div>
-  {{ p.skyline(7) }}
-  <div class="fadeout" aria-hidden="true"></div>
-  <div class="marquee" aria-hidden="true">
-    <div class="track">
-      {% for _ in range(2) %}{% for m in (areas if areas|length >= 4 else tw('marquee')) %}<span>{{ m }}</span>{% endfor %}{% endfor %}
-    </div>
-  </div>
+  {{ p.stage(slots=lp.slots if lp.slots <= 24 else 12, where=(screens[0].code ~ ' ' ~ screens[0].name) if screens else '', cls='fade') }}
 </section>
 
 {% if stats %}
-<div class="wrap">
-  <div class="stats" data-counts>
-    <div class="stat lilac reveal"><b data-count="{{ stats.screens }}">{{ stats.screens }}</b><span>{{ tw('stat_screens') }}</span></div>
-    {% if stats.areas %}<div class="stat peach reveal d1"><b data-count="{{ stats.areas }}">{{ stats.areas }}</b><span>{{ tw('stat_areas') }}</span></div>
-    {% else %}<div class="stat peach reveal d1"><b data-count="{{ lp.loop }}">{{ lp.loop }}</b><span>{{ tw('stat_loop') }}</span></div>{% endif %}
-    <div class="stat mint reveal d2"><b data-count="{{ stats.plays }}">{{ stats.plays }}</b><span>{{ tw('stat_plays') }}</span></div>
-    <div class="stat dark reveal d3"><b data-count="{{ stats.hours }}">{{ stats.hours }}</b><span>{{ tw('stat_hours') }}</span></div>
+<section class="sec tight">
+  <div class="wrap">
+    {{ kicker(tw('num_kicker')) }}
+    <div class="numbers">
+      <div><b data-count="{{ stats.screens }}">{{ stats.screens }}</b><span>{{ tw('stat_screens') }}</span></div>
+      {% if stats.areas %}<div><b data-count="{{ stats.areas }}">{{ stats.areas }}</b><span>{{ tw('stat_areas') }}</span></div>
+      {% else %}<div><b data-count="{{ lp.loop }}">{{ lp.loop }}</b><span>{{ tw('stat_loop') }}</span></div>{% endif %}
+      <div><b data-count="{{ stats.plays }}">{{ '{:,}'.format(stats.plays) }}</b><span>{{ tw('stat_plays') }}</span></div>
+      <div><b data-count="{{ stats.hours }}">{{ stats.hours }}</b><span>{{ tw('stat_hours') }}</span></div>
+    </div>
   </div>
-</div>
+</section>
 {% endif %}
 
-<section class="band" id="about">
-  <div class="wrap about">
-    <div class="reveal">
-      <div class="kicker">{{ tw('about_kicker', company=company) }}</div>
-      <p class="big">{{ about or tw('about_default') }}</p>
-    </div>
-    <p class="lead reveal d1">{{ tw('about_lead') }}</p>
+<section class="sec">
+  <div class="wrap grid12">
+    <div class="about-k">{{ kicker(tw('about_kicker')) }}</div>
+    <p class="about-t" data-split style="--step:10ms">{{ about or tw('about_default') }}</p>
+    <p class="lead about-l reveal">{{ tw('about_lead') }}</p>
   </div>
 </section>
 
-<section class="band tight" id="loop" style="padding-top:0">
-  <div class="wrap loopwrap">
-    <div class="loopcard reveal" style="--loop-ms: {{ [lp.loop * 100, 6000]|max }}ms">
-      <div class="ring" data-ring data-slots="{{ lp.slots if lp.slots <= 60 else 12 }}">
-        <svg viewBox="0 0 400 400" aria-hidden="true">
-          <defs><linearGradient id="mineGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B4A9FF"/><stop offset="1" stop-color="#5A49E6"/></linearGradient></defs>
-          <g data-segs></g>
-          <g class="head"><circle cx="200" cy="18" r="9" fill="#FFD166"/><circle cx="200" cy="18" r="18" fill="#FFD166" opacity=".25"/></g>
-        </svg>
-        <div class="center">
-          <b data-per-hour>{{ lp.per_hour }}×</b>
-          <span>{{ tw('per_hour') }}</span>
-          <span class="day"><span data-per-day>{{ '{:,}'.format(lp.per_day) }}</span> {{ tw('per_day') }}</span>
-        </div>
+<section class="sec dark loop" id="loop">
+  <div class="wrap grid12">
+    <div class="loop-text">
+      {{ kicker(tw('loop_kicker')) }}
+      <h2 class="h2" data-split>{{ tw('loop_title')|safe }}</h2>
+      <p class="lead reveal">{{ tw('loop_body', loop=lp.loop, slots=lp.slots, slot=lp.slot, per_hour=lp.per_hour, per_day='{:,}'.format(lp.per_day)) }}</p>
+      <div class="tabs reveal" role="group" aria-label="{{ tw('loop_kicker') }}">
+        <button type="button" data-k="1" aria-pressed="true">{{ tw('chip_1') }}</button>
+        {% if lp.slots > 2 %}<button type="button" data-k="2" aria-pressed="false">{{ tw('chip_2') }}</button>{% endif %}
+        <button type="button" data-k="{{ lp.slots }}" aria-pressed="false">{{ tw('chip_all') }}</button>
       </div>
-      <div class="legend"><span><i style="background:linear-gradient(135deg,#B4A9FF,#5A49E6)"></i>{{ tw('loop_you') }}</span><span><i style="background:rgba(255,255,255,.2)"></i>{{ tw('loop_others') }}</span></div>
     </div>
-    <div class="reveal d1">
-      <div class="kicker">{{ tw('loop_eyebrow') }}</div>
-      <h2 class="h2">{{ tw('loop_title') }}</h2>
-      <p class="lead">{{ tw('loop_body', loop=lp.loop, slots=lp.slots, slot=lp.slot, per_hour=lp.per_hour, per_day='{:,}'.format(lp.per_day)) }}</p>
-      <div class="chips" role="group" aria-label="{{ tw('loop_eyebrow') }}">
-        <button class="chip" type="button" data-k="1" aria-pressed="true">{{ tw('chip_1') }}</button>
-        {% if lp.slots > 2 %}<button class="chip" type="button" data-k="2" aria-pressed="false">{{ tw('chip_2') }}</button>{% endif %}
-        <button class="chip" type="button" data-k="{{ lp.slots }}" aria-pressed="false">{{ tw('chip_all') }}</button>
+    <div class="loop-fig reveal" style="--loop-ms: {{ [lp.loop * 100, 8000]|max }}ms">
+      <div class="dial" data-dial data-slots="{{ lp.slots if lp.slots <= 60 else 12 }}" data-ph="{{ lp.per_hour }}" data-pd="{{ lp.per_day }}">
+        <svg viewBox="0 0 400 400" aria-hidden="true">
+          <circle class="ring" cx="200" cy="200" r="196"/>
+          <circle class="ring" cx="200" cy="200" r="140"/>
+          <g data-ticks></g>
+          <g class="hand"><line x1="200" y1="4" x2="200" y2="40" stroke="#FF4F1A" stroke-width="1.5"/><circle cx="200" cy="4" r="4" fill="#FF4F1A"/></g>
+        </svg>
+        <div class="mid" aria-live="polite"><b data-per-hour>{{ lp.per_hour }}</b><span>{{ tw('per_hour') }}</span></div>
       </div>
-      <div class="nums" aria-live="polite">
-        <div><b data-n-hour>{{ lp.per_hour }}</b><span>{{ tw('per_hour') }}</span></div>
+      <div class="dial-foot">
         <div><b data-n-day>{{ '{:,}'.format(lp.per_day) }}</b><span>{{ tw('per_day') }}</span></div>
+        <div><b>{{ lp.loop }}<span style="font-size:.5em"> s</span></b><span>{{ tw('meta_loop') }}</span></div>
       </div>
     </div>
   </div>
 </section>
 
 {% if screens %}
-<section class="band" id="network" style="background:linear-gradient(180deg,var(--bg),#ECEAF7)">
+<section class="sec" id="network">
   <div class="wrap">
-    <div class="reveal">
-      <div class="kicker">{{ tw('net_eyebrow') }}</div>
-      <h2 class="h2">{{ tw('net_title') }}</h2>
-      <p class="lead">{{ tw('net_body') }}</p>
-      {% if areas %}<div class="areas">{% for a in areas %}<span>{{ a }}</span>{% endfor %}</div>{% endif %}
+    {{ kicker(tw('net_kicker')) }}
+    <div class="net-head">
+      <h2 class="h2" data-split>{{ tw('net_title')|safe }}</h2>
+      <p class="lead reveal">{{ tw('net_body') }}</p>
     </div>
-    <div class="screens">
+    {% set has_size = screens|selectattr('physical_size')|list|length > 0 %}
+    {% set has_spec = screens|selectattr('spec_id')|list|length > 0 %}
+    <table class="index reveal">
+      <thead><tr><th>{{ tw('col_screen') }}</th><th></th><th>{{ tw('col_where') }}</th>{% if has_size %}<th>{{ tw('col_size') }}</th>{% endif %}{% if has_spec %}<th>{{ tw('col_res') }}</th>{% endif %}<th>{{ tw('col_hours') }}</th></tr></thead>
+      <tbody>
       {% for s in screens %}
       {% set h = hours_per_day(s.open_hour, s.close_hour) %}
-      <article class="scard reveal d{{ loop.index0 % 3 }}">
-        <div class="mini t{{ loop.index0 % 5 }}"><span class="led"></span><span class="live">Live</span><span class="code">{{ s.code }}</span></div>
-        <h3>{{ s.name }}</h3>
-        <p class="where">{{ s.area or s.address or '—' }}</p>
-        <div class="facts">
-          {% if s.physical_size %}<span dir="ltr">{{ s.physical_size }}</span>{% endif %}
-          {% if s.spec %}<span dir="ltr">{{ s.spec.width_px }} × {{ s.spec.height_px }}</span>{% endif %}
-          <span>{{ tw('hours_all') if h == 24 else tw('hours_range', a='%02d'|format(s.open_hour), b='%02d'|format(s.close_hour or 24)) }}</span>
-          <span>{{ tw('loop_tag', s=s.loop_seconds) }}</span>
-        </div>
-      </article>
+      <tr data-peek="{{ s.code }}" data-peek-name="{{ s.name }}" data-theme="{{ loop.index0 % 5 }}">
+        <td class="code">{{ s.code }}</td>
+        <td class="name"><span>{{ s.name }}</span></td>
+        <td class="where">{{ s.area or s.address or '' }}</td>
+        {% if has_size %}<td class="fact" dir="ltr">{{ s.physical_size or '—' }}</td>{% endif %}
+        {% if has_spec %}<td class="fact" dir="ltr">{{ '%d × %d'|format(s.spec.width_px, s.spec.height_px) if s.spec else '—' }}</td>{% endif %}
+        <td class="fact" dir="ltr">{{ tw('hours_all') if h == 24 else tw('hours_range', a='%02d'|format(s.open_hour), b='%02d'|format(s.close_hour or 24)) }}</td>
+      </tr>
       {% endfor %}
-    </div>
-    {% if more %}<p class="more">{{ tw('net_more', n=more) }}</p>{% endif %}
+      </tbody>
+    </table>
+    {% if more %}<p class="net-more mono">{{ tw('net_more', n=more) }}</p>{% endif %}
   </div>
 </section>
 {% endif %}
 
-<section class="band" id="how">
+<section class="sec" id="how"{% if screens %} style="padding-top:0"{% endif %}>
   <div class="wrap">
-    <div class="reveal">
-      <div class="kicker">{{ tw('how_eyebrow') }}</div>
-      <h2 class="h2">{{ tw('how_title') }}</h2>
-    </div>
+    {{ kicker(tw('how_kicker')) }}
+    <div class="how-head"><h2 class="h2" data-split>{{ tw('how_title')|safe }}</h2></div>
     <div class="steps">
-      <div class="rail" aria-hidden="true"><i></i></div>
       {% for title, body in tw('how') %}
-      <div class="step reveal d{{ loop.index0 }}">
-        <div class="n">0{{ loop.index }}</div>
+      <div class="step reveal" style="--d:{{ loop.index0 * 0.12 }}s">
+        <div class="bar" style="transition-delay:{{ 0.3 + loop.index0 * 0.15 }}s"></div>
+        <span class="n">{{ '%02d'|format(loop.index) }}</span>
         <h3>{{ title }}</h3>
         <p>{{ body }}</p>
       </div>
@@ -145,101 +143,51 @@
   </div>
 </section>
 
-<section class="band" id="portal" style="padding-top:40px">
-  <div class="wrap">
-    <div class="reveal">
-      <div class="kicker">{{ tw('portal_eyebrow') }}</div>
-      <h2 class="h2">{{ tw('portal_title') }}</h2>
-      <p class="lead">{{ tw('portal_body') }}</p>
+<section class="sec portal" id="portal" style="background:var(--paper-2)">
+  <div class="wrap grid12">
+    <div class="portal-text">
+      {{ kicker(tw('portal_kicker')) }}
+      <h2 class="h2" data-split>{{ tw('portal_title')|safe }}</h2>
+      <p class="lead reveal">{{ tw('portal_body') }}</p>
+      <dl class="features reveal">
+        {% for k, v in tw('features') %}<div><dt>{{ k }}</dt><dd>{{ v }}</dd></div>{% endfor %}
+      </dl>
     </div>
-    <div class="bento">
-      <div class="tile s7 lilac reveal">
-        <div class="mock-opts" aria-hidden="true">
-          {% for o in ['A', 'B', 'C'] %}
-          <div class="{{ 'pick' if o == 'B' }}"><b>{{ tw('mock_option') }}</b><strong>{{ o }}</strong><i></i><i></i><em>{{ tw('mock_accept') }}</em></div>
-          {% endfor %}
+    <div class="mock reveal" aria-hidden="true">
+      <div class="mock-top"><b>{{ tw('mock_title') }}</b><span class="mono stone">{{ tw('mock_version') }}</span></div>
+      <div class="mock-opts">
+        {% for o, sc, wk in [('A', 2, 2), ('B', 4, 4), ('C', 6, 4)] %}
+        <div class="mock-opt{{ ' pick' if o == 'B' }}">
+          <span class="mono">{{ tw('mock_option') }} {{ o }}</span>
+          <dl>
+            <div><dt>{{ tw('mock_screens') }}</dt><dd>{{ sc }}</dd></div>
+            <div><dt>{{ tw('mock_weeks') }}</dt><dd>{{ wk }}</dd></div>
+            <div><dt>{{ tw('mock_plays') }}</dt><dd>{{ '{:,}'.format(lp.per_day * 7 * wk * sc) }}</dd></div>
+          </dl>
+          <span class="acc">{{ tw('mock_chosen') if o == 'B' else tw('mock_accept') }}</span>
         </div>
-        <h3>{{ tw('tile_proposals') }}</h3><p>{{ tw('tile_proposals_s') }}</p>
+        {% endfor %}
       </div>
-      <div class="tile s5 mint reveal d1">
-        <div class="mock-checks" aria-hidden="true"><div dir="ltr">1920 × 1080</div><div dir="ltr">10 s</div><div dir="ltr">MP4 · H.264</div></div>
-        <h3>{{ tw('tile_files') }}</h3><p>{{ tw('tile_files_s') }}</p>
-      </div>
-      <div class="tile s5 peach reveal">
-        <div class="mock-proof" aria-hidden="true"><span>{{ tw('mock_played') }}</span></div>
-        <h3>{{ tw('tile_proof') }}</h3><p>{{ tw('tile_proof_s') }}</p>
-      </div>
-      <div class="tile s7 dark reveal d1">
-        <div class="mock-lang" aria-hidden="true"><span>Aa</span><span lang="ar">ع</span></div>
-        <h3>{{ tw('tile_lang') }}</h3><p>{{ tw('tile_lang_s') }}</p>
+      <div class="mock-steps">
+        {% for label in tw('mock_steps') %}<span class="{{ 'done' if loop.first else ('now' if loop.index == 2 else '') }}">{{ label }}</span>{% endfor %}
       </div>
     </div>
   </div>
 </section>
 
-<section class="band tight" style="padding-top:20px">
+<section class="dark close">
   <div class="wrap">
-    <div class="final reveal">
-      <h2>{{ tw('final_title') }}</h2>
-      <p>{{ tw('final_body') }}</p>
-      <div class="ctas">
-        {% if viewer == 'team' %}
-          <a class="btn glow" href="{{ url_for('main.dashboard') }}">{{ tw('open_app') }} <span class="arrow" aria-hidden="true">→</span></a>
-        {% elif viewer == 'client' %}
-          <a class="btn glow" href="{{ url_for('portal.home') }}">{{ tw('open_portal') }} <span class="arrow" aria-hidden="true">→</span></a>
-        {% else %}
-          <a class="btn glow" href="{{ url_for('public.signup') }}">{{ tw('become_client') }} <span class="arrow" aria-hidden="true">→</span></a>
-          <a class="btn ghost" href="{{ url_for('auth.login') }}">{{ tw('sign_in') }}</a>
-        {% endif %}
+    {{ kicker(tw('cta')) }}
+    <h2 class="display" data-split>{{ tw('final_title')|safe }}</h2>
+    <div class="close-row">
+      <p class="lead reveal">{{ tw('final_body') }}</p>
+      <div class="acts reveal">
+        {{ p.cta('btn light lg') }}
+        {% if not viewer %}<a class="ulink" href="{{ url_for('auth.login') }}">{{ tw('sign_in') }} {{ p.arr() }}</a>{% endif %}
       </div>
     </div>
   </div>
 </section>
 </main>
 {{ p.footer() }}
-{% endblock %}
-
-{% block scripts %}
-<script>
-(function () {
-  // The loop ring: one arc a slot; yours lights up. The chips book more of the loop.
-  const ring = document.querySelector('[data-ring]');
-  if (!ring) return;
-  const n = +ring.dataset.slots, g = ring.querySelector('[data-segs]'), R = 182, C = 200, gap = n > 30 ? .6 : 1.6;
-  const perHour = {{ lp.per_hour }}, perDay = {{ lp.per_day }}, lang = document.documentElement.lang;
-  const arcs = [];
-  for (let i = 0; i < n; i++) {
-    const a0 = (i / n) * 360 + gap / 2, a1 = ((i + 1) / n) * 360 - gap / 2;
-    const p = a => [C + R * Math.sin(a * Math.PI / 180), C - R * Math.cos(a * Math.PI / 180)];
-    const [x0, y0] = p(a0), [x1, y1] = p(a1);
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M${x0.toFixed(2)} ${y0.toFixed(2)} A${R} ${R} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`);
-    path.setAttribute('class', 'seg'); g.appendChild(path); arcs.push(path);
-  }
-  function pick(k) {
-    // Spread the booked slots evenly round the loop, as a play plan would.
-    const mine = new Set(); for (let j = 0; j < k; j++) mine.add(Math.floor(j * n / k));
-    arcs.forEach((a, i) => a.classList.toggle('mine', mine.has(i)));
-    const h = perHour * k, d = perDay * k;
-    const set = (el, v, suffix) => {
-      if (window.Motion && first === false) { el.textContent = '0' + (suffix || ''); window.Motion.countUp(el, v, 600); }
-      else el.textContent = v.toLocaleString('en') + (suffix || '');
-    };
-    set(ring.querySelector('[data-per-hour]'), h, '×');
-    set(ring.querySelector('[data-per-day]'), d);
-    set(document.querySelector('[data-n-hour]'), h);
-    set(document.querySelector('[data-n-day]'), d);
-    if (first === false) {
-      [ring, document.querySelector('.nums')].forEach(el => { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); });
-    }
-    first = false;
-  }
-  let first = true;
-  document.querySelectorAll('.chip[data-k]').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.chip[data-k]').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
-    pick(+b.dataset.k);
-  }));
-  pick(1);
-})();
-</script>
 {% endblock %}
