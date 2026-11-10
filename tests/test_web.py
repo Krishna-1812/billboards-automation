@@ -47,6 +47,19 @@ def test_dev_sign_in_lets_in_known_people_and_bootstraps_owners(app, s, people):
     assert owner.role == "owner" and owner.last_login_at is not None
 
 
+def test_first_owner_can_sign_in_on_an_empty_database(app, s):
+    """No one exists yet: the address in OWNER_EMAILS is made the owner and let in on its first sign-in."""
+    c = app.test_client()
+    c.get("/login")
+    with c.session_transaction() as sess:
+        tok = sess["csrf"]
+    r = c.post("/auth/dev", data={"csrf_token": tok, "email": "owner@example.com"})
+    assert r.status_code == 302 and not r.headers["Location"].endswith("/login?door=team")
+    assert c.get("/").status_code == 200
+    owner = s.scalars(select(User).where(User.email == "owner@example.com")).one()
+    assert owner.role == "owner" and owner.active
+
+
 def test_google_sign_in_checks_the_token(app, s, people):
     app.config["APP"].GOOGLE_CLIENT_ID = "cid"
     c = app.test_client()

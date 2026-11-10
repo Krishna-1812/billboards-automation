@@ -76,6 +76,14 @@ def test_confirming_asks_for_the_files(s, people, small):
     assert f"https://ops.example.com/upload/{b.upload_token}" in m.body and "Arabic, or in Arabic and English" in m.body
 
 
+def test_the_file_request_gives_the_frame_rate_range_the_spec_accepts(s, people, small):
+    small["spec"].fps_min, small["spec"].fps_max = 25, 30
+    s.commit()
+    confirmed(s, people, small)
+    m = s.scalars(select(Message).where(Message.kind == "creative_request")).one()
+    assert "25–30 frames per second" in m.body
+
+
 def test_with_drive_the_folder_is_made_and_shared(s, people, small, google):
     settings.put(s, "drive_parent_folder_id", "PARENT")
     s.commit()

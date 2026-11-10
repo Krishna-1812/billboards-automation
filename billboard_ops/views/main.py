@@ -92,7 +92,7 @@ def dashboard():
                            week0=w0, heat=insights.heat, this_month=insights.pipeline(s, m0, m1),
                            last=insights.pipeline(s, l0, l1), month0=m0, last0=l0, greeting=greeting,
                            map_points=insights.screens_on_map(s, today, full), overrides=overrides,
-                           sheet_changes=sheet_changes, activity=activity, problems=recent_problems(s, 5))
+                           sheet_changes=sheet_changes, activity=activity, problems=recent_problems(s, 5, skipped=False))
 
 
 def dashboard_table(s, what, today):

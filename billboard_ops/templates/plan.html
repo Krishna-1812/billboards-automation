@@ -60,7 +60,7 @@
       <p class="small muted">0 plays means it doesn't play on those dates. Special dates win over the weekdays above.</p>
     </details>
     <div class="grid cols-3" style="margin-top:14px">
-      <div class="stat mini lilac"><div class="num">{{ r.per_day|round|int }}</div><div class="lbl">plays a day (average over {{ r.days }} day{{ 's' if r.days != 1 }})</div></div>
+      <div class="stat mini lilac"><div class="num">{{ '{:,.0f}'.format(r.per_day) }}</div><div class="lbl">plays a day (average over {{ r.days }} day{{ 's' if r.days != 1 }})</div></div>
       <div class="stat mini"><div class="num">{{ '{:,.0f}'.format(r.total) }}</div><div class="lbl">plays in total</div></div>
       <div class="stat mini {{ 'mint' if r.fits else 'peach' }}"><div class="num">{{ r.peak_pct|round|int }}%</div><div class="lbl">fullest hour of the loop, with everyone else's bookings</div></div>
     </div>

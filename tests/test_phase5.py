@@ -422,3 +422,15 @@ def test_guides(app, s, people, small, login):
         sess["uid"] = u.id
     assert "بوابتكم" in cl.get("/portal/help").get_data(as_text=True)
 
+
+
+def test_the_overview_leaves_out_tasks_skipped_for_want_of_a_connection(app, s, people, login):
+    s.add(Job(kind="calendar_line", status="skipped", last_error="Screen SZR-01 has no Google Calendar set."))
+    s.commit()
+    owner = login(people["owner"])
+    assert "Background tasks" not in owner.get("/").get_data(as_text=True)
+    assert "no Google Calendar set" in owner.get("/settings/connections").get_data(as_text=True)
+    s.add(Job(kind="send_email", status="failed", attempts=5, last_error="SMTP said no"))
+    s.commit()
+    page = owner.get("/").get_data(as_text=True)
+    assert "Background tasks" in page and "SMTP said no" in page

@@ -10,7 +10,7 @@ from werkzeug.exceptions import Forbidden
 from .. import bookings as svc
 from .. import quotes as qs
 from .. import settings
-from ..models import QUOTE_OPEN, Client, Quote, QuoteOption, Screen
+from ..models import QUOTE_OPEN, Client, Quote, QuoteOption, Screen, User
 from ..web import current_user, f_str, get_db, login_required, needs
 
 bp = Blueprint("quotes", __name__)
@@ -216,6 +216,10 @@ def quote_send(ref):
         return redirect(url_for("quotes.quote_page", ref=ref))
     s.commit()
     flash(f"Version {q.version} is ready in the Outbox with its PDF. Check it and send it.", "ok")
+    if q.client_id and not s.scalar(select(User.id).where(User.client_id == q.client_id, User.role == "client",
+                                                            User.active.is_(True)).limit(1)):
+        flash(f"{q.client.name} can't sign in to the portal yet, so the link in this message won't open for them. "
+              "Give them access on their client page first (it can email them a sign-in link).", "warning")
     return redirect(url_for("inbox.outbox_message", message_id=m.id))
 
 

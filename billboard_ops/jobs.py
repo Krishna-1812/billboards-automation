@@ -93,6 +93,8 @@ def run_due(limit=20):
     return len(claimed)
 
 
-def recent_problems(session, limit=20):
-    return session.scalars(select(Job).where(Job.status.in_(("failed", "skipped")))
+def recent_problems(session, limit=20, skipped=True):
+    """Background tasks that failed. `skipped` also lists those skipped because a connection isn't set up yet, which
+    Settings → Connections shows; the overview leaves them out, so a missing Google set-up isn't shown as a fault."""
+    return session.scalars(select(Job).where(Job.status.in_(("failed", "skipped") if skipped else ("failed",)))
                            .order_by(Job.id.desc()).limit(limit)).all()

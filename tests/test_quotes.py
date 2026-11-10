@@ -269,6 +269,7 @@ def test_the_team_drafts_edits_and_sends_from_the_pages(app, s, people, priced, 
     assert o.discount_pct == 5 and o.lines[0].plays_per_hour == 60 and quotes.totals(o)["net"] == 19000
     r = sales.post(f"/quotes/{q.ref}/send", data=form())
     assert "/outbox/" in r.headers["Location"]
+    assert "sign in to the portal yet" in sales.get(r.headers["Location"]).get_data(as_text=True)
     assert sales.get("/quotes").status_code == 200
     assert b"%PDF" in sales.get(f"/quotes/{q.ref}/pdf?v=1").data[:5]
 
@@ -355,3 +356,14 @@ def test_screen_rate_is_saved_from_the_form(app, s, people, inventory, login):
     s.expire_all()
     assert s.get(Screen, a.id).rate_week is None
 
+
+
+def test_no_portal_warning_once_the_client_can_sign_in(app, s, people, priced, login):
+    s.add(User(email="sara@acme.example", role="client", client_id=priced["client"].id))
+    s.commit()
+    q = quotes.draft_from_request(s, people["sales"], request_for(
+        s, priced, [line(priced["a"], future(10), future(16), ad_seconds=10, plays_per_hour=30)]))
+    s.commit()
+    sales = login(people["sales"])
+    r = sales.post(f"/quotes/{q.ref}/send", data=form())
+    assert "sign in to the portal yet" not in sales.get(r.headers["Location"]).get_data(as_text=True)

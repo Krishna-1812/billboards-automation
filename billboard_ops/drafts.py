@@ -234,7 +234,9 @@ def creative_request(lang, name, company, booking, targets, deadline, upload_url
     def body(lg):
         rows = []
         for spec, secs, codes in targets:
-            fps = t("fps", lg, fps=f"{spec.fps_max or spec.fps_min:g}") if (spec.fps_min or spec.fps_max) else ""
+            lo, hi = spec.fps_min, spec.fps_max
+            rate = f"{lo:g}–{hi:g}" if lo and hi and lo != hi else f"{hi or lo:g}" if (lo or hi) else ""
+            fps = t("fps", lg, fps=rate) if rate else ""
             size = t("maxsize", lg, mb=f"{spec.max_file_mb:g}") if spec.max_file_mb else ""
             rows.append(t("files_spec", lg, screens=", ".join(codes), w=spec.width_px, h=spec.height_px,
                           orient=_orient_word(lg, spec.width_px, spec.height_px), secs=secs,

@@ -32,7 +32,7 @@ def find_or_bootstrap(s, email):
     user = s.scalars(select(User).where(func.lower(User.email) == email)).first()
     cfg = current_app.config["APP"]
     if user is None and email in cfg.OWNER_EMAILS:
-        user = User(email=email, role="owner", name=email.split("@")[0])
+        user = User(email=email, role="owner", name=email.split("@")[0], active=True)
         s.add(user)
         log(s, email, "created", "user", email, "First owner, from OWNER_EMAILS")
     if user is None or not user.active:

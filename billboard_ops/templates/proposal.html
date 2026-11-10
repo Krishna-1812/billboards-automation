@@ -76,7 +76,7 @@
         {% if can('hold') %}<form method="post" action="{{ url_for('inbox.proposal_action', ref=p.ref, action='merge') }}" class="inline">{{ m.csrf() }}<button class="linkish">Merge into {{ dup.ref }}</button></form>{% endif %}</div>
     {% endif %}
     {% if booking %}
-      <div class="flash ok">Hold <a href="{{ url_for('bookings.booking_detail', code=booking.code) }}">{{ booking.code }}</a> placed{% if p.auto_held %} by the agent{% else %} by {{ p.decided_by }}{% endif %} ({{ status_label(booking.status) }}).
+      <div class="flash ok">Hold <a href="{{ url_for('bookings.booking_detail', code=booking.code) }}">{{ booking.code }}</a> placed{% if p.auto_held %} by the agent{% elif p.decided_by %} by {{ p.decided_by }}{% elif booking.client_accepted_at %} when the client accepted the proposal{% endif %} ({{ status_label(booking.status) }}).
         {% if can('accuracy') and not case %}<form method="post" action="{{ url_for('inbox.proposal_action', ref=p.ref, action='case') }}" class="inline">{{ m.csrf() }}<button class="linkish">Save as an accuracy test case</button></form>{% elif case %}Saved as a test case.{% endif %}</div>
     {% endif %}
     {% if d.get('flags') %}<div class="flash warning">{% for f in d.flags %}<div>{{ f }}</div>{% endfor %}</div>{% endif %}
