@@ -15,7 +15,7 @@
   font-family: var(--sans); color: var(--ink); background: var(--paper); font-size: 16px; line-height: 1.55;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-feature-settings: "ss01", "cv11";
 }
-[dir=rtl] { --serif: "Noto Naskh Arabic", "Instrument Serif", serif; --sans: "IBM Plex Sans Arabic", "Geist", system-ui, sans-serif; }
+[dir=rtl] { --serif: "Instrument Serif", "Markazi Text", "Noto Naskh Arabic", serif; --sans: "IBM Plex Sans Arabic", "Geist", system-ui, sans-serif; }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--paper); color: var(--ink); overflow-x: hidden; }
@@ -492,3 +492,25 @@ legend .n { color: var(--ink); }
 .ptop.scrolled.over-dark .plinks a:hover { color: var(--paper); }
 .ptop.scrolled.over-dark .btn { background: var(--paper); color: var(--ink); }
 .ptop .btn, .ptop { transition: transform .6s var(--out), background .4s ease, box-shadow .4s ease, color .4s ease; }
+
+/* ── The Arabic edition ──────────────────────────────────────────────────────────
+   Headlines in Markazi Text, a contemporary Arabic book face cut to sit with Instrument Serif; Latin words and figures
+   inside an Arabic line stay in Instrument Serif. Markazi runs small on the body, so it is set larger and given air. */
+[dir=rtl] :is(.display, .h2, .poster .pt, .about-t, .index .name, .step h3, .mock-top b, .mini-stage .pt, .login .side h2,
+  .done-steps b, .peek b, .numbers b, .dial .mid b, .dial-foot b) { letter-spacing: 0; font-weight: 400; }
+[dir=rtl] .display { font-size: clamp(64px, 11vw, 204px); line-height: 1.1; }
+[dir=rtl] .h2 { font-size: clamp(48px, 6.4vw, 112px); line-height: 1.12; }
+[dir=rtl] .poster .pt { font-size: clamp(58px, 10vw, 188px); line-height: 1.02; }
+[dir=rtl] .p2 .pt { font-size: clamp(54px, 9.6vw, 180px); }
+[dir=rtl] .about-t { font-size: clamp(32px, 3.6vw, 60px); line-height: 1.38; }
+[dir=rtl] .step h3 { font-size: clamp(34px, 2.9vw, 46px); line-height: 1.2; }
+[dir=rtl] .mock-top b { font-size: clamp(28px, 2.4vw, 38px); }
+[dir=rtl] .close .display { font-size: clamp(58px, 9.4vw, 176px); }
+[dir=rtl] .fp-side .display, [dir=rtl] .login .display { font-size: clamp(56px, 6.2vw, 104px); line-height: 1.08; }
+[dir=rtl] .login .side h2 { font-size: clamp(36px, 3.2vw, 54px); line-height: 1.25; }
+[dir=rtl] .login .side .stage .pt { font-size: clamp(48px, 5.2vw, 96px); }
+[dir=rtl] .mini-stage .pt { font-size: clamp(48px, 5.2vw, 90px); line-height: 1.08; }
+[dir=rtl] .done-steps b { font-size: 31px; }
+[dir=rtl] .peek b { font-size: 40px; }
+[dir=rtl] :is(.kicker, .mono, .hero-meta dt, .numbers span, .features dt, .index th, .stage-cap, .mock-steps span, legend) { font-weight: 500; }
+[dir=rtl] .lead, [dir=rtl] .hero-copy p { line-height: 1.85; }

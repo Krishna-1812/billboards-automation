@@ -30,7 +30,7 @@
   font-family: var(--sans); color: var(--ink); background: var(--paper); font-size: 15px; line-height: 1.5;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-feature-settings: "ss01", "cv11";
 }
-[dir=rtl] { --serif: "Noto Naskh Arabic", "Instrument Serif", serif; --sans: "IBM Plex Sans Arabic", "Geist", system-ui, sans-serif; }
+[dir=rtl] { --serif: "Instrument Serif", "Markazi Text", "Noto Naskh Arabic", serif; --sans: "IBM Plex Sans Arabic", "Geist", system-ui, sans-serif; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--paper); color: var(--ink); }
 a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--rule-3); text-underline-offset: 3px;
@@ -42,8 +42,10 @@ h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 4.2vw, 
 h1 em, h2 em { font-style: italic; }
 h2 { font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1.08; margin: 48px 0 16px; letter-spacing: -0.012em; }
 h3 { font-size: 15.5px; margin: 20px 0 8px; font-weight: 600; letter-spacing: -0.005em; }
-[dir=rtl] h1 { line-height: 1.3; letter-spacing: 0; font-size: clamp(34px, 3.6vw, 56px); }
-[dir=rtl] h2 { line-height: 1.35; letter-spacing: 0; font-size: 26px; }
+[dir=rtl] h1 { line-height: 1.15; letter-spacing: 0; font-size: clamp(46px, 4.8vw, 78px); }
+[dir=rtl] h2 { line-height: 1.25; letter-spacing: 0; font-size: 36px; }
+[dir=rtl] .card > h2 { font-size: 31px; }
+[dir=rtl] body { line-height: 1.7; }
 [dir=rtl] h1 em, [dir=rtl] h2 em { font-style: normal; color: var(--signal-ink); }
 strong, b { font-weight: 600; }
 p { margin: 6px 0; }
@@ -521,6 +523,13 @@ a.card:hover { box-shadow: 0 0 0 1px var(--ink); color: var(--ink); }
 .auth .brand { margin-bottom: 26px; }
 .bigcode { font-family: var(--serif); font-weight: 400; font-size: clamp(96px, 14vw, 168px); line-height: .85; letter-spacing: -0.04em; }
 .bigcode em { color: var(--signal); font-style: italic; }
+
+/* ── Arabic in the team app ──────────────────────────────────────────────────────
+   Much of the team app's working text is still English. Each line takes its direction from its own first letter, so an
+   English sentence reads left to right inside the mirrored layout instead of being scrambled, while staying right-aligned. */
+[dir=rtl] .page :where(*) { unicode-bidi: plaintext; }
+[dir=rtl] .page :where(p, td:not(.num), th:not(.num), li, h1, h2, h3, h4, label, dd, dt, legend, .flash, .note, .msg, .risk, .tile, .card) { text-align: right; }
+[dir=rtl] .page :where(.tile .t, .eyebrow, .pill, .chip, .export, .legend) { font-size: 12px; }
 
 @media print {
   .topbar, .portal-top, .no-print, .banner { display: none !important; }

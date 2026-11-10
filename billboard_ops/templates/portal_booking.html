@@ -4,14 +4,14 @@
 <p class="small"><a href="{{ url_for('portal.home') }}">{{ '→' if plang == 'ar' else '←' }} {{ tp('back') }}</a></p>
 <div class="head">
   <div><h1>{{ b.code }} <span class="pill {{ b.status }}">{{ tp('st_' ~ b.status) }}</span></h1>
-    <p class="muted">{% if b.title %}{{ b.title }} · {% endif %}{{ fmt(b.start_date) }} {{ tp('to') }} {{ fmt(b.end_date) }}</p></div>
+    <p class="muted">{% if b.title %}<bdi>{{ b.title }}</bdi> · {% endif %}<bdi>{{ fmt(b.start_date) }}</bdi> {{ tp('to') }} <bdi>{{ fmt(b.end_date) }}</bdi></p></div>
 </div>
 <div class="next">{{ tp('next_step') }}: {{ next }}</div>
 
 <h2>{{ tp('screens') }}</h2>
 <div class="card table-wrap"><table class="small">
   {% for l in b.lines %}<tr><td><strong>{{ l.screen.name }}</strong> <span class="muted">{{ l.screen.code }}</span>{% if l.screen.area %}<div class="muted">{{ l.screen.area }}</div>{% endif %}</td>
-    <td style="white-space:nowrap">{{ fmt(l.start_date) }} {{ tp('to') }} {{ fmt(l.end_date) }}</td></tr>{% endfor %}
+    <td style="white-space:nowrap"><bdi>{{ fmt(l.start_date) }}</bdi> {{ tp('to') }} <bdi>{{ fmt(l.end_date) }}</bdi></td></tr>{% endfor %}
 </table></div>
 
 {% if b.status == 'hold' or b.po_received_at %}
@@ -111,7 +111,7 @@
       {% elif p.kind == 'video' %}<video controls preload="metadata" src="{{ url_for('portal.proof_file', proof_id=p.id) }}"></video>
       {% else %}<a href="{{ url_for('portal.proof_file', proof_id=p.id) }}">{{ tp('report') }}: {{ p.filename }}</a>
         {% if p.summary %}<div class="small">{{ tp('report_line', played='{:,.0f}'.format(p.summary.played), planned='{:,.0f}'.format(p.summary.planned)) }}</div>{% endif %}{% endif %}
-      <div class="small muted">{{ tp(p.kind) }}{% if p.line %} · {{ p.line.screen.name }}{% endif %}{% if p.taken_on %} · {{ fmt(p.taken_on) }}{% endif %}</div>
+      <div class="small muted">{{ tp(p.kind) }}{% if p.line %} · <bdi>{{ p.line.screen.name }}</bdi>{% endif %}{% if p.taken_on %} · <bdi>{{ fmt(p.taken_on) }}</bdi>{% endif %}</div>
       {% if p.note %}<div class="small">{{ p.note }}</div>{% endif %}</div>
     {% endfor %}
   </div>

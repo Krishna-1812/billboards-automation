@@ -13,7 +13,7 @@
 {% block content %}
 <div class="head">
   <div><div class="eyebrow">{{ today().strftime('%A, %-d %B') }} · {{ top.screens }} screens</div>
-    <h1>{{ t(greeting) }}, <em>{{ (user.name or 'there').split(' ')[0] }}</em>.</h1></div>
+    <h1>{{ t(greeting) }}{{ '،' if lang == 'ar' else ',' }} <em>{{ (user.name or 'there').split(' ')[0] }}</em>.</h1></div>
   <div class="actions">
     <a class="btn" href="{{ url_for('bookings.availability') }}">{{ t('availability') }}</a>
     {% if can('hold') %}<a class="btn primary" href="{{ url_for('bookings.booking_new') }}">+ {{ t('place_hold') }}</a>{% endif %}
@@ -39,7 +39,7 @@
       <path d="{{ chart.line }}" fill="none" stroke="#FF4F1A" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
       {% for p in chart.dots %}<circle cx="{{ p.x }}" cy="{{ p.y }}" r="3.5" fill="#FBFAF6" stroke="#11110F" stroke-width="1.5" vector-effect="non-scaling-stroke"><title>Week of {{ p.label }}: {{ p.v }}%</title></circle>{% endfor %}
     </svg>
-    <div style="display:grid;grid-template-columns:repeat({{ chart.dots|length }},minmax(0,1fr));font:400 10px var(--mono);letter-spacing:.04em;color:var(--faint);margin-top:8px">
+    <div dir="ltr" style="display:grid;grid-template-columns:repeat({{ chart.dots|length }},minmax(0,1fr));font:400 10px var(--mono);letter-spacing:.04em;color:var(--faint);margin-top:8px">
       {% for p in chart.dots %}<span style="text-align:center">{{ p.label }}</span>{% endfor %}</div>
     {% else %}<p class="muted" style="margin-top:auto">Add screens to see how full they are.</p>{% endif %}
   </section>

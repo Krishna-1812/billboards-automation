@@ -34,7 +34,7 @@
     <tr><th>{{ tp('booking') }}</th><th>{{ tp('dates') }}</th><th>{{ tp('screens') }}</th><th>{{ tp('status') }}</th><th>{{ tp('next_step') }}</th></tr>
     {% for b, step in current %}
     <tr><td><a href="{{ url_for('portal.booking', code=b.code) }}">{{ b.code }}</a>{% if b.title %}<div class="small muted">{{ b.title }}</div>{% endif %}</td>
-      <td style="white-space:nowrap">{{ b.start_date|date }} – {{ b.end_date|date }}</td>
+      <td style="white-space:nowrap"><bdi>{{ b.start_date|date }}</bdi> – <bdi>{{ b.end_date|date }}</bdi></td>
       <td>{{ b.lines|map(attribute='screen.name')|join(', ') }}</td>
       <td><span class="pill {{ b.status }}">{{ tp('st_' ~ b.status) }}</span></td>
       <td>{{ step }}</td></tr>
@@ -47,7 +47,7 @@
   <table class="small">
     {% for b in past %}
     <tr><td><a href="{{ url_for('portal.booking', code=b.code) }}">{{ b.code }}</a></td>
-      <td>{{ b.start_date|date if b.start_date else '' }} – {{ b.end_date|date if b.end_date else '' }}</td>
+      <td><bdi>{{ b.start_date|date if b.start_date else '' }}</bdi> – <bdi>{{ b.end_date|date if b.end_date else '' }}</bdi></td>
       <td>{{ b.lines|map(attribute='screen.name')|join(', ') }}</td>
       <td><span class="pill {{ b.status }}">{{ tp('st_' ~ b.status) }}</span></td></tr>
     {% endfor %}

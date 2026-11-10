@@ -20,7 +20,7 @@
       <div class="price">{{ cur }} {{ '{:,.0f}'.format(tt.net) }}</div>
       <div class="small muted">{{ tp('q_plays', n='{:,}'.format(tt.plays)) }}</div></div>
     <ul class="small">
-      {% for l in o.lines %}<li><strong>{{ l.screen_name }}</strong> · {{ fmt(l.start) }} {{ tp('to') }} {{ fmt(l.end) }}
+      {% for l in o.lines %}<li><strong><bdi>{{ l.screen_name }}</bdi></strong> · <bdi>{{ fmt(l.start) }}</bdi> {{ tp('to') }} <bdi>{{ fmt(l.end) }}</bdi>
         <div class="muted">{% if l.start_hour is not none and l.end_hour is not none %}{{ '%02d:00–%02d:00'|format(l.start_hour, l.end_hour % 24) }}{% else %}{{ tp('q_all_hours') }}{% endif %} ·
           {% if l.exclusive %}{{ tp('q_whole') }}{% else %}{{ tp('q_per_hour', n='%g'|format(l.plays_per_hour)) }}{% endif %}
           · {% if l.bonus %}<strong>{{ tp('q_bonus') }}</strong>{% else %}{{ cur }} {{ '{:,.0f}'.format(l.price) }}{% endif %}</div></li>{% endfor %}

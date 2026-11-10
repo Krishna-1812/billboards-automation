@@ -89,7 +89,7 @@
       </div>
       <div class="dial-foot">
         <div><b data-n-day>{{ '{:,}'.format(lp.per_day) }}</b><span>{{ tw('per_day') }}</span></div>
-        <div><b>{{ lp.loop }}<span style="font-size:.5em"> s</span></b><span>{{ tw('meta_loop') }}</span></div>
+        <div><b>{{ lp.loop }}<span style="font-size:.5em"> {{ 'ث' if plang == 'ar' else 's' }}</span></b><span>{{ tw('meta_loop') }}</span></div>
       </div>
     </div>
   </div>
