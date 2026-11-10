@@ -139,7 +139,7 @@
   if (fine) {
     $$('.bento > .tile, .bento > a.card, .grid > .card.stat, .stat.mini, .qcards > *, .tile.s5, .tile.s7, .scard, .stats .stat, .po').forEach(function (el) {
       var big = el.getBoundingClientRect().width > 520;
-      tilt(el, big ? 3 : 7);
+      tilt(el, big ? 2 : 4);
     });
     $$('.bento > .card').forEach(function (el) { el.classList.add('m-glare'); });
   }
@@ -154,7 +154,7 @@
   });
 
   // Celebrations: confetti in the brand colours for the big moments.
-  var COLORS = ['#8F80FF', '#5A49E6', '#FFB394', '#FF7A52', '#7FE0BF', '#FFD166'];
+  var COLORS = ['#FF4F1A', '#11110F', '#F6A17E', '#9C988D', '#E8410F', '#2B2A26'];
   function confetti(x, y, n) {
     var box = document.createElement('div');
     box.className = 'm-confetti';

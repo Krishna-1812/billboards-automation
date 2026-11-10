@@ -440,13 +440,13 @@ def to_pdf(quote, snap, company):
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=16 * mm,
                             bottomMargin=16 * mm, title=f"{quote.ref} proposal", author=company)
     ss = getSampleStyleSheet()
-    ink, accent, soft = colors.HexColor("#17162A"), colors.HexColor("#5A49E6"), colors.HexColor("#F3F2F9")
+    ink, accent, soft = colors.HexColor("#11110F"), colors.HexColor("#B8330B"), colors.HexColor("#F2EFE8")
     h1 = ParagraphStyle("h1", parent=ss["Title"], fontName="Helvetica-Bold", fontSize=20, textColor=ink,
                         alignment=0, spaceAfter=2)
     h2 = ParagraphStyle("h2", parent=ss["Heading2"], fontName="Helvetica-Bold", fontSize=13, textColor=ink,
                         spaceBefore=10, spaceAfter=4)
     body = ParagraphStyle("b", parent=ss["BodyText"], fontName="Helvetica", fontSize=9.5, leading=13, textColor=ink)
-    small = ParagraphStyle("s", parent=body, fontSize=8, leading=10, textColor=colors.HexColor("#5F5E78"))
+    small = ParagraphStyle("s", parent=body, fontSize=8, leading=10, textColor=colors.HexColor("#6E6B62"))
     cur = snap["currency"]
     story = [Paragraph(f"{company}", ParagraphStyle("c", parent=body, textColor=accent, fontName="Helvetica-Bold")),
              Paragraph(f"Proposal {quote.ref}" + (f" · version {quote.version}" if quote.version > 1 else ""), h1),
@@ -474,8 +474,8 @@ def to_pdf(quote, snap, company):
         n = len(rows)
         tbl.setStyle(TableStyle([
             ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 8), ("FONT", (0, 1), (-1, -1), "Helvetica", 8.5),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#8A89A3")),
-            ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#E8E6F2")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#9C988D")),
+            ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#DEDACD")),
             ("ALIGN", (4, 0), (-1, -1), "RIGHT"), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("FONT", (4, n - 1), (-1, n - 1), "Helvetica-Bold", 10), ("BACKGROUND", (0, n - 1), (-1, n - 1), soft),
         ]))

@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ code }} · Billboard Ops{% endblock %}
-{% block content %}<div class="card" style="max-width:560px;margin:8vh auto;text-align:center;padding:40px 32px;border-radius:30px">
-  <div style="font-size:72px;font-weight:800;letter-spacing:-0.05em;color:var(--accent)">{{ code }}</div><p style="font-size:17px;font-weight:600">{{ message }}</p>
+{% block content %}<div class="card" style="max-width:560px;margin:10vh auto;text-align:center;padding:48px 36px">
+  <div class="bigcode">{{ code }}<em>.</em></div><p style="font-size:17px;margin-top:18px">{{ message }}</p>
   <p style="margin-top:18px"><a class="btn primary" href="/">Back to the overview</a></p></div>{% endblock %}
 {% block bare %}<div class="auth"><div class="card" style="text-align:center">
   <div class="brand" style="justify-content:center"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Billboard Ops</div>
-  <div style="font-size:64px;font-weight:800;letter-spacing:-0.05em;color:var(--accent)">{{ code }}</div><p style="font-weight:600">{{ message }}</p>
+  <div class="bigcode">{{ code }}<em>.</em></div><p style="margin-top:16px">{{ message }}</p>
   <p style="margin-top:16px">{% if user and user.role == 'client' %}<a class="btn primary" href="/portal">Your portal</a>{% else %}<a class="btn primary" href="/login">Sign in</a>{% endif %}</p></div></div>{% endblock %}

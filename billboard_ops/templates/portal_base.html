@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <meta name="theme-color" content="#F3F2F9">
+  <meta name="theme-color" content="#F2EFE8">
   <title>{% block title %}{{ tp('portal') }}{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=8">
-  <link rel="stylesheet" href="{{ url_for('static', filename='motion.css') }}?v=1">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%2317162A'/%3E%3Crect x='10' y='10' width='8.5' height='8.5' rx='2.5' fill='%238F80FF'/%3E%3Crect x='21.5' y='10' width='8.5' height='8.5' rx='2.5' fill='%23FFB394'/%3E%3Crect x='10' y='21.5' width='8.5' height='8.5' rx='2.5' fill='%237FE0BF'/%3E%3Crect x='21.5' y='21.5' width='8.5' height='8.5' rx='2.5' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=Noto+Naskh+Arabic:wght@400;500&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=9">
+  <link rel="stylesheet" href="{{ url_for('static', filename='motion.css') }}?v=3">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%2311110F'/%3E%3Crect x='11' y='11' width='8' height='8' fill='%23F2EFE8'/%3E%3Crect x='21' y='11' width='8' height='8' fill='%23F2EFE8'/%3E%3Crect x='11' y='21' width='8' height='8' fill='%23F2EFE8'/%3E%3Crect x='21' y='21' width='8' height='8' fill='%23FF4F1A'/%3E%3C/svg%3E">
 </head>
 <body>
 <header class="portal-top"><div class="in">
   <a class="brand" href="{{ url_for('portal.home') }}"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-    <span>{{ company }}<span class="muted" style="font-weight:700;font-size:14px"> · {{ tp('portal') }}</span></span></a>
+    <span>{{ company }}</span><span class="sep" aria-hidden="true">/</span><span class="where">{{ tp('portal') }}</span></a>
   <nav aria-label="Portal">
     {% set ep = request.endpoint or '' %}
     {% if user and user.role == 'client' %}
@@ -25,10 +25,10 @@
     {% endif %}
     <form method="post" action="{{ url_for('portal.language') }}" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.path }}">
-      <button class="linkish" type="submit" style="padding:8px 14px">{{ tp('language') }}</button></form>
+      <button class="linkish" type="submit">{{ tp('language') }}</button></form>
     {% if user and user.role == 'client' %}
     <form method="post" action="{{ url_for('portal.logout') }}" class="inline">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="linkish" type="submit" style="padding:8px 14px;color:var(--muted)">{{ tp('sign_out') }}</button></form>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="linkish" type="submit">{{ tp('sign_out') }}</button></form>
     {% endif %}
   </nav>
 </div></header>
@@ -38,6 +38,6 @@
   {% endwith %}
   {% block content %}{% endblock %}
 </main>
-<script src="{{ url_for('static', filename='motion.js') }}?v=1"></script>
+<script src="{{ url_for('static', filename='motion.js') }}?v=3"></script>
 </body>
 </html>

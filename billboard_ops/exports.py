@@ -61,8 +61,8 @@ def to_pdf(headers, rows, title):
     if len(data) == 1:
         data.append([Paragraph("Nothing to show.", cell)] + [""] * (len(headers) - 1))
     table = Table(data, repeatRows=1)
-    table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eef2f7")),
-                               ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#d5dbe3")),
+    table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F2EFE8")),
+                               ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#DEDACD")),
                                ("VALIGN", (0, 0), (-1, -1), "TOP")]))
     doc.build([Paragraph(title, styles["Heading2"]), Spacer(1, 6), table])
     return buf.getvalue()

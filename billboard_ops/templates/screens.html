@@ -41,7 +41,7 @@
      fill: {{ (today_fill.get(s.id) or [0, 0])[1] }}},{% endfor %}];
   const map = L.map('map');
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; OpenStreetMap'}).addTo(map);
-  const colour = f => f >= 99.99 ? '#e0675a' : f >= 80 ? '#f2c46b' : f >= 50 ? '#7fbf95' : '#1f5fbf';
+  const colour = f => f >= 99.99 ? '#11110F' : f >= 80 ? '#FF4F1A' : f >= 50 ? '#F6A17E' : '#9C988D';
   const layer = L.featureGroup(data.map(d => L.circleMarker([d.lat, d.lng], {radius: 9, color: colour(d.fill), fillOpacity: .7})
      .bindPopup(`<a href="/screens/${d.id}"><b>${d.code}</b></a><br>${d.name}<br>Busiest hour today: ${Math.round(d.fill)}%`))).addTo(map);
   if (data.length) map.fitBounds(layer.getBounds().pad(0.2)); else map.setView([25.2, 55.27], 10);

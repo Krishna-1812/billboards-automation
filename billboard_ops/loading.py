@@ -155,8 +155,8 @@ def export_pdf(rows, title):
     table = Table(data, repeatRows=1, colWidths=[62, 40, 56, 80, 120, 290, 40, 44])
     table.setStyle(TableStyle([
         ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 8), ("FONT", (0, 1), (-1, -1), "Helvetica", 7.5),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eef2f7")),
-        ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#d5dbe3")),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F2EFE8")),
+        ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#DEDACD")),
         ("VALIGN", (0, 0), (-1, -1), "TOP")]))
     doc.build([Paragraph(title, styles["Heading2"]), Spacer(1, 6), table])
     return buf.getvalue()
