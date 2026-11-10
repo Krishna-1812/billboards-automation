@@ -123,6 +123,7 @@ def signup():
                              actor=form["email"].lower())
     if lg == "ar":
         p.language = "ar"
+    p.reading = {"signup": form}        # the fields as typed: the draft is filled in from them without Claude
     alert(s, "proposals", f"New client sign-up {p.ref} from {form['company']} on the website.",
           link=f"/inbox/{p.ref}", subject=f"New client sign-up: {form['company']}")
     s.commit()

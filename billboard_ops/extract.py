@@ -309,6 +309,85 @@ def normalise(session, raw, today, sender=""):
     }
 
 
+# ── A website sign-up, read without Claude ──────────────────────────────────────
+# The sign-up form already has the company, contact, dates, areas and budget in separate fields. When Claude can't
+# read the request, they are turned into the same answer Claude gives, and checked by `normalise` like any other.
+
+ANYWHERE = {"any", "anywhere", "all", "everywhere", "not sure", "no preference", "أي مكان", "الكل", "كل الشاشات"}
+
+
+FILLER = {"the", "a", "an", "near", "around", "at", "in", "on", "by", "both", "directions", "direction", "area",
+          "areas", "please", "screen", "screens", "side", "sides"}
+
+
+def _place_key(text, drop_filler=False):
+    words = re.findall(r"[0-9a-z؀-ۿ]+", (text or "").lower().replace("road", "rd"))
+    return " ".join(w for w in words if not (drop_filler and w in FILLER))
+
+
+def screens_named(session, where):
+    """The screens a free-text "screens or areas" answer names: by code (sure), else by area or screen name."""
+    screens = session.scalars(select(Screen).where(Screen.active.is_(True)).order_by(Screen.code)).all()
+    text = f" {_place_key(where)} "
+    if not text.strip():
+        return [], "low"
+    by_code = [s for s in screens if f" {_place_key(s.code)} " in text]
+    if by_code:
+        return [s.code for s in by_code], "high"
+    phrases = [p for p in (_place_key(x, drop_filler=True) for x in re.split(r"[,;/&+\n]| and | or | و", where or ""))
+               if len(p) >= 4 and p not in ANYWHERE]
+    found = []
+    for s in screens:
+        keys = [k for k in (_place_key(s.area), _place_key(s.name)) if k]
+        if any(f" {k} " in text for k in keys) or any(p in k for p in phrases for k in keys):
+            found.append(s.code)
+    return found, "medium"
+
+
+def _budget_top(band):
+    """The most a budget band allows ("25,000 – 100,000" → 100000); none for "not sure" or an open-ended top."""
+    band = band or ""
+    if re.search(r"over|more than|أكثر", band, re.I):
+        return None
+    nums = [int(x.replace(",", "")) for x in re.findall(r"\d[\d,]*", band)]
+    return max(nums) if nums else None
+
+
+def from_signup(session, form, language="en"):
+    """The sign-up form as Claude's answer (see SCHEMA): what the client typed, with how sure each part is."""
+    where = (form.get("where") or "").strip()
+    start, end = _date(form.get("start")), _date(form.get("end"))
+    codes, sure = screens_named(session, where)
+    lines = []
+    if codes or where or start:
+        lines.append({"screen_codes": codes, "screen_confidence": sure if codes else "low",
+                      "screen_hint": "" if codes else where,
+                      "start_date": start.isoformat() if start else None, "end_date": end.isoformat() if end else None,
+                      "dates_confidence": "high" if start and end else "low",
+                      "start_hour": None, "end_hour": None, "ad_seconds": None,
+                      "frequency_unit": "unknown", "frequency_value": None, "frequency_confidence": "low",
+                      "alternatives": [],
+                      "evidence": f"Screens or areas: {where or '—'}; dates: {form.get('start') or '?'} to "
+                                  f"{form.get('end') or '?'}"})
+    notes = [form.get("notes") or ""]
+    if form.get("budget"):
+        notes.append(f"Budget on the sign-up form: {form['budget']}")
+    top = _budget_top(form.get("budget"))
+    return {
+        "is_booking_request": True,
+        "language": language,
+        "client": {"value": form.get("company") or "", "confidence": "high",
+                   "evidence": f"Company or brand: {form.get('company') or ''}"},
+        "contact_name": form.get("name") or "", "contact_email": form.get("email") or "",
+        "contact_phone": form.get("phone") or "",
+        "campaign": "",
+        "notes": "\n".join(n for n in notes if n),
+        "budget_amount": top, "budget_currency": (settings.get(session, "currency") or "AED") if top else "",
+        "lines": lines,
+        "missing": [], "questions": [], "flags": [],
+    }
+
+
 def read(session, *, messages, channel, sender, subject, today, actor="agent", client_id=None, proposal_id=None,
          eval_run_id=None, purpose="read_proposal"):
     """Run Claude over a conversation. Returns (raw answer, normalised draft)."""

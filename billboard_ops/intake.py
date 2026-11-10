@@ -180,6 +180,8 @@ def process(session, p, actor="agent", today=None):
     whatsapp.fetch_pending_media(session, p)
     today = today or extract.today_for(session)
     p.status = "reading"
+    signup = (p.reading or {}).get("signup")    # a website sign-up keeps its form, to fall back on
+    from_form = False
     try:
         raw, draft = extract.read(session, messages=conversation(p), channel=p.channel, sender=p.sender,
                                   subject=p.subject, today=today, actor=actor, client_id=p.client_id,
@@ -187,12 +189,22 @@ def process(session, p, actor="agent", today=None):
     except ai.AITransient:
         raise                                   # the job is tried again later
     except (ai.AIFailed, ai.AIUnavailable) as e:
-        p.status, p.error = "failed", str(e)
-        notify(session, f"{p.ref} couldn't be read automatically: {e} Fill it in by hand.", kind="warning",
-               link=f"/inbox/{p.ref}")
-        return p
+        if not signup:
+            p.status, p.error = "failed", str(e)
+            notify(session, f"{p.ref} couldn't be read automatically: {e} Fill it in by hand.", kind="warning",
+                   link=f"/inbox/{p.ref}")
+            return p
+        # The form already says who, when, where and the budget: the draft is filled in from it.
+        raw = extract.from_signup(session, signup, language=p.language)
+        draft = extract.normalise(session, raw, today, p.sender)
+        draft["flags"].insert(0, f"Filled in from the website sign-up form, because the agent couldn't read it "
+                                 f"({str(e).rstrip('.')}). Check the screens, and their notes for how often to play.")
+        from_form = True
+    if signup:
+        raw = {**raw, "signup": signup}
     p.reading, p.draft, p.error = raw, draft, ""
-    p.read_count += 1
+    if not from_form:
+        p.read_count += 1                       # counts the agent's own readings, for Performance
     p.last_read_at = utcnow()
     p.language = draft["language"] if draft["language"] in ("en", "ar", "mixed") else p.language
     p.client_id = draft["client_id"]

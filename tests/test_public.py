@@ -139,3 +139,76 @@ def test_signing_out_goes_to_the_front_page(app, s, people):
         sess["csrf"] = "tok"
     r = c.post("/logout", data={"csrf_token": "tok"})
     assert r.headers["Location"].endswith("/welcome")
+
+
+# ── A sign-up fills in its own draft when Claude can't read it ──────────────────
+
+def _sign_up(app, **over):
+    c = app.test_client()
+    data = {"csrf_token": _tok(c, "/signup"), "name": "Layla Haddad", "company": "Desert Air",
+            "email": "layla@desertair.example", "phone": "+971 50 123 4567", "kind": "brand",
+            "start": "2030-12-01", "end": "2030-12-14", "where": "Sheikh Zayed Rd, both directions",
+            "budget": "25,000 – 100,000", "notes": "Summer fares. 2 plays in every loop."}
+    data.update(over)
+    assert c.post("/signup", data=data).status_code == 302
+
+
+def _read_it(s):
+    from billboard_ops import intake
+    p = s.scalars(select(Proposal).order_by(Proposal.id.desc())).first()
+    intake.process(s, p)
+    s.commit()
+    return p
+
+
+def test_without_claude_a_sign_up_fills_in_the_draft_from_its_form(app, s, people, inventory):
+    inventory["a"].area = inventory["b"].area = "Sheikh Zayed Rd"
+    s.commit()
+    _sign_up(app)
+    p = _read_it(s)
+    d = p.draft
+    assert p.status == "needs_review" and p.error == "" and p.read_count == 0
+    assert d["client_id"] is None and d["client_name"] == "Desert Air"
+    assert d["contact"] == {"name": "Layla Haddad", "email": "layla@desertair.example", "phone": "+971 50 123 4567"}
+    assert [ln["screen_code"] for ln in d["lines"]] == ["SZR-01", "SZR-02"]
+    assert all(ln["start_date"] == "2030-12-01" and ln["end_date"] == "2030-12-14" for ln in d["lines"])
+    assert all(ln["confidence"]["screen"] == "medium" and ln["confidence"]["dates"] == "high" for ln in d["lines"])
+    assert d["budget"] == {"amount": 100000, "currency": "AED"}
+    assert "2 plays in every loop" in d["notes"] and "25,000 – 100,000" in d["notes"]
+    assert d["missing"] == ["frequency"] and not d["ready"]
+    assert d["flags"][0].startswith("Filled in from the website sign-up form")
+    assert [c["status"] for c in p.checks] == ["fits", "fits"]            # vacancy is checked as usual
+    team = app.test_client()
+    with team.session_transaction() as sess:
+        sess["uid"] = people["sales"].id
+    page = team.get(f"/inbox/{p.ref}").get_data(as_text=True)
+    assert "Filled in from the website sign-up form" in page and 'value="Desert Air"' in page
+    assert 'value="2030-12-01"' in page
+
+
+def test_a_sign_up_naming_a_screen_or_nowhere_in_particular(app, s, people, inventory):
+    _sign_up(app, where="SZR-02 please", email="a@one.example")
+    d = _read_it(s).draft
+    assert [ln["screen_code"] for ln in d["lines"]] == ["SZR-02"] and d["lines"][0]["confidence"]["screen"] == "high"
+    _sign_up(app, where="near the Marina", email="b@two.example", start="2030-12-03", end="2030-12-09")
+    d = _read_it(s).draft
+    assert [ln["screen_code"] for ln in d["lines"]] == ["MAR-01"]
+    _sign_up(app, where="SZR and the Marina", email="d@four.example", start="2030-12-03", end="2030-12-09")
+    assert [ln["screen_code"] for ln in _read_it(s).draft["lines"]] == ["MAR-01", "SZR-01", "SZR-02"]
+    _sign_up(app, where="Any", email="c@three.example", start="2030-12-05", end="2030-12-12", budget="Over 250,000")
+    d = _read_it(s).draft
+    assert d["lines"] == [] and d["unmatched"][0]["start_date"] == "2030-12-05"
+    assert "screens" in d["missing"] and d["budget"]["amount"] is None
+
+
+def test_a_returning_client_is_recognised_by_their_email(app, s, people, inventory):
+    _sign_up(app, company="ACME foods ltd", email="ads@acme.example", where="SZR")    # the name doesn't match
+    d = _read_it(s).draft
+    assert d["client_id"] == inventory["client"].id and d["client_name"] == "Acme Foods"
+
+
+def test_with_claude_the_agent_reads_it_and_the_form_is_kept(app, s, people, inventory, fake_ai):
+    _sign_up(app)
+    p = _read_it(s)
+    assert p.read_count == 1 and "Filled in from" not in " ".join(p.draft["flags"])
+    assert p.reading["signup"]["company"] == "Desert Air"

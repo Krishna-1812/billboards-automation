@@ -369,7 +369,10 @@ bookings), the four steps from brief to billboard, and the client portal. Settin
 paragraph about the company, the contact email and phone, and whether the screens are listed.
 
 - **Become a client** (/signup): name, company, email, dates, areas, budget. It arrives in Requests like an email
-  (channel "Website sign-up"), the team gets an alert, and replies go back by email. Make the proposal from it as
+  (channel "Website sign-up"), the team gets an alert, and replies go back by email. When Claude can't read it (no key yet,
+  or it fails), the draft is filled in from the form itself: the client and contact, the dates, the screens named by
+  code, area or screen name, and the top of the budget band. The team then checks the screens and sets how often to
+  play from the client's notes. Make the proposal from it as
   usual, then give the new client portal access from their client page. Bots that fill the hidden field are thanked
   and nothing is kept; one connection can send 6 sign-ups in 10 minutes.
 - **Sign in** (/login): two doors. Clients get an emailed one-time link (the portal sign-in); the team signs in with
